@@ -6,7 +6,6 @@
 #include "popups.hpp"
 #include "windows.hpp"
 
-#define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui_internal.h"
 
 // Use GUI module's display dimensions for native resolution support
@@ -124,8 +123,8 @@ namespace Windows {
                 
             if (data.textures.size() > 1) {
                 svcSleepThread(data.textures[data.frame_count].delay);
-                ImGui::Image(reinterpret_cast<ImTextureID>(data.textures[data.frame_count].id), (ImVec2((data.textures[data.frame_count].width * data.zoom_factor), 
-                    (data.textures[data.frame_count].height * data.zoom_factor))));
+                ImGui::Image(static_cast<ImTextureID>(data.textures[data.frame_count].id), ImVec2((data.textures[data.frame_count].width * data.zoom_factor), 
+                    (data.textures[data.frame_count].height * data.zoom_factor)));
                 data.frame_count++;
                 
                 // Reset frame counter
@@ -133,7 +132,7 @@ namespace Windows {
                     data.frame_count = 0;
             }
             else
-                ImGui::Image(reinterpret_cast<ImTextureID>(data.textures[0].id), ImVec2((data.textures[0].width * data.zoom_factor), (data.textures[0].height * data.zoom_factor)));
+                ImGui::Image(static_cast<ImTextureID>(data.textures[0].id), ImVec2((data.textures[0].width * data.zoom_factor), (data.textures[0].height * data.zoom_factor)));
         }
 
         if (properties)

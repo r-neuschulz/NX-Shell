@@ -321,9 +321,9 @@ static void ImGui_ImplSwitch_SetupRenderState(ImDrawData * draw_data, int fb_wid
     glEnableVertexAttribArray(bd->AttribLocationVtxPos);
     glEnableVertexAttribArray(bd->AttribLocationVtxUV);
     glEnableVertexAttribArray(bd->AttribLocationVtxColor);
-    glVertexAttribPointer(bd->AttribLocationVtxPos,   2, GL_FLOAT,         GL_FALSE, sizeof(ImDrawVert), static_cast<GLvoid *>(IM_OFFSETOF(ImDrawVert, pos)));
-    glVertexAttribPointer(bd->AttribLocationVtxUV,    2, GL_FLOAT,         GL_FALSE, sizeof(ImDrawVert), reinterpret_cast<GLvoid *>(IM_OFFSETOF(ImDrawVert, uv)));
-    glVertexAttribPointer(bd->AttribLocationVtxColor, 4, GL_UNSIGNED_BYTE, GL_TRUE,  sizeof(ImDrawVert), reinterpret_cast<GLvoid *>(IM_OFFSETOF(ImDrawVert, col)));
+    glVertexAttribPointer(bd->AttribLocationVtxPos,   2, GL_FLOAT,         GL_FALSE, sizeof(ImDrawVert), reinterpret_cast<GLvoid *>(offsetof(ImDrawVert, pos)));
+    glVertexAttribPointer(bd->AttribLocationVtxUV,    2, GL_FLOAT,         GL_FALSE, sizeof(ImDrawVert), reinterpret_cast<GLvoid *>(offsetof(ImDrawVert, uv)));
+    glVertexAttribPointer(bd->AttribLocationVtxColor, 4, GL_UNSIGNED_BYTE, GL_TRUE,  sizeof(ImDrawVert), reinterpret_cast<GLvoid *>(offsetof(ImDrawVert, col)));
 }
 
 // OpenGL3 Render function.
@@ -473,7 +473,7 @@ void ImGui_ImplSwitch_RenderDrawData(ImDrawData *draw_data) {
                 glScissor(static_cast<int>(clip_min.x), static_cast<int>(static_cast<float>(fb_height) - clip_max.y), static_cast<int>(clip_max.x - clip_min.x), static_cast<int>(clip_max.y - clip_min.y));
 
                 // Bind texture, Draw
-                glBindTexture(GL_TEXTURE_2D, static_cast<GLuint>(reinterpret_cast<intptr_t>(pcmd->GetTexID())));
+                glBindTexture(GL_TEXTURE_2D, static_cast<GLuint>(pcmd->GetTexID()));
 #ifdef IMGUI_IMPL_OPENGL_MAY_HAVE_VTX_OFFSET
                 if (bd->GlVersion >= 320)
                     glDrawElementsBaseVertex(GL_TRIANGLES, static_cast<GLsizei>(pcmd->ElemCount), sizeof(ImDrawIdx) == 2 ? GL_UNSIGNED_SHORT : GL_UNSIGNED_INT, (void*)static_cast<intptr_t>(pcmd->IdxOffset * sizeof(ImDrawIdx)), static_cast<GLint>(pcmd->VtxOffset));
@@ -574,7 +574,7 @@ bool ImGui_ImplSwitch_CreateFontsTexture(void) {
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
 
     // Store our identifier
-    io.Fonts->SetTexID(reinterpret_cast<ImTextureID>(bd->FontTexture));
+    io.Fonts->SetTexID(static_cast<ImTextureID>(bd->FontTexture));
 
     // Restore state
     glBindTexture(GL_TEXTURE_2D, last_texture);
@@ -587,7 +587,7 @@ void ImGui_ImplSwitch_DestroyFontsTexture(void) {
 
     if (bd->FontTexture) {
         glDeleteTextures(1, &bd->FontTexture);
-        io.Fonts->SetTexID(0);
+        io.Fonts->SetTexID(static_cast<ImTextureID>(0));
         bd->FontTexture = 0;
     }
 }

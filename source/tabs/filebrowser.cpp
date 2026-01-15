@@ -154,9 +154,9 @@ namespace Tabs {
                     ImGui::PushID(i);
                     
                     if ((data.checkbox_data.checked[i]) && (data.checkbox_data.cwd.compare(cwd) == 0) && (data.checkbox_data.device.compare(device) == 0))
-                        ImGui::Image(reinterpret_cast<ImTextureID>(check_icon.id), tex_size);
+                        ImGui::Image(static_cast<ImTextureID>(check_icon.id), tex_size);
                     else
-                        ImGui::Image(reinterpret_cast<ImTextureID>(uncheck_icon.id), tex_size);
+                        ImGui::Image(static_cast<ImTextureID>(uncheck_icon.id), tex_size);
                     
                     ImGui::PopID();
 
@@ -164,9 +164,9 @@ namespace Tabs {
                     FileType file_type = FS::GetFileType(data.entries[i].name);
                     
                     if (data.entries[i].type == FsDirEntryType_Dir)
-                        ImGui::Image(reinterpret_cast<ImTextureID>(folder_icon.id), tex_size);
+                        ImGui::Image(static_cast<ImTextureID>(folder_icon.id), tex_size);
                     else
-                        ImGui::Image(reinterpret_cast<ImTextureID>(file_icons[file_type].id), tex_size);
+                        ImGui::Image(static_cast<ImTextureID>(file_icons[file_type].id), tex_size);
                     
                     ImGui::SameLine();
 

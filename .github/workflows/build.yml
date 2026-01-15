@@ -39,6 +39,7 @@ jobs:
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
+        if: ${{ !env.ACT }}
         with:
           name: NX-Shell
           path: NX-Shell.nro
