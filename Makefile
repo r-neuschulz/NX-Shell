@@ -65,7 +65,7 @@ ARCH	:=	-march=armv8-a+crc+crypto -mtune=cortex-a57 -mtp=soft -fPIE
 CFLAGS	:=	-g -Wall -O3 -ffunction-sections -Wno-restrict $(ARCH) $(DEFINES)
 
 CFLAGS	+=	$(INCLUDE) -D__SWITCH__
-CFLAGS	+=	`freetype-config --cflags`
+CFLAGS	+=	$(shell $(DEVKITPRO)/portlibs/switch/bin/aarch64-none-elf-pkg-config --cflags freetype2)
 CFLAGS	+=	-DVERSION_MAJOR=$(VERSION_MAJOR) -DVERSION_MINOR=$(VERSION_MINOR) -DVERSION_MICRO=$(VERSION_MICRO)
 CFLAGS  +=	-DIMGUI_IMPL_OPENGL_LOADER_GLAD -DIMGUI_DISABLE_OBSOLETE_FUNCTIONS -DIMGUI_DISABLE_DEMO_WINDOWS
 CFLAGS  +=	-DIMGUI_DISABLE_DEBUG_TOOLS -DIMGUI_DISABLE_WIN32_DEFAULT_CLIPBOARD_FUNCTIONS
@@ -77,7 +77,7 @@ CXXFLAGS	:= $(CFLAGS) -std=gnu++20 -fno-exceptions -fno-rtti
 ASFLAGS	:=	-g $(ARCH)
 LDFLAGS	=	-specs=$(DEVKITPRO)/libnx/switch.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
 
-LIBS	:=	`curl-config --libs` `freetype-config --libs` -lgif -lturbojpeg -ljpeg -lpng -lwebp -ljansson \
+LIBS	:=	$(shell curl-config --libs) $(shell $(DEVKITPRO)/portlibs/switch/bin/aarch64-none-elf-pkg-config --libs freetype2) -lgif -lturbojpeg -ljpeg -lpng -lwebp -ljansson \
 		-lglad -lEGL -lglapi -ldrm_nouveau -lusbhsfs -llwext4 -lntfs-3g -lnx -lm -lz
 
 #---------------------------------------------------------------------------------

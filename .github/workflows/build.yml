@@ -1,26 +1,43 @@
-name: C/C++ CI
+name: Build NX-Shell
 
 on:
   push:
-    branches: [ next-opengl3 ]
+    branches: [master, main]
   pull_request:
-    branches: [ next-opengl3 ]
+    branches: [master, main]
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
-    container: devkitpro/devkita64:latest
+    container:
+      image: devkitpro/devkita64:latest
 
     steps:
-    - name: Checkout
-      uses: actions/checkout@v3
-      with:
-        submodules: recursive
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-    - name: Build
-      run: make
+      - name: Install dependencies
+        run: |
+          sudo -E dkp-pacman -Sy --noconfirm \
+            switch-freetype \
+            switch-libpng \
+            switch-libjpeg-turbo \
+            switch-libwebp \
+            switch-giflib \
+            switch-zlib \
+            switch-curl \
+            switch-jansson \
+            switch-glad \
+            switch-mesa \
+            switch-libdrm_nouveau
 
-    - uses: actions/upload-artifact@v3
-      with:
-        name: NX-Shell.nro
-        path: NX-Shell.nro
+      - name: Build
+        run: make -j$(nproc)
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: NX-Shell
+          path: NX-Shell.nro
+          if-no-files-found: error
