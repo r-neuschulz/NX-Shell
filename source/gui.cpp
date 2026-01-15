@@ -27,17 +27,41 @@ namespace GUI {
     
     void UpdateDisplayDimensions(void) {
         AppletOperationMode mode = appletGetOperationMode();
+        bool mode_changed = (mode != s_operation_mode);
+        s_operation_mode = mode;
         
-        if (mode != s_operation_mode) {
-            s_operation_mode = mode;
-            
-            if (IsDocked()) {
-                display_width = 1920;
-                display_height = 1080;
-            } else {
-                display_width = 1280;
-                display_height = 720;
-            }
+        // Determine target resolution based on config setting
+        int target_width = 1280;
+        int target_height = 720;
+        
+        switch (cfg.resolution_mode) {
+            case ResolutionMode_Auto:
+                // Auto-detect based on dock state
+                if (IsDocked()) {
+                    target_width = 1920;
+                    target_height = 1080;
+                } else {
+                    target_width = 1280;
+                    target_height = 720;
+                }
+                break;
+                
+            case ResolutionMode_1080p:
+                target_width = 1920;
+                target_height = 1080;
+                break;
+                
+            case ResolutionMode_720p:
+            default:
+                target_width = 1280;
+                target_height = 720;
+                break;
+        }
+        
+        // Only update if dimensions changed
+        if (display_width != target_width || display_height != target_height) {
+            display_width = target_width;
+            display_height = target_height;
             
             // Update the native window dimensions for the new resolution
             if (s_window) {

@@ -105,6 +105,30 @@ namespace Tabs {
 
             Tabs::Separator();
 
+            // Display Resolution
+            {
+                // Build the title with current resolution indicator
+                char resolution_title[128];
+                std::snprintf(resolution_title, sizeof(resolution_title), "%s (%dp)", 
+                    strings[cfg.lang][Lang::SettingsResolutionTitle], GUI::display_height);
+                Tabs::Indent(resolution_title);
+
+                if (ImGui::RadioButton(strings[cfg.lang][Lang::SettingsResolutionAuto], &cfg.resolution_mode, ResolutionMode_Auto))
+                    Config::Save(cfg);
+                
+                ImGui::Dummy(ImVec2(0.0f, 5.0f)); // Spacing
+                
+                if (ImGui::RadioButton(strings[cfg.lang][Lang::SettingsResolution1080p], &cfg.resolution_mode, ResolutionMode_1080p))
+                    Config::Save(cfg);
+                
+                ImGui::Dummy(ImVec2(0.0f, 5.0f)); // Spacing
+                
+                if (ImGui::RadioButton(strings[cfg.lang][Lang::SettingsResolution720p], &cfg.resolution_mode, ResolutionMode_720p))
+                    Config::Save(cfg);
+            }
+
+            Tabs::Separator();
+
             // About
             Tabs::Indent(strings[cfg.lang][Lang::SettingsAboutTitle]);
             
