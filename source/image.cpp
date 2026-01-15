@@ -9,6 +9,8 @@
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui_internal.h"
 
+// Use GUI module's display dimensions for native resolution support
+
 namespace ImageViewer {
     void ClearTextures(void) {
         data.textures.clear();
@@ -112,8 +114,12 @@ namespace Windows {
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
         ImGuiWindowFlags_ filename_flag = !cfg.image_filename? ImGuiWindowFlags_NoTitleBar : ImGuiWindowFlags_None;
         
+        // Use native display dimensions for proper 1080p support when docked
+        const float display_w = static_cast<float>(GUI::display_width);
+        const float display_h = static_cast<float>(GUI::display_height);
+        
         if (ImGui::Begin(data.entries[data.selected].name, nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_HorizontalScrollbar | filename_flag)) {
-            if (((data.textures[0].width * data.zoom_factor) <= 1280) && ((data.textures[0].height * data.zoom_factor) <= 720))
+            if (((data.textures[0].width * data.zoom_factor) <= display_w) && ((data.textures[0].height * data.zoom_factor) <= display_h))
                 ImGui::SetCursorPos((ImGui::GetWindowSize() - ImVec2((data.textures[0].width * data.zoom_factor), (data.textures[0].height * data.zoom_factor))) * 0.5f);
                 
             if (data.textures.size() > 1) {

@@ -2,6 +2,7 @@
 #include <cstring>
 
 #include "config.hpp"
+#include "gui.hpp"
 #include "imgui.h"
 #include "popups.hpp"
 #include "tabs.hpp"
@@ -14,7 +15,7 @@ namespace Windows {
 
     void SetupWindow(void) {
         ImGui::SetNextWindowPos(ImVec2(0.0f, 0.0f), ImGuiCond_Once);
-        ImGui::SetNextWindowSize(ImVec2(1280.0f, 720.0f), ImGuiCond_Once);
+        ImGui::SetNextWindowSize(ImVec2(static_cast<float>(GUI::display_width), static_cast<float>(GUI::display_height)), ImGuiCond_Once);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
     };
     

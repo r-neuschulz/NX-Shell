@@ -14,8 +14,54 @@ namespace GUI {
     static EGLDisplay s_display = EGL_NO_DISPLAY;
     static EGLContext s_context = EGL_NO_CONTEXT;
     static EGLSurface s_surface = EGL_NO_SURFACE;
+    static NWindow *s_window = nullptr;
+    static AppletOperationMode s_operation_mode = AppletOperationMode_Handheld;
+    
+    // Display dimensions - exported for use by other modules
+    int display_width = 1280;
+    int display_height = 720;
+    
+    bool IsDocked(void) {
+        return s_operation_mode == AppletOperationMode_Console;
+    }
+    
+    void UpdateDisplayDimensions(void) {
+        AppletOperationMode mode = appletGetOperationMode();
+        
+        if (mode != s_operation_mode) {
+            s_operation_mode = mode;
+            
+            if (IsDocked()) {
+                display_width = 1920;
+                display_height = 1080;
+            } else {
+                display_width = 1280;
+                display_height = 720;
+            }
+            
+            // Update the native window dimensions for the new resolution
+            if (s_window) {
+                nwindowSetDimensions(s_window, display_width, display_height);
+            }
+        }
+    }
     
     static bool InitEGL(NWindow* win) {
+        s_window = win;
+        
+        // Check initial dock state and set dimensions accordingly
+        s_operation_mode = appletGetOperationMode();
+        if (IsDocked()) {
+            display_width = 1920;
+            display_height = 1080;
+        } else {
+            display_width = 1280;
+            display_height = 720;
+        }
+        
+        // Set native window dimensions to match current mode
+        nwindowSetDimensions(win, display_width, display_height);
+        
         s_display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
         
         if (!s_display) {
@@ -205,6 +251,9 @@ namespace GUI {
     bool Loop(u64 &key) {
         if (!appletMainLoop())
             return false;
+        
+        // Check for dock/undock and update resolution if needed
+        UpdateDisplayDimensions();
         
         key = ImGui_ImplSwitch_NewFrame();
         ImGui::NewFrame();
