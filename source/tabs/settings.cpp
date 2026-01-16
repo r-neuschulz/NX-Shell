@@ -29,49 +29,66 @@ namespace Tabs {
     
     void Settings(WindowData &data) {
         if (ImGui::BeginTabItem("Settings")) {
-            // Disable language settings for now (At least until it;s complete)
-            // if (ImGui::TreeNode(strings[cfg.lang][Lang::SettingsLanguageTitle])) {
-            //     const char *languages[] = {
-            //         " Japanese",
-            //         " English",
-            //         " French",
-            //         " German",
-            //         " Italian",
-            //         " Spanish",
-            //         " Simplified Chinese",
-            //         " Korean",
-            //         " Dutch",
-            //         " Portuguese",
-            //         " Russian",
-            //         " Traditional Chinese"
-            //     };
+            const int lang = Config::GetLang();
+            
+            // Language selector
+            ImGui::Indent(10.f);
+            Tabs::Indent(strings[lang][Lang::SettingsLanguageTitle]);
 
-            //     ImGui::Dummy(ImVec2(0.0f, 5.0f)); // Spacing
-                
-            //     const int max_lang = 12;
-            //     for (int i = 0; i < max_lang; i++) {
-            //         if (ImGui::RadioButton(languages[i], &cfg.lang, i))
-            //             Config::Save(cfg);
-                    
-            //         if (i != (max_lang - 1))
-            //             ImGui::Dummy(ImVec2(0.0f, 15.0f)); // Spacing
-            //     }
+            // Only show supported (translated) languages, alphabetically sorted
+            struct LanguageOption {
+                const char* name;
+                int value;  // -1 = Auto, or language index
+            };
+            
+            static const LanguageOption supported_languages[] = {
+                {" Auto", LANG_AUTO},
+                {" Chinese (Simplified)", 6},
+                {" Chinese (Traditional)", 11},
+                {" English", 1},
+                {" German", 3},
+                {" Korean", 7},
+                {" Portuguese", 9},
+                {" Spanish", 5}
+            };
+            
+            static const int num_languages = sizeof(supported_languages) / sizeof(supported_languages[0]);
 
-            //     ImGui::TreePop();
-            // }
+            // Find current selection index
+            int current_selection = 0;
+            for (int i = 0; i < num_languages; i++) {
+                if (supported_languages[i].value == cfg.lang) {
+                    current_selection = i;
+                    break;
+                }
+            }
+            
+            ImGui::PushItemWidth(200.f);
+            if (ImGui::BeginCombo("##language_combo", supported_languages[current_selection].name)) {
+                for (int i = 0; i < num_languages; i++) {
+                    const bool is_selected = (current_selection == i);
+                    if (ImGui::Selectable(supported_languages[i].name, is_selected)) {
+                        cfg.lang = supported_languages[i].value;
+                        Config::Save(cfg);
+                    }
+                    if (is_selected)
+                        ImGui::SetItemDefaultFocus();
+                }
+                ImGui::EndCombo();
+            }
+            ImGui::PopItemWidth();
 
-            // ImGui::Separator();
+            Tabs::Separator();
 
             // USB unmount
-            ImGui::Indent(10.f);
-            Tabs::Indent(strings[cfg.lang][Lang::SettingsUSBTitle]);
+            Tabs::Indent(strings[lang][Lang::SettingsUSBTitle]);
 
             if (!USB::Connected()) {
                 ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
                 ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
             }
 
-            if (ImGui::Button(strings[cfg.lang][Lang::SettingsUSBUnmount], ImVec2(250, 50)))
+            if (ImGui::Button(strings[lang][Lang::SettingsUSBUnmount], ImVec2(250, 50)))
                 unmount_popup = true;
             
             if (!USB::Connected()) {
@@ -82,25 +99,25 @@ namespace Tabs {
             Tabs::Separator();
 
             // Image filename checkbox
-            Tabs::Indent(strings[cfg.lang][Lang::SettingsImageViewTitle]);
+            Tabs::Indent(strings[lang][Lang::SettingsImageViewTitle]);
 
-            if (ImGui::Checkbox(strings[cfg.lang][Lang::SettingsImageViewFilenameToggle], std::addressof(cfg.image_filename)))
+            if (ImGui::Checkbox(strings[lang][Lang::SettingsImageViewFilenameToggle], std::addressof(cfg.image_filename)))
                 Config::Save(cfg);
 
             Tabs::Separator();
 
             // Developer Options Checkbox
-            Tabs::Indent(strings[cfg.lang][Lang::SettingsDevOptsTitle]);
+            Tabs::Indent(strings[lang][Lang::SettingsDevOptsTitle]);
 
-            if (ImGui::Checkbox(strings[cfg.lang][Lang::SettingsDevOptsLogsToggle], std::addressof(cfg.dev_options)))
+            if (ImGui::Checkbox(strings[lang][Lang::SettingsDevOptsLogsToggle], std::addressof(cfg.dev_options)))
                 Config::Save(cfg);
 
             Tabs::Separator();
 
             // Multi lang Checkbox
-            Tabs::Indent(strings[cfg.lang][Lang::SettingsMultiLangTitle]);
+            Tabs::Indent(strings[lang][Lang::SettingsMultiLangTitle]);
 
-            if (ImGui::Checkbox(strings[cfg.lang][Lang::SettingsMultiLangLogsToggle], std::addressof(cfg.multi_lang)))
+            if (ImGui::Checkbox(strings[lang][Lang::SettingsMultiLangLogsToggle], std::addressof(cfg.multi_lang)))
                 Config::Save(cfg);
 
             Tabs::Separator();
@@ -110,38 +127,38 @@ namespace Tabs {
                 // Build the title with current resolution indicator
                 char resolution_title[128];
                 std::snprintf(resolution_title, sizeof(resolution_title), "%s (%dp)", 
-                    strings[cfg.lang][Lang::SettingsResolutionTitle], GUI::display_height);
+                    strings[lang][Lang::SettingsResolutionTitle], GUI::display_height);
                 Tabs::Indent(resolution_title);
 
-                if (ImGui::RadioButton(strings[cfg.lang][Lang::SettingsResolutionAuto], &cfg.resolution_mode, ResolutionMode_Auto))
+                if (ImGui::RadioButton(strings[lang][Lang::SettingsResolutionAuto], &cfg.resolution_mode, ResolutionMode_Auto))
                     Config::Save(cfg);
                 
                 ImGui::Dummy(ImVec2(0.0f, 5.0f)); // Spacing
                 
-                if (ImGui::RadioButton(strings[cfg.lang][Lang::SettingsResolution1080p], &cfg.resolution_mode, ResolutionMode_1080p))
+                if (ImGui::RadioButton(strings[lang][Lang::SettingsResolution1080p], &cfg.resolution_mode, ResolutionMode_1080p))
                     Config::Save(cfg);
                 
                 ImGui::Dummy(ImVec2(0.0f, 5.0f)); // Spacing
                 
-                if (ImGui::RadioButton(strings[cfg.lang][Lang::SettingsResolution720p], &cfg.resolution_mode, ResolutionMode_720p))
+                if (ImGui::RadioButton(strings[lang][Lang::SettingsResolution720p], &cfg.resolution_mode, ResolutionMode_720p))
                     Config::Save(cfg);
             }
 
             Tabs::Separator();
 
             // About
-            Tabs::Indent(strings[cfg.lang][Lang::SettingsAboutTitle]);
+            Tabs::Indent(strings[lang][Lang::SettingsAboutTitle]);
             
-            ImGui::Text("NX-Shell %s: v%d.%d.%d", strings[cfg.lang][Lang::SettingsAboutVersion], VERSION_MAJOR, VERSION_MINOR, VERSION_MICRO);
+            ImGui::Text("NX-Shell %s: v%d.%d.%d", strings[lang][Lang::SettingsAboutVersion], VERSION_MAJOR, VERSION_MINOR, VERSION_MICRO);
             ImGui::Dummy(ImVec2(0.0f, 5.0f)); // Spacing
-            ImGui::Text("Dear ImGui %s: %s", strings[cfg.lang][Lang::SettingsAboutVersion], ImGui::GetVersion());
+            ImGui::Text("Dear ImGui %s: %s", strings[lang][Lang::SettingsAboutVersion], ImGui::GetVersion());
             ImGui::Dummy(ImVec2(0.0f, 5.0f)); // Spacing
-            ImGui::Text("%s: Joel16", strings[cfg.lang][Lang::SettingsAboutAuthor]);
+            ImGui::Text("%s: Joel16", strings[lang][Lang::SettingsAboutAuthor]);
             ImGui::Dummy(ImVec2(0.0f, 5.0f)); // Spacing
-            ImGui::Text("%s: Preetisketch", strings[cfg.lang][Lang::SettingsAboutBanner]);
+            ImGui::Text("%s: Preetisketch", strings[lang][Lang::SettingsAboutBanner]);
             ImGui::Dummy(ImVec2(0.0f, 5.0f)); // Spacing
             
-            if (ImGui::Button(strings[cfg.lang][Lang::SettingsCheckForUpdates], ImVec2(250, 50))) {
+            if (ImGui::Button(strings[lang][Lang::SettingsCheckForUpdates], ImVec2(250, 50))) {
                 tag_name = Net::GetLatestReleaseJSON();
                 network_status = Net::GetNetworkStatus();
                 update_available = Net::GetAvailableUpdate(tag_name);

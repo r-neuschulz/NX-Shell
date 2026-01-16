@@ -280,10 +280,10 @@ static const char *strings_de[] {
     "Sortiereinstellung",
     "Sprache",
     "USB",
-    "Unmount USB devices",
+    "USB-Geräte auswerfen",
     "Bildanzeige",
     "Entwickleroptionen",
-    "Multiple Character Set (Improves boot speed when disabled)",
+    "Erweiterter Zeichensatz (Deaktivierung beschleunigt den Start)",
     "Anzeigeauflösung",
     " Automatisch",
     " 1080p",
@@ -292,7 +292,7 @@ static const char *strings_de[] {
     "Nach Updates suchen",
     " Dateiname anzeigen",
     " Log aktivieren",
-    " Enable support for special symbols/characters",
+    " Unterstützung für Sonderzeichen aktivieren",
     "Version",
     "Autor",
     "Banner",
@@ -305,8 +305,8 @@ static const char *strings_de[] {
     "Bitte beenden Sie die Anwendung und starten Sie sie erneut.",
     "Sie sind bereits auf der neusten Version.",
 
-    "Do you wish to unmount all the connected USB devices?",
-    "The USB device can now be safely removed.",
+    "Möchten Sie alle verbundenen USB-Geräte auswerfen?",
+    "Das USB-Gerät kann jetzt sicher entfernt werden.",
 
     "Der Name darf nicht leer sein.",
 

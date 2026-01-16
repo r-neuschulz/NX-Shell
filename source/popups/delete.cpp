@@ -10,12 +10,13 @@
 
 namespace Popups {
     void DeletePopup(WindowData &data) {
-        Popups::SetupPopup(strings[cfg.lang][Lang::OptionsDelete]);
+        const int lang = Config::GetLang();
+        Popups::SetupPopup(strings[lang][Lang::OptionsDelete]);
         
-        if (ImGui::BeginPopupModal(strings[cfg.lang][Lang::OptionsDelete], nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-            ImGui::Text(strings[cfg.lang][Lang::DeleteMessage]);
+        if (ImGui::BeginPopupModal(strings[lang][Lang::OptionsDelete], nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+            ImGui::Text(strings[lang][Lang::DeleteMessage]);
             if ((data.checkbox_data.count > 1) && (data.checkbox_data.cwd == cwd)) {
-                ImGui::Text(strings[cfg.lang][Lang::DeleteMultiplePrompt]);
+                ImGui::Text(strings[lang][Lang::DeleteMultiplePrompt]);
                 ImGui::Dummy(ImVec2(0.0f, 5.0f)); // Spacing
                 ImGui::BeginChild("Scrolling", ImVec2(0, 100));
                 for (std::size_t i = 0; i < data.checkbox_data.checked.size(); i++) {
@@ -25,13 +26,13 @@ namespace Popups {
                 ImGui::EndChild();
             }
             else {
-                std::string text = strings[cfg.lang][Lang::DeletePrompt] + std::string(data.entries[data.selected].name) + "?";
+                std::string text = strings[lang][Lang::DeletePrompt] + std::string(data.entries[data.selected].name) + "?";
                 ImGui::Text(text.c_str());
             }
             
             ImGui::Dummy(ImVec2(0.0f, 5.0f)); // Spacing
             
-            if (ImGui::Button(strings[cfg.lang][Lang::ButtonOK], ImVec2(120, 0))) {
+            if (ImGui::Button(strings[lang][Lang::ButtonOK], ImVec2(120, 0))) {
                 bool ret = false;
 
                 if ((data.checkbox_data.count > 1) && (data.checkbox_data.cwd == cwd)) {
@@ -73,7 +74,7 @@ namespace Popups {
             
             ImGui::SameLine(0.0f, 15.0f);
             
-            if (ImGui::Button(strings[cfg.lang][Lang::ButtonCancel], ImVec2(120, 0))) {
+            if (ImGui::Button(strings[lang][Lang::ButtonCancel], ImVec2(120, 0))) {
                 ImGui::CloseCurrentPopup();
                 data.state = WINDOW_STATE_OPTIONS;
             }

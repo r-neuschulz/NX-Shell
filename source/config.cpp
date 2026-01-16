@@ -114,4 +114,47 @@ namespace Config {
         json_decref(root);
         return 0;
     }
+
+    // Check if a language index is supported (has proper translations)
+    static bool IsLanguageSupported(int lang_index) {
+        // Supported languages: English(1), German(3), Spanish(5), 
+        // Simplified Chinese(6), Korean(7), Portuguese(9), Traditional Chinese(11)
+        switch (lang_index) {
+            case 1:  // English
+            case 3:  // German
+            case 5:  // Spanish
+            case 6:  // Simplified Chinese
+            case 7:  // Korean
+            case 9:  // Portuguese
+            case 11: // Traditional Chinese
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    int GetLang(void) {
+        if (cfg.lang == LANG_AUTO) {
+            u64 lang_code = 0;
+            SetLanguage lang = SetLanguage_ENUS;
+            
+            if (R_SUCCEEDED(setGetSystemLanguage(&lang_code))) {
+                if (R_SUCCEEDED(setMakeLanguage(lang_code, &lang))) {
+                    int lang_index = static_cast<int>(lang);
+                    // Only return if it's a supported language
+                    if (IsLanguageSupported(lang_index)) {
+                        return lang_index;
+                    }
+                }
+            }
+            // Default to English if detection fails or language unsupported
+            return 1; // English
+        }
+        
+        // For manual selection, verify it's supported (shouldn't happen with UI, but safety check)
+        if (IsLanguageSupported(cfg.lang)) {
+            return cfg.lang;
+        }
+        return 1; // English fallback
+    }
 }

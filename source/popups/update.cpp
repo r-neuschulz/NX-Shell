@@ -13,26 +13,27 @@ namespace Popups {
     static bool done = false;
 
     void UpdatePopup(bool &state, bool &connection_status, bool &available, const std::string &tag) {
-        Popups::SetupPopup(strings[cfg.lang][Lang::UpdateTitle]);
+        const int lang = Config::GetLang();
+        Popups::SetupPopup(strings[lang][Lang::UpdateTitle]);
         
-        if (ImGui::BeginPopupModal(strings[cfg.lang][Lang::UpdateTitle], nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        if (ImGui::BeginPopupModal(strings[lang][Lang::UpdateTitle], nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
             if (!connection_status)
-                ImGui::Text(strings[cfg.lang][Lang::UpdateNetworkError]);
+                ImGui::Text(strings[lang][Lang::UpdateNetworkError]);
             else if ((connection_status) && (available) && (!tag.empty()) && (!done)) {
-                ImGui::Text(strings[cfg.lang][Lang::UpdateAvailable]);
-                std::string text = strings[cfg.lang][Lang::UpdatePrompt] + tag + "?";
+                ImGui::Text(strings[lang][Lang::UpdateAvailable]);
+                std::string text = strings[lang][Lang::UpdatePrompt] + tag + "?";
                 ImGui::Text(text.c_str());
             }
             else if (done) {
-                ImGui::Text(strings[cfg.lang][Lang::UpdateSuccess]);
-                ImGui::Text(strings[cfg.lang][Lang::UpdateRestart]);
+                ImGui::Text(strings[lang][Lang::UpdateSuccess]);
+                ImGui::Text(strings[lang][Lang::UpdateRestart]);
             }
             else
-                ImGui::Text(strings[cfg.lang][Lang::UpdateNotAvailable]);
+                ImGui::Text(strings[lang][Lang::UpdateNotAvailable]);
 
             ImGui::Dummy(ImVec2(0.0f, 5.0f)); // Spacing
             
-            if (ImGui::Button(strings[cfg.lang][Lang::ButtonOK], ImVec2(120, 0))) {
+            if (ImGui::Button(strings[lang][Lang::ButtonOK], ImVec2(120, 0))) {
                 if ((connection_status) && (available) && (!tag.empty()) && (!done)) {
                     Net::GetLatestReleaseNRO(tag);
                     
@@ -54,7 +55,7 @@ namespace Popups {
             if ((connection_status) && (available) && (!done)) {
                 ImGui::SameLine(0.0f, 15.0f);
                 
-                if (ImGui::Button(strings[cfg.lang][Lang::ButtonCancel], ImVec2(120, 0))) {
+                if (ImGui::Button(strings[lang][Lang::ButtonCancel], ImVec2(120, 0))) {
                     ImGui::CloseCurrentPopup();
                     state = false;
                 }

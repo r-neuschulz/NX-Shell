@@ -10,7 +10,7 @@ namespace Keyboard {
     // Empty strings are invalid.
     SwkbdTextCheckResult ValidateText(char *string, size_t size) {
         if (std::strcmp(string, "") == 0) {
-            std::strncpy(string, strings[cfg.lang][Lang::KeyboardEmpty], size); 
+            std::strncpy(string, strings[Config::GetLang()][Lang::KeyboardEmpty], size); 
             return SwkbdTextCheckResult_Bad;
         }
         

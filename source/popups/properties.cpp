@@ -15,10 +15,11 @@ namespace Popups {
     }
 
     void FilePropertiesPopup(WindowData &data, bool &file_stat) {
-        Popups::SetupPopup(strings[cfg.lang][Lang::OptionsProperties]);
+        const int lang = Config::GetLang();
+        Popups::SetupPopup(strings[lang][Lang::OptionsProperties]);
         
-        if (ImGui::BeginPopupModal(strings[cfg.lang][Lang::OptionsProperties], nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-            std::string name_text = strings[cfg.lang][Lang::PropertiesName] + std::string(data.entries[data.selected].name);
+        if (ImGui::BeginPopupModal(strings[lang][Lang::OptionsProperties], nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+            std::string name_text = strings[lang][Lang::PropertiesName] + std::string(data.entries[data.selected].name);
             ImGui::Text(name_text.c_str());
             
             if (data.entries[data.selected].type == FsDirEntryType_File) {
@@ -29,7 +30,7 @@ namespace Popups {
 
                 char size_str[16];
                 Utils::GetSizeString(size_str, static_cast<double>(size));
-                std::string size_text = strings[cfg.lang][Lang::PropertiesSize];
+                std::string size_text = strings[lang][Lang::PropertiesSize];
                 size_text.append(size_str);
                 ImGui::Text(size_text.c_str());
             }
@@ -39,15 +40,15 @@ namespace Popups {
                 if (timestamp.is_valid == 1) { // Confirm valid timestamp
                     char date[3][36];
                     
-                    std::string created_time = strings[cfg.lang][Lang::PropertiesCreated];
+                    std::string created_time = strings[lang][Lang::PropertiesCreated];
                     created_time.append(Popups::FormatDate(date[0], timestamp.created));
                     ImGui::Text(created_time.c_str());
                     
-                    std::string modified_time = strings[cfg.lang][Lang::PropertiesModified];
+                    std::string modified_time = strings[lang][Lang::PropertiesModified];
                     modified_time.append(Popups::FormatDate(date[1], timestamp.modified));
                     ImGui::Text(modified_time.c_str());
                     
-                    std::string accessed_time = strings[cfg.lang][Lang::PropertiesAccessed];
+                    std::string accessed_time = strings[lang][Lang::PropertiesAccessed];
                     accessed_time.append(Popups::FormatDate(date[2], timestamp.accessed));
                     ImGui::Text(accessed_time.c_str());
                 }
@@ -55,7 +56,7 @@ namespace Popups {
             
             ImGui::Dummy(ImVec2(0.0f, 5.0f)); // Spacing
             
-            if (ImGui::Button(strings[cfg.lang][Lang::ButtonOK], ImVec2(120, 0))) {
+            if (ImGui::Button(strings[lang][Lang::ButtonOK], ImVec2(120, 0))) {
                 file_stat = false;
                 ImGui::CloseCurrentPopup();
                 data.state = WINDOW_STATE_OPTIONS;
@@ -66,7 +67,7 @@ namespace Popups {
     }
 
     void ImageProperties(bool &state, Tex &texture, bool &file_stat) {
-        Popups::SetupPopup(strings[cfg.lang][Lang::OptionsProperties]);
+        Popups::SetupPopup(strings[Config::GetLang()][Lang::OptionsProperties]);
 
         std::string new_width, new_height;
         if (ImGui::BeginPopupModal("Properties", std::addressof(state), ImGuiWindowFlags_AlwaysAutoResize)) {

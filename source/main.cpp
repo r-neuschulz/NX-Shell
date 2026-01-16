@@ -48,6 +48,11 @@ namespace Services {
             return ret;
         }
 
+        if (R_FAILED(ret = setInitialize())) {
+            Log::Error("setInitialize() failed: 0x%x\n", ret);
+            return ret;
+        }
+
         if (R_FAILED(ret = USB::Init())) {
             Log::Error("usbHsFsInitialize(0) failed: 0x%x\n", ret);
             return ret;
@@ -66,6 +71,7 @@ namespace Services {
         Textures::Exit();
         GUI::Exit();
         USB::Exit();
+        setExit();
         nifmExit();
         socketExit();
         Log::Exit();

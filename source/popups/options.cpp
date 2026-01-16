@@ -52,10 +52,11 @@ namespace Popups {
     static bool copy = false, move = false;
 
     void OptionsPopup(WindowData &data) {
-        Popups::SetupPopup(strings[cfg.lang][Lang::OptionsTitle]);
+        const int lang = Config::GetLang();
+        Popups::SetupPopup(strings[lang][Lang::OptionsTitle]);
 
-        if (ImGui::BeginPopupModal(strings[cfg.lang][Lang::OptionsTitle], nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
-            if (ImGui::Button(strings[cfg.lang][Lang::OptionsSelectAll], ImVec2(200, 50))) {
+        if (ImGui::BeginPopupModal(strings[lang][Lang::OptionsTitle], nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+            if (ImGui::Button(strings[lang][Lang::OptionsSelectAll], ImVec2(200, 50))) {
                 if ((data.checkbox_data.cwd.length() != 0) && (data.checkbox_data.cwd != cwd))
                     Windows::ResetCheckbox(data);
                 
@@ -67,7 +68,7 @@ namespace Popups {
 
             ImGui::SameLine(0.0f, 15.0f);
             
-            if (ImGui::Button(strings[cfg.lang][Lang::OptionsClearAll], ImVec2(200, 50))) {
+            if (ImGui::Button(strings[lang][Lang::OptionsClearAll], ImVec2(200, 50))) {
                 Windows::ResetCheckbox(data);
                 copy = false;
                 move = false;
@@ -75,15 +76,15 @@ namespace Popups {
 
             ImGui::Dummy(ImVec2(0.0f, 5.0f)); // Spacing
 
-            if (ImGui::Button(strings[cfg.lang][Lang::OptionsProperties], ImVec2(200, 50))) {
+            if (ImGui::Button(strings[lang][Lang::OptionsProperties], ImVec2(200, 50))) {
                 ImGui::CloseCurrentPopup();
                 data.state = WINDOW_STATE_PROPERTIES;
             }
 
             ImGui::SameLine(0.0f, 15.0f);
 
-            if (ImGui::Button(strings[cfg.lang][Lang::OptionsRename], ImVec2(200, 50))) {
-                std::string path = Keyboard::GetText(strings[cfg.lang][Lang::OptionsRenamePrompt], data.entries[data.selected].name);
+            if (ImGui::Button(strings[lang][Lang::OptionsRename], ImVec2(200, 50))) {
+                std::string path = Keyboard::GetText(strings[lang][Lang::OptionsRenamePrompt], data.entries[data.selected].name);
                 
                 if (FS::Rename(data.entries[data.selected], path.c_str())) {
                     Options::RefreshEntries(false);
@@ -96,8 +97,8 @@ namespace Popups {
             
             ImGui::Dummy(ImVec2(0.0f, 5.0f)); // Spacing
             
-            if (ImGui::Button(strings[cfg.lang][Lang::OptionsNewFolder], ImVec2(200, 50))) {
-                std::string name = Keyboard::GetText(strings[cfg.lang][Lang::OptionsFolderPrompt], strings[cfg.lang][Lang::OptionsNewFolder]);
+            if (ImGui::Button(strings[lang][Lang::OptionsNewFolder], ImVec2(200, 50))) {
+                std::string name = Keyboard::GetText(strings[lang][Lang::OptionsFolderPrompt], strings[lang][Lang::OptionsNewFolder]);
                 std::string path = FS::BuildPath(name, true);
 
                 if (R_SUCCEEDED(mkdir(path.c_str(), 0700))) {
@@ -111,8 +112,8 @@ namespace Popups {
             
             ImGui::SameLine(0.0f, 15.0f);
             
-            if (ImGui::Button(strings[cfg.lang][Lang::OptionsNewFile], ImVec2(200, 50))) {
-                std::string name = Keyboard::GetText(strings[cfg.lang][Lang::OptionsFilePrompt], strings[cfg.lang][Lang::OptionsNewFile]);
+            if (ImGui::Button(strings[lang][Lang::OptionsNewFile], ImVec2(200, 50))) {
+                std::string name = Keyboard::GetText(strings[lang][Lang::OptionsFilePrompt], strings[lang][Lang::OptionsNewFile]);
                 std::string path = FS::BuildPath(name, true);
                 
                 FILE *file = fopen(path.c_str(), "w");
@@ -129,7 +130,7 @@ namespace Popups {
             
             ImGui::Dummy(ImVec2(0.0f, 5.0f)); // Spacing
             
-            if (ImGui::Button(!copy? strings[cfg.lang][Lang::OptionsCopy] : strings[cfg.lang][Lang::OptionsPaste], ImVec2(200, 50))) {
+            if (ImGui::Button(!copy? strings[lang][Lang::OptionsCopy] : strings[lang][Lang::OptionsPaste], ImVec2(200, 50))) {
                 if (!copy) {
                     if ((data.checkbox_data.count >= 1) && (data.checkbox_data.cwd != cwd))
                         Windows::ResetCheckbox(data);
@@ -164,7 +165,7 @@ namespace Popups {
             
             ImGui::SameLine(0.0f, 15.0f);
             
-            if (ImGui::Button(!move? strings[cfg.lang][Lang::OptionsMove] : strings[cfg.lang][Lang::OptionsPaste], ImVec2(200, 50))) {
+            if (ImGui::Button(!move? strings[lang][Lang::OptionsMove] : strings[lang][Lang::OptionsPaste], ImVec2(200, 50))) {
                 if (!move) {
                     if ((data.checkbox_data.count >= 1) && (data.checkbox_data.cwd != cwd))
                         Windows::ResetCheckbox(data);
@@ -191,14 +192,14 @@ namespace Popups {
             
             ImGui::Dummy(ImVec2(0.0f, 5.0f)); // Spacing
             
-            if (ImGui::Button(strings[cfg.lang][Lang::OptionsDelete], ImVec2(200, 50))) {
+            if (ImGui::Button(strings[lang][Lang::OptionsDelete], ImVec2(200, 50))) {
                 ImGui::CloseCurrentPopup();
                 data.state = WINDOW_STATE_DELETE;
             }
             
             ImGui::SameLine(0.0f, 15.0f);
             
-            if (ImGui::Button(strings[cfg.lang][Lang::OptionsSetArchiveBit], ImVec2(200, 50))) {
+            if (ImGui::Button(strings[lang][Lang::OptionsSetArchiveBit], ImVec2(200, 50))) {
                 std::string path = FS::BuildPath(data.entries[data.selected]);
                 
                 if (FS::SetArchiveBit(path)) {

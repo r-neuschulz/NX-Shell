@@ -244,11 +244,12 @@ namespace Tabs {
                 ImU32 color;
             };
             
+            const int lang = Config::GetLang();
             ButtonHint hints[] = {
-                {"A", strings[cfg.lang][Lang::HintOpen], color_a},
-                {"B", strings[cfg.lang][Lang::HintBack], color_b},
-                {"Y", strings[cfg.lang][Lang::HintSelect], color_y},
-                {"X", strings[cfg.lang][Lang::HintOptions], color_x}
+                {"A", strings[lang][Lang::HintOpen], color_a},
+                {"B", strings[lang][Lang::HintBack], color_b},
+                {"Y", strings[lang][Lang::HintSelect], color_y},
+                {"X", strings[lang][Lang::HintOptions], color_x}
             };
             
             // Calculate total width of all button hints
