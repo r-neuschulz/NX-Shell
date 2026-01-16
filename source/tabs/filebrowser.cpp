@@ -5,6 +5,7 @@
 #include "fs.hpp"
 #include "imgui.h"
 #include "imgui_internal.h"
+#include "language.hpp"
 #include "tabs.hpp"
 #include "textures.hpp"
 #include "utils.hpp"
@@ -244,10 +245,10 @@ namespace Tabs {
             };
             
             ButtonHint hints[] = {
-                {"A", "Open", color_a},
-                {"B", "Back", color_b},
-                {"Y", "Select", color_y},
-                {"X", "Options", color_x}
+                {"A", strings[cfg.lang][Lang::HintOpen], color_a},
+                {"B", strings[cfg.lang][Lang::HintBack], color_b},
+                {"Y", strings[cfg.lang][Lang::HintSelect], color_y},
+                {"X", strings[cfg.lang][Lang::HintOptions], color_x}
             };
             
             // Calculate total width of all button hints

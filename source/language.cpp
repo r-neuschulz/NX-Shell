@@ -73,7 +73,12 @@ static const char *strings_jp[] {
     "Do you wish to unmount all the connected USB devices?",
     "The USB device can now be safely removed.",
 
-    "The name cannot be empty."
+    "The name cannot be empty.",
+
+    "Open",
+    "Back",
+    "Select",
+    "Options"
 };
 
 static const char *strings_en[] {
@@ -146,7 +151,12 @@ static const char *strings_en[] {
     "Do you wish to unmount all the connected USB devices?",
     "The USB device can now be safely removed.",
 
-    "The name cannot be empty."
+    "The name cannot be empty.",
+
+    "Open",
+    "Back",
+    "Select",
+    "Options"
 };
 
 // TODO: French
@@ -220,7 +230,12 @@ static const char *strings_fr[] {
     "Do you wish to unmount all the connected USB devices?",
     "The USB device can now be safely removed.",
 
-    "The name cannot be empty."
+    "The name cannot be empty.",
+
+    "Open",
+    "Back",
+    "Select",
+    "Options"
 };
 
 static const char *strings_de[] {
@@ -293,7 +308,12 @@ static const char *strings_de[] {
     "Do you wish to unmount all the connected USB devices?",
     "The USB device can now be safely removed.",
 
-    "Der Name darf nicht leer sein."
+    "Der Name darf nicht leer sein.",
+
+    "Öffnen",
+    "Zurück",
+    "Auswählen",
+    "Optionen"
 };
 
 // TODO: Italian
@@ -367,7 +387,12 @@ static const char *strings_it[] {
     "Do you wish to unmount all the connected USB devices?",
     "The USB device can now be safely removed.",
 
-    "The name cannot be empty."
+    "The name cannot be empty.",
+
+    "Open",
+    "Back",
+    "Select",
+    "Options"
 };
 
 //  Spanish
@@ -441,7 +466,12 @@ static const char *strings_es[] {
     "¿Quieres desmontar todos los dispositivos USB conectados?",
     "El dispositivo USB ahora puede ser removido de forma segura.",
 
-    "El nombre no puede estar vacío."
+    "El nombre no puede estar vacío.",
+
+    "Abrir",
+    "Atrás",
+    "Seleccionar",
+    "Opciones"
 };
 
 // Simplified Chinese ("Chinese")
@@ -515,7 +545,12 @@ static const char *strings_sc[] {
     "您想卸载所有连接的 USB 设备吗？",
     "现在可以安全地移除 USB 设备。",
 
-    "名称不能为空."
+    "名称不能为空.",
+
+    "打开",
+    "返回",
+    "选择",
+    "选项"
 };
 
 // TODO: Korean
@@ -589,7 +624,12 @@ static const char *strings_ko[] {
     "연결된 모든 USB 장치를 마운트 해제하겠습니까?",
     "이제 USB 장치를 안전하게 제거할 수 있습니다.",
 
-    "이름은 공백이 될 수 없습니다."
+    "이름은 공백이 될 수 없습니다.",
+
+    "열기",
+    "뒤로",
+    "선택",
+    "옵션"
 };
 
 // TODO: Dutch
@@ -663,7 +703,12 @@ static const char *strings_nl[] {
     "Do you wish to unmount all the connected USB devices?",
     "The USB device can now be safely removed.",
 
-    "The name cannot be empty."
+    "The name cannot be empty.",
+
+    "Open",
+    "Back",
+    "Select",
+    "Options"
 };
 
 // Portuguese
@@ -737,7 +782,12 @@ static const char *strings_pt[] {
     "Você deseja desmontar todos os dispositivos USB conectados?",
     "O dispositivo USB pode ser removido com segurança.",
 
-    "O nome não pode estar vazio."
+    "O nome não pode estar vazio.",
+
+    "Abrir",
+    "Voltar",
+    "Selecionar",
+    "Opções"
 };
 
 // TODO: Russian
@@ -811,7 +861,12 @@ static const char *strings_ru[] {
     "Do you wish to unmount all the connected USB devices?",
     "The USB device can now be safely removed.",
 
-    "The name cannot be empty."
+    "The name cannot be empty.",
+
+    "Open",
+    "Back",
+    "Select",
+    "Options"
 };
 
 // Traditional Chinese ("Taiwanese")
@@ -885,7 +940,12 @@ static const char *strings_tw[] {
     "您想卸載所有連接的 USB 設備嗎？",
     "現在可以安全地移除 USB 設備。",
 
-    "名稱不能為空."
+    "名稱不能為空.",
+
+    "打開",
+    "返回",
+    "選擇",
+    "選項"
 };
 
 const char **strings[Lang::Max] = {
