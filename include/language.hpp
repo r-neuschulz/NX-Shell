@@ -82,6 +82,12 @@ namespace Lang {
         // Keyboard
         KeyboardEmpty,
 
+        // Button Hints
+        HintOpen,
+        HintBack,
+        HintSelect,
+        HintOptions,
+
         // Max
         Max
     } StringID;

@@ -123,13 +123,17 @@ namespace Tabs {
             
             // Draw storage bar
             ImGui::Dummy(ImVec2(0.0f, 1.0f)); // Spacing
-            ImGui::ProgressBar(static_cast<float>(data.used_storage) / static_cast<float>(data.total_storage), ImVec2(1265.0f, 6.0f), "");
+            ImGui::ProgressBar(static_cast<float>(data.used_storage) / static_cast<float>(data.total_storage), ImVec2(ImGui::GetContentRegionAvail().x, 6.0f), "");
             ImGui::Dummy(ImVec2(0.0f, 1.0f)); // Spacing
 
             ImGuiTableFlags tableFlags = ImGuiTableFlags_Resizable | ImGuiTableFlags_Sortable | ImGuiTableFlags_BordersInner |
                 ImGuiTableFlags_BordersOuter | ImGuiTableFlags_SizingStretchProp | ImGuiTableFlags_ScrollY;
             
-            if (ImGui::BeginTable("Directory List", 2, tableFlags)) {
+            // Reserve space for button hints at the bottom
+            const float button_bar_height = 40.0f;
+            float available_height = ImGui::GetContentRegionAvail().y - button_bar_height;
+            
+            if (ImGui::BeginTable("Directory List", 2, tableFlags, ImVec2(0.0f, available_height))) {
                 // Make header always visible
                 // ImGui::TableSetupScrollFreeze(0, 1);
 
@@ -215,6 +219,66 @@ namespace Tabs {
                 }
 
                 ImGui::EndTable();
+            }
+
+            // Button hints bar at the bottom (right-aligned)
+            ImDrawList *draw_list = ImGui::GetWindowDrawList();
+            const float button_radius = 12.0f;
+            const float hint_spacing = 25.0f;
+            
+            // Nintendo Switch button colors
+            const ImU32 color_a = IM_COL32(235, 64, 52, 255);    // Red (A)
+            const ImU32 color_b = IM_COL32(200, 150, 0, 255);    // Yellow (B) - darkened
+            const ImU32 color_y = IM_COL32(60, 140, 30, 255);    // Green (Y) - darkened
+            const ImU32 color_x = IM_COL32(65, 137, 230, 255);   // Blue (X)
+            const ImU32 color_text = IM_COL32(255, 255, 255, 255);
+            const ImU32 color_label = IM_COL32(200, 200, 200, 255);
+            
+            ImVec2 cursor_pos = ImGui::GetCursorScreenPos();
+            float center_y = cursor_pos.y + (button_bar_height * 0.5f);
+            
+            struct ButtonHint {
+                const char* letter;
+                const char* label;
+                ImU32 color;
+            };
+            
+            ButtonHint hints[] = {
+                {"A", "Open", color_a},
+                {"B", "Back", color_b},
+                {"Y", "Select", color_y},
+                {"X", "Options", color_x}
+            };
+            
+            // Calculate total width of all button hints
+            float total_width = 0.0f;
+            for (const auto& hint : hints) {
+                total_width += button_radius * 2 + 6.0f + ImGui::CalcTextSize(hint.label).x + hint_spacing;
+            }
+            total_width -= hint_spacing; // Remove trailing spacing
+            
+            // Start from the right side
+            float right_edge = cursor_pos.x + ImGui::GetContentRegionAvail().x - 10.0f;
+            float x_offset = right_edge - total_width;
+            
+            for (const auto& hint : hints) {
+                ImVec2 center(x_offset + button_radius, center_y);
+                
+                // Draw filled circle
+                draw_list->AddCircleFilled(center, button_radius, hint.color, 24);
+                
+                // Draw letter centered in the circle
+                ImVec2 text_size = ImGui::CalcTextSize(hint.letter);
+                ImVec2 text_pos(center.x - text_size.x * 0.5f, center.y - text_size.y * 0.5f);
+                draw_list->AddText(text_pos, color_text, hint.letter);
+                
+                // Draw label next to the button
+                float label_x = x_offset + button_radius * 2 + 6.0f;
+                draw_list->AddText(ImVec2(label_x, center_y - ImGui::GetTextLineHeight() * 0.5f), color_label, hint.label);
+                
+                // Calculate offset for next button
+                ImVec2 label_size = ImGui::CalcTextSize(hint.label);
+                x_offset = label_x + label_size.x + hint_spacing;
             }
 
             ImGui::EndTabItem();

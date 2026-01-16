@@ -194,33 +194,49 @@ static u64 ImGui_ImplSwitch_UpdateGamepads(void) {
     io.BackendFlags &= ~ImGuiBackendFlags_HasGamepad;
     
     padUpdate(&bd->pad);
-    HidAnalogStickState r_stick = padGetStickPos(&bd->pad, 1);
+    HidAnalogStickState l_stick = padGetStickPos(&bd->pad, 0);  // Left stick
+    HidAnalogStickState r_stick = padGetStickPos(&bd->pad, 1);  // Right stick
 
     io.BackendFlags |= ImGuiBackendFlags_HasGamepad;
     
     // Update gamepad inputs
-    #define IM_SATURATE(V)                      (V < 0.0f ? 0.0f : V > 1.0f ? 1.0f : V)
-    #define MAP_BUTTON(KEY_NO, BUTTON_NO)       { io.AddKeyEvent(KEY_NO, (padGetButtons(&bd->pad) & BUTTON_NO)); }
-    #define MAP_ANALOG(KEY_NO, AXIS_NO, V0, V1) { float vn = (float)(AXIS_NO - V0) / (float)(V1 - V0); vn = IM_SATURATE(vn); io.AddKeyAnalogEvent(KEY_NO, vn > 0.1f, vn); }
-    const int thumb_dead_zone = 8000;           // SDL_gamecontroller.h suggests using this value.
+    #define MAP_BUTTON(KEY_NO, BUTTON_NO)       { io.AddKeyEvent(KEY_NO, (padGetButtons(&bd->pad) & BUTTON_NO) != 0); }
+    
+    // Combine both sticks for navigation - use whichever has larger deflection
+    auto abs32 = [](s32 v) { return v < 0 ? -v : v; };
+    s32 nav_x = abs32(l_stick.x) > abs32(r_stick.x) ? l_stick.x : r_stick.x;
+    s32 nav_y = abs32(l_stick.y) > abs32(r_stick.y) ? l_stick.y : r_stick.y;
+    
+    const s32 thumb_dead_zone = 16000;  // Dead zone threshold for stick navigation
+    
+    // Map stick movement to navigation keys (same as D-pad for reliable navigation)
+    bool stick_left  = nav_x < -thumb_dead_zone;
+    bool stick_right = nav_x > +thumb_dead_zone;
+    bool stick_up    = nav_y > +thumb_dead_zone;
+    bool stick_down  = nav_y < -thumb_dead_zone;
+    
+    // Combine D-pad buttons with stick input for navigation
+    bool nav_left  = (padGetButtons(&bd->pad) & HidNpadButton_Left)  || stick_left;
+    bool nav_right = (padGetButtons(&bd->pad) & HidNpadButton_Right) || stick_right;
+    bool nav_up    = (padGetButtons(&bd->pad) & HidNpadButton_Up)    || stick_up;
+    bool nav_down  = (padGetButtons(&bd->pad) & HidNpadButton_Down)  || stick_down;
+    
     MAP_BUTTON(ImGuiKey_GamepadStart,           HidNpadButton_A);
     MAP_BUTTON(ImGuiKey_GamepadBack,            HidNpadButton_B);
     MAP_BUTTON(ImGuiKey_GamepadFaceDown,        HidNpadButton_A);
     MAP_BUTTON(ImGuiKey_GamepadFaceRight,       HidNpadButton_B);
     // MAP_BUTTON(ImGuiKey_GamepadFaceLeft,        HidNpadButton_Y);
     MAP_BUTTON(ImGuiKey_GamepadFaceUp,          HidNpadButton_X);
-    MAP_BUTTON(ImGuiKey_GamepadDpadLeft,        HidNpadButton_Left);
-    MAP_BUTTON(ImGuiKey_GamepadDpadRight,       HidNpadButton_Right)
-    MAP_BUTTON(ImGuiKey_GamepadDpadUp,          HidNpadButton_Up);
-    MAP_BUTTON(ImGuiKey_GamepadDpadDown,        HidNpadButton_Down);
     MAP_BUTTON(ImGuiKey_GamepadL1,              HidNpadButton_L);
     MAP_BUTTON(ImGuiKey_GamepadR1,              HidNpadButton_R);
-    MAP_ANALOG(ImGuiKey_GamepadLStickLeft,      r_stick.x, -thumb_dead_zone, -32768);
-    MAP_ANALOG(ImGuiKey_GamepadLStickRight,     r_stick.x, +thumb_dead_zone, +32767);
-    MAP_ANALOG(ImGuiKey_GamepadLStickUp,        r_stick.y, +thumb_dead_zone, +32767);
-    MAP_ANALOG(ImGuiKey_GamepadLStickDown,      r_stick.y, -thumb_dead_zone, -32767);
+    
+    // Send combined D-pad + stick navigation as D-pad events
+    io.AddKeyEvent(ImGuiKey_GamepadDpadLeft,  nav_left);
+    io.AddKeyEvent(ImGuiKey_GamepadDpadRight, nav_right);
+    io.AddKeyEvent(ImGuiKey_GamepadDpadUp,    nav_up);
+    io.AddKeyEvent(ImGuiKey_GamepadDpadDown,  nav_down);
+    
     #undef MAP_BUTTON
-    #undef MAP_ANALOG
 
     return padGetButtonsDown(&bd->pad);
 }

@@ -14,8 +14,8 @@ namespace Windows {
     static bool image_properties = false, file_stat = false;
 
     void SetupWindow(void) {
-        ImGui::SetNextWindowPos(ImVec2(0.0f, 0.0f), ImGuiCond_Once);
-        ImGui::SetNextWindowSize(ImVec2(static_cast<float>(GUI::display_width), static_cast<float>(GUI::display_height)), ImGuiCond_Once);
+        ImGui::SetNextWindowPos(ImVec2(0.0f, 0.0f), ImGuiCond_Always);
+        ImGui::SetNextWindowSize(ImVec2(static_cast<float>(GUI::display_width), static_cast<float>(GUI::display_height)), ImGuiCond_Always);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
     };
     
