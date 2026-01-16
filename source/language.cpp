@@ -78,7 +78,10 @@ static const char *strings_jp[] {
     "Open",
     "Back",
     "Select",
-    "Options"
+    "Options",
+    "Drive",
+
+    "Filename"
 };
 
 static const char *strings_en[] {
@@ -156,7 +159,10 @@ static const char *strings_en[] {
     "Open",
     "Back",
     "Select",
-    "Options"
+    "Options",
+    "Drive",
+
+    "Filename"
 };
 
 // TODO: French
@@ -235,7 +241,10 @@ static const char *strings_fr[] {
     "Open",
     "Back",
     "Select",
-    "Options"
+    "Options",
+    "Drive",
+
+    "Filename"
 };
 
 static const char *strings_de[] {
@@ -313,7 +322,10 @@ static const char *strings_de[] {
     "Öffnen",
     "Zurück",
     "Auswählen",
-    "Optionen"
+    "Optionen",
+    "Laufwerk",
+
+    "Dateiname"
 };
 
 // TODO: Italian
@@ -392,7 +404,10 @@ static const char *strings_it[] {
     "Open",
     "Back",
     "Select",
-    "Options"
+    "Options",
+    "Drive",
+
+    "Filename"
 };
 
 //  Spanish
@@ -471,7 +486,10 @@ static const char *strings_es[] {
     "Abrir",
     "Atrás",
     "Seleccionar",
-    "Opciones"
+    "Opciones",
+    "Unidad",
+
+    "Nombre"
 };
 
 // Simplified Chinese ("Chinese")
@@ -550,7 +568,10 @@ static const char *strings_sc[] {
     "打开",
     "返回",
     "选择",
-    "选项"
+    "选项",
+    "驱动器",
+
+    "文件名"
 };
 
 // TODO: Korean
@@ -629,7 +650,10 @@ static const char *strings_ko[] {
     "열기",
     "뒤로",
     "선택",
-    "옵션"
+    "옵션",
+    "드라이브",
+
+    "파일명"
 };
 
 // TODO: Dutch
@@ -708,7 +732,10 @@ static const char *strings_nl[] {
     "Open",
     "Back",
     "Select",
-    "Options"
+    "Options",
+    "Drive",
+
+    "Filename"
 };
 
 // Portuguese
@@ -787,7 +814,10 @@ static const char *strings_pt[] {
     "Abrir",
     "Voltar",
     "Selecionar",
-    "Opções"
+    "Opções",
+    "Unidade",
+
+    "Nome do arquivo"
 };
 
 // TODO: Russian
@@ -866,7 +896,10 @@ static const char *strings_ru[] {
     "Open",
     "Back",
     "Select",
-    "Options"
+    "Options",
+    "Drive",
+
+    "Filename"
 };
 
 // Traditional Chinese ("Taiwanese")
@@ -945,7 +978,10 @@ static const char *strings_tw[] {
     "打開",
     "返回",
     "選擇",
-    "選項"
+    "選項",
+    "磁碟機",
+
+    "檔案名稱"
 };
 
 const char **strings[Lang::Max] = {

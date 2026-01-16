@@ -13,6 +13,23 @@
 int sort = 0;
 std::vector<std::string> devices_list = { "sdmc:", "safe:", "user:", "system:" };
 std::recursive_mutex devices_list_mutex;
+static bool need_focus_first_entry = true;
+static bool open_device_combo = false;
+static bool go_to_parent_directory = false;
+
+namespace Tabs {
+    void RequestFileBrowserFocus(void) {
+        need_focus_first_entry = true;
+    }
+    
+    void RequestDeviceCombo(void) {
+        open_device_combo = true;
+    }
+    
+    void RequestParentDirectory(void) {
+        go_to_parent_directory = true;
+    }
+}
 
 namespace FileBrowser {
     // Sort without using ImGuiTableSortSpecs
@@ -82,12 +99,39 @@ namespace FileBrowser {
 namespace Tabs {
     static const ImVec2 tex_size = ImVec2(21, 21);
 
-    void FileBrowser(WindowData &data) {
-        if (ImGui::BeginTabItem("File Browser")) {
+    void FileBrowser(WindowData &data, int &current_tab, int &active_tab) {
+        ImGuiTabItemFlags flags = (current_tab == 0) ? ImGuiTabItemFlags_SetSelected : 0;
+        if (current_tab == 0) current_tab = -1; // Reset after applying
+        
+        if (ImGui::BeginTabItem("File Browser", nullptr, flags)) {
+            active_tab = 0;  // Update active tab when this tab is visible
+            
+            // Handle B button request to go to parent directory
+            if (go_to_parent_directory) {
+                go_to_parent_directory = false;
+                if (FS::ChangeDirPrev(data.entries)) {
+                    if ((data.checkbox_data.count > 1) && (data.checkbox_data.checked_copy.empty()))
+                        data.checkbox_data.checked_copy = data.checkbox_data.checked;
+                    
+                    data.checkbox_data.checked.resize(data.entries.size());
+                    need_focus_first_entry = true;
+                    sort = -1;
+                }
+            }
+            
             ImGui::Dummy(ImVec2(0.0f, 1.0f)); // Spacing
 
             ImGui::PushID("device_list");
             ImGui::PushItemWidth(160.f);
+            
+            // Open the combo programmatically when Plus is pressed
+            if (open_device_combo) {
+                // Calculate the combo popup ID (same logic as ImGui's BeginCombo)
+                ImGuiID popup_id = ImHashStr("##ComboPopup", 0, ImGui::GetID(""));
+                ImGui::OpenPopupEx(popup_id, ImGuiPopupFlags_None);
+                open_device_combo = false;
+            }
+            
             if (ImGui::BeginCombo("", device.c_str())) {
                 std::scoped_lock lock(devices_list_mutex);
 
@@ -106,6 +150,7 @@ namespace Tabs {
                         FS::GetUsedStorageSpace(data.used_storage);
                         FS::GetTotalStorageSpace(data.total_storage);
                         sort = -1;
+                        need_focus_first_entry = true;
                     }
                         
                     if (is_selected)
@@ -118,6 +163,27 @@ namespace Tabs {
             ImGui::PopID();
             
             ImGui::SameLine();
+            
+            // Draw small (+) indicator next to the device dropdown
+            {
+                ImDrawList *draw_list = ImGui::GetWindowDrawList();
+                ImVec2 pos = ImGui::GetCursorScreenPos();
+                const float plus_radius = 10.0f;
+                const ImU32 plus_bg_color = IM_COL32(80, 80, 80, 255);
+                const ImU32 plus_text_color = IM_COL32(255, 255, 255, 255);
+                
+                ImVec2 center(pos.x + plus_radius, pos.y + ImGui::GetTextLineHeight() * 0.5f);
+                draw_list->AddCircleFilled(center, plus_radius, plus_bg_color, 16);
+                
+                const char* plus_label = "+";
+                ImVec2 text_size = ImGui::CalcTextSize(plus_label);
+                ImVec2 text_pos(center.x - text_size.x * 0.5f, center.y - text_size.y * 0.5f);
+                draw_list->AddText(text_pos, plus_text_color, plus_label);
+                
+                // Add spacing for the indicator
+                ImGui::Dummy(ImVec2(plus_radius * 2 + 8.0f, 0));
+                ImGui::SameLine();
+            }
 
             // Display current working directory
             ImGui::Text(cwd.c_str());
@@ -139,7 +205,7 @@ namespace Tabs {
                 // ImGui::TableSetupScrollFreeze(0, 1);
 
                 ImGui::TableSetupColumn("", ImGuiTableColumnFlags_NoSort | ImGuiTableColumnFlags_NoHeaderLabel | ImGuiTableColumnFlags_WidthFixed);
-                ImGui::TableSetupColumn("Filename", ImGuiTableColumnFlags_DefaultSort);
+                ImGui::TableSetupColumn(strings[Config::GetLang()][Lang::FileBrowserFilename], ImGuiTableColumnFlags_DefaultSort);
                 ImGui::TableHeadersRow();
 
                 if (ImGuiTableSortSpecs *sorts_specs = ImGui::TableGetSortSpecs()) {
@@ -219,6 +285,16 @@ namespace Tabs {
                         data.selected = i;
                 }
 
+                // Auto-focus first entry on startup or when entering a new directory
+                if (need_focus_first_entry && !data.entries.empty()) {
+                    ImGuiContext& g = *GImGui;
+                    ImGuiWindow* window = ImGui::GetCurrentWindow();
+                    ImGui::SetNavWindow(window);
+                    ImGui::SetNavID(ImGui::GetID(data.entries[0].name, 0), g.NavLayer, 0, ImRect());
+                    g.NavCursorVisible = true;  // Was NavDisableHighlight = false (renamed in ImGui 1.91.4, opposite value)
+                    need_focus_first_entry = false;
+                }
+
                 ImGui::EndTable();
             }
 
@@ -245,11 +321,14 @@ namespace Tabs {
             };
             
             const int lang = Config::GetLang();
+            const ImU32 color_plus = IM_COL32(80, 80, 80, 255);     // Gray (+)
+            
             ButtonHint hints[] = {
                 {"A", strings[lang][Lang::HintOpen], color_a},
                 {"B", strings[lang][Lang::HintBack], color_b},
                 {"Y", strings[lang][Lang::HintSelect], color_y},
-                {"X", strings[lang][Lang::HintOptions], color_x}
+                {"X", strings[lang][Lang::HintOptions], color_x},
+                {"+", strings[lang][Lang::HintDrive], color_plus}
             };
             
             // Calculate total width of all button hints

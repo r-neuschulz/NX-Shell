@@ -19,20 +19,8 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Install dependencies
-        run: |
-          sudo -E dkp-pacman -Sy --noconfirm \
-            switch-freetype \
-            switch-libpng \
-            switch-libjpeg-turbo \
-            switch-libwebp \
-            switch-giflib \
-            switch-zlib \
-            switch-curl \
-            switch-jansson \
-            switch-glad \
-            switch-mesa \
-            switch-libdrm_nouveau
+      # devkitpro/devkita64:latest already includes all common Switch libraries
+      # No need to install packages - this avoids rate limiting from pkg.devkitpro.org
 
       - name: Clean build directory
         run: make clean || true

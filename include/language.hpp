@@ -87,6 +87,10 @@ namespace Lang {
         HintBack,
         HintSelect,
         HintOptions,
+        HintDrive,
+
+        // File Browser
+        FileBrowserFilename,
 
         // Max
         Max

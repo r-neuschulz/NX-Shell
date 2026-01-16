@@ -326,7 +326,7 @@ namespace GUI {
         
         key = ImGui_ImplSwitch_NewFrame();
         ImGui::NewFrame();
-        return !(key & HidNpadButton_Plus);
+        return true;
     }
     
     void Render(void) {

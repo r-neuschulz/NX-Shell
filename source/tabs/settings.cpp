@@ -10,7 +10,18 @@
 #include "tabs.hpp"
 #include "usb.hpp"
 
+static bool need_focus_settings = false;
+static bool need_focus_about = false;
+
 namespace Tabs {
+    void RequestSettingsFocus(void) {
+        need_focus_settings = true;
+    }
+    
+    void RequestAboutFocus(void) {
+        need_focus_about = true;
+    }
+    
     static bool update_popup = false, network_status = false, update_available = false, unmount_popup = false;
     static std::string tag_name = std::string();
 
@@ -27,8 +38,12 @@ namespace Tabs {
         ImGui::Separator();
     }
     
-    void Settings(WindowData &data) {
-        if (ImGui::BeginTabItem("Settings")) {
+    void Settings(WindowData &data, int &current_tab, int &active_tab) {
+        ImGuiTabItemFlags flags = (current_tab == 1) ? ImGuiTabItemFlags_SetSelected : 0;
+        if (current_tab == 1) current_tab = -1; // Reset after applying
+        
+        if (ImGui::BeginTabItem("Settings", nullptr, flags)) {
+            active_tab = 1;  // Update active tab when this tab is visible
             const int lang = Config::GetLang();
             
             // Language selector
@@ -61,6 +76,12 @@ namespace Tabs {
                     current_selection = i;
                     break;
                 }
+            }
+            
+            // Focus language combo when tab is switched via L/R
+            if (need_focus_settings) {
+                ImGui::SetKeyboardFocusHere();
+                need_focus_settings = false;
             }
             
             ImGui::PushItemWidth(200.f);
@@ -144,9 +165,22 @@ namespace Tabs {
                     Config::Save(cfg);
             }
 
-            Tabs::Separator();
+            ImGui::EndTabItem();
+        }
 
-            // About
+        if (unmount_popup)
+            Popups::USBPopup(unmount_popup);
+    }
+
+    void About(WindowData &data, int &current_tab, int &active_tab) {
+        ImGuiTabItemFlags flags = (current_tab == 2) ? ImGuiTabItemFlags_SetSelected : 0;
+        if (current_tab == 2) current_tab = -1; // Reset after applying
+        
+        if (ImGui::BeginTabItem("About", nullptr, flags)) {
+            active_tab = 2;  // Update active tab when this tab is visible
+            const int lang = Config::GetLang();
+            
+            ImGui::Indent(10.f);
             Tabs::Indent(strings[lang][Lang::SettingsAboutTitle]);
             
             ImGui::Text("NX-Shell %s: v%d.%d.%d", strings[lang][Lang::SettingsAboutVersion], VERSION_MAJOR, VERSION_MINOR, VERSION_MICRO);
@@ -157,6 +191,12 @@ namespace Tabs {
             ImGui::Dummy(ImVec2(0.0f, 5.0f)); // Spacing
             ImGui::Text("%s: Preetisketch", strings[lang][Lang::SettingsAboutBanner]);
             ImGui::Dummy(ImVec2(0.0f, 5.0f)); // Spacing
+            
+            // Focus "Check for Updates" button when tab is switched via L/R
+            if (need_focus_about) {
+                ImGui::SetKeyboardFocusHere();
+                need_focus_about = false;
+            }
             
             if (ImGui::Button(strings[lang][Lang::SettingsCheckForUpdates], ImVec2(250, 50))) {
                 tag_name = Net::GetLatestReleaseJSON();
@@ -170,8 +210,5 @@ namespace Tabs {
         
         if (update_popup)
             Popups::UpdatePopup(update_popup, network_status, update_available, tag_name);
-
-        if (unmount_popup)
-            Popups::USBPopup(unmount_popup);
     }
 }
