@@ -91,6 +91,9 @@ struct ImGui_ImplSwitch_VtxAttribState {
 };
 #endif
 
+// Forward declarations
+static void ImGui_ImplSwitch_UpdateTextures(void);
+
 // Functions
 bool ImGui_ImplSwitch_Init(const char *glsl_version) {
     ImGuiIO &io = ImGui::GetIO();
@@ -124,6 +127,7 @@ bool ImGui_ImplSwitch_Init(const char *glsl_version) {
     if (bd->GlVersion >= 320)
         io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset;  // We can honor the ImDrawCmd::VtxOffset field, allowing for large meshes.
 #endif
+    io.BackendFlags |= ImGuiBackendFlags_RendererHasTextures;  // We can handle texture creation/updates dynamically.
 
     // Store GLSL version string so we can refer to it later in case we recreate shaders.
     // Note: GLSL version is NOT the same as GL version. Leave this to nullptr if unsure.
@@ -335,6 +339,9 @@ void ImGui_ImplSwitch_RenderDrawData(ImDrawData *draw_data) {
     int fb_height = static_cast<int>(draw_data->DisplaySize.y * draw_data->FramebufferScale.y);
     if (fb_width <= 0 || fb_height <= 0)
         return;
+
+    // Handle texture creation/update/destruction requests
+    ImGui_ImplSwitch_UpdateTextures();
 
     ImGui_ImplSwitch_Data *bd = ImGui_ImplSwitch_GetBackendData();
 
@@ -551,45 +558,62 @@ void ImGui_ImplSwitch_RenderDrawData(ImDrawData *draw_data) {
     (void)bd; // Not all compilation paths use this
 }
 
-bool ImGui_ImplSwitch_CreateFontsTexture(void) {
-    ImGuiIO &io = ImGui::GetIO();
-    ImGui_ImplSwitch_Data *bd = ImGui_ImplSwitch_GetBackendData();
-
-    // Build texture atlas
-    unsigned char *pixels;
-    int width, height;
-    io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);   // Load as RGBA 32-bit (75% of the memory is wasted, but default font is so small) because it is more likely to be compatible with user's existing shaders. If your ImTextureId represent a higher-level concept than just a GL texture id, consider calling GetTexDataAsAlpha8() instead to save on GPU memory.
-
-    // Upload texture to graphics system
-    // (Bilinear sampling is required by default. Set 'io.Fonts->Flags |= ImFontAtlasFlags_NoBakedLines' or 'style.AntiAliasedLinesUseTex = false' to allow point/nearest sampling)
-    GLint last_texture;
-    glGetIntegerv(GL_TEXTURE_BINDING_2D, &last_texture);
-    glGenTextures(1, &bd->FontTexture);
-    glBindTexture(GL_TEXTURE_2D, bd->FontTexture);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-#ifdef GL_UNPACK_ROW_LENGTH // Not on WebGL/ES
-    glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
+// Modern texture handling for ImGui 1.92+
+static void ImGui_ImplSwitch_UpdateTextures(void) {
+    ImGuiPlatformIO& platform_io = ImGui::GetPlatformIO();
+    
+    for (ImTextureData* tex : platform_io.Textures) {
+        if (tex->Status == ImTextureStatus_WantCreate || tex->Status == ImTextureStatus_WantUpdates) {
+            // Create or update texture
+            GLuint gl_texture = static_cast<GLuint>(tex->TexID);
+            
+            if (tex->Status == ImTextureStatus_WantCreate) {
+                glGenTextures(1, &gl_texture);
+            }
+            
+            GLint last_texture;
+            glGetIntegerv(GL_TEXTURE_BINDING_2D, &last_texture);
+            glBindTexture(GL_TEXTURE_2D, gl_texture);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+            glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+#ifdef GL_UNPACK_ROW_LENGTH
+            glPixelStorei(GL_UNPACK_ROW_LENGTH, 0);
 #endif
-    glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, pixels);
+            
+            GLenum gl_format = (tex->Format == ImTextureFormat_RGBA32) ? GL_RGBA : GL_RED;
+            GLenum gl_internal = (tex->Format == ImTextureFormat_RGBA32) ? GL_RGBA : GL_R8;
+            
+            if (tex->Status == ImTextureStatus_WantCreate) {
+                glTexImage2D(GL_TEXTURE_2D, 0, gl_internal, tex->Width, tex->Height, 0, gl_format, GL_UNSIGNED_BYTE, tex->GetPixels());
+            } else {
+                glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, tex->Width, tex->Height, gl_format, GL_UNSIGNED_BYTE, tex->GetPixels());
+            }
+            
+            glBindTexture(GL_TEXTURE_2D, last_texture);
+            
+            tex->SetTexID(static_cast<ImTextureID>(gl_texture));
+            tex->SetStatus(ImTextureStatus_OK);
+        }
+        else if (tex->Status == ImTextureStatus_WantDestroy) {
+            GLuint gl_texture = static_cast<GLuint>(tex->TexID);
+            if (gl_texture != 0) {
+                glDeleteTextures(1, &gl_texture);
+            }
+            tex->SetTexID(static_cast<ImTextureID>(0));
+            tex->SetStatus(ImTextureStatus_Destroyed);
+        }
+    }
+}
 
-    // Store our identifier
-    io.Fonts->SetTexID(static_cast<ImTextureID>(bd->FontTexture));
-
-    // Restore state
-    glBindTexture(GL_TEXTURE_2D, last_texture);
+bool ImGui_ImplSwitch_CreateFontsTexture(void) {
+    // With ImGuiBackendFlags_RendererHasTextures, font texture creation is handled 
+    // automatically via ImGui_ImplSwitch_UpdateTextures() during NewFrame/RenderDrawData
     return true;
 }
 
 void ImGui_ImplSwitch_DestroyFontsTexture(void) {
-    ImGuiIO &io = ImGui::GetIO();
-    ImGui_ImplSwitch_Data *bd = ImGui_ImplSwitch_GetBackendData();
-
-    if (bd->FontTexture) {
-        glDeleteTextures(1, &bd->FontTexture);
-        io.Fonts->SetTexID(static_cast<ImTextureID>(0));
-        bd->FontTexture = 0;
-    }
+    // With ImGuiBackendFlags_RendererHasTextures, font texture destruction is handled
+    // automatically via ImGui_ImplSwitch_UpdateTextures()
 }
 
 // If you get an error please report on github. You may try different GL context version or GLSL version. See GL<>GLSL version table at the top of this file.

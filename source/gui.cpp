@@ -14,6 +14,7 @@ namespace GUI {
     static EGLDisplay s_display = EGL_NO_DISPLAY;
     static EGLContext s_context = EGL_NO_CONTEXT;
     static EGLSurface s_surface = EGL_NO_SURFACE;
+    static EGLConfig s_config = nullptr;
     static NWindow *s_window = nullptr;
     static AppletOperationMode s_operation_mode = AppletOperationMode_Handheld;
     
@@ -23,6 +24,39 @@ namespace GUI {
     
     bool IsDocked(void) {
         return s_operation_mode == AppletOperationMode_Console;
+    }
+    
+    // Recreate the EGL surface for new dimensions (needed for runtime resolution changes)
+    static bool RecreateSurface(void) {
+        if (!s_display || !s_window || !s_config)
+            return false;
+        
+        // Unbind current surface
+        eglMakeCurrent(s_display, EGL_NO_SURFACE, EGL_NO_SURFACE, s_context);
+        
+        // Destroy old surface
+        if (s_surface) {
+            eglDestroySurface(s_display, s_surface);
+            s_surface = EGL_NO_SURFACE;
+        }
+        
+        // Update native window dimensions
+        nwindowSetDimensions(s_window, display_width, display_height);
+        
+        // Create new surface with updated dimensions
+        s_surface = eglCreateWindowSurface(s_display, s_config, s_window, nullptr);
+        if (!s_surface) {
+            Log::Error("Surface recreation failed! error: %d", eglGetError());
+            return false;
+        }
+        
+        // Rebind the new surface
+        eglMakeCurrent(s_display, s_surface, s_surface, s_context);
+        
+        // Update the GL viewport to match new dimensions
+        glViewport(0, 0, display_width, display_height);
+        
+        return true;
     }
     
     void UpdateDisplayDimensions(void) {
@@ -62,10 +96,8 @@ namespace GUI {
             display_width = target_width;
             display_height = target_height;
             
-            // Update the native window dimensions for the new resolution
-            if (s_window) {
-                nwindowSetDimensions(s_window, display_width, display_height);
-            }
+            // Recreate the EGL surface for the new resolution
+            RecreateSurface();
         }
     }
     
@@ -100,7 +132,6 @@ namespace GUI {
             s_display = nullptr;
         }
         
-        EGLConfig config;
         EGLint num_configs;
         static const EGLint framebuffer_attr_list[] = {
             EGL_RENDERABLE_TYPE, EGL_OPENGL_BIT,
@@ -113,14 +144,14 @@ namespace GUI {
             EGL_NONE
         };
         
-        eglChooseConfig(s_display, framebuffer_attr_list, std::addressof(config), 1, std::addressof(num_configs));
+        eglChooseConfig(s_display, framebuffer_attr_list, std::addressof(s_config), 1, std::addressof(num_configs));
         if (num_configs == 0) {
             Log::Error("No config found! error: %d", eglGetError());
             eglTerminate(s_display);
             s_display = nullptr;
         }
         
-        s_surface = eglCreateWindowSurface(s_display, config, win, nullptr);
+        s_surface = eglCreateWindowSurface(s_display, s_config, win, nullptr);
         if (!s_surface) {
             Log::Error("Surface creation failed! error: %d", eglGetError());
             eglTerminate(s_display);
@@ -134,7 +165,7 @@ namespace GUI {
             EGL_NONE
         };
         
-        s_context = eglCreateContext(s_display, config, EGL_NO_CONTEXT, context_attr_list);
+        s_context = eglCreateContext(s_display, s_config, EGL_NO_CONTEXT, context_attr_list);
         if (!s_context) {
             Log::Error("Context creation failed! error: %d", eglGetError());
             eglDestroySurface(s_display, s_surface);
@@ -161,6 +192,7 @@ namespace GUI {
             
             eglTerminate(s_display);
             s_display = nullptr;
+            s_config = nullptr;
         }
     }
 
@@ -240,15 +272,31 @@ namespace GUI {
         
         // Load nintendo font
         PlFontData standard, extended, chinese, korean;
-        static ImWchar extended_range[] = {0xE000, 0xE152};
+        static ImWchar extended_range[] = {0xE000, 0xE152, 0};
+        
+        // CJK glyph ranges (modern replacement for obsolete GetGlyphRanges* functions)
+        // On-demand loading will handle additional glyphs as needed
+        static const ImWchar chinese_ranges[] = {
+            0x0020, 0x00FF, // Basic Latin + Latin Supplement
+            0x2000, 0x206F, // General Punctuation
+            0x3000, 0x30FF, // CJK Symbols and Punctuation, Hiragana, Katakana
+            0x31F0, 0x31FF, // Katakana Phonetic Extensions
+            0xFF00, 0xFFEF, // Half-width and Full-width Forms
+            0x4E00, 0x9FAF, // CJK Unified Ideographs
+            0,
+        };
+        static const ImWchar korean_ranges[] = {
+            0x0020, 0x00FF, // Basic Latin + Latin Supplement
+            0x3131, 0x3163, // Korean Hangul Compatibility Jamo
+            0xAC00, 0xD7A3, // Korean Hangul Syllables
+            0,
+        };
         
         if ((R_SUCCEEDED(plGetSharedFontByType(std::addressof(standard), PlSharedFontType_Standard))) &&
             R_SUCCEEDED(plGetSharedFontByType(std::addressof(extended), PlSharedFontType_NintendoExt)) &&
             R_SUCCEEDED(plGetSharedFontByType(std::addressof(chinese), PlSharedFontType_ChineseSimplified)) &&
             R_SUCCEEDED(plGetSharedFontByType(std::addressof(korean), PlSharedFontType_KO))) {
                 
-            u8 *px = nullptr;
-            int w = 0, h = 0, bpp = 0;
             ImFontConfig font_cfg;
             
             font_cfg.FontDataOwnedByAtlas = false;
@@ -257,14 +305,12 @@ namespace GUI {
             if (cfg.multi_lang) {
                 font_cfg.MergeMode = true;
                 io.Fonts->AddFontFromMemoryTTF(extended.address, extended.size, 20.f, std::addressof(font_cfg), extended_range);
-                io.Fonts->AddFontFromMemoryTTF(chinese.address,  chinese.size,  20.f, std::addressof(font_cfg), io.Fonts->GetGlyphRangesChineseFull());
-                io.Fonts->AddFontFromMemoryTTF(korean.address,   korean.size,   20.f, std::addressof(font_cfg), io.Fonts->GetGlyphRangesKorean());
+                io.Fonts->AddFontFromMemoryTTF(chinese.address,  chinese.size,  20.f, std::addressof(font_cfg), chinese_ranges);
+                io.Fonts->AddFontFromMemoryTTF(korean.address,   korean.size,   20.f, std::addressof(font_cfg), korean_ranges);
             }
             
-            // build font atlas
-            io.Fonts->GetTexDataAsAlpha8(std::addressof(px), std::addressof(w), std::addressof(h), std::addressof(bpp));
             io.Fonts->Flags |= ImFontAtlasFlags_NoPowerOfTwoHeight;
-            io.Fonts->Build();
+            // Font atlas is built automatically when needed by the new texture system
         }
 
         GUI::SetDefaultTheme();
