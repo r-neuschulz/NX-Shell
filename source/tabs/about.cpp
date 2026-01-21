@@ -1,4 +1,5 @@
 #include "config.hpp"
+#include "gui.hpp"
 #include "imgui.h"
 #include "language.hpp"
 #include "log.hpp"
@@ -55,6 +56,12 @@ namespace Tabs {
                 need_focus_about = false;
             }
             
+            // Disable update check in applet mode (limited memory/network access)
+            if (GUI::IsAppletMode()) {
+                ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
+                ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
+            }
+            
             const char* update_text = strings[lang][Lang::SettingsCheckForUpdates];
             float update_button_width = std::max(250.0f, ImGui::CalcTextSize(update_text).x + 40.0f);
             if (ImGui::Button(update_text, ImVec2(update_button_width, 50))) {
@@ -62,6 +69,11 @@ namespace Tabs {
                 network_status = Net::GetNetworkStatus();
                 update_available = Net::GetAvailableUpdate(tag_name);
                 update_popup = true;
+            }
+            
+            if (GUI::IsAppletMode()) {
+                ImGui::PopItemFlag();
+                ImGui::PopStyleVar();
             }
             
             ImGui::EndChild();

@@ -4,6 +4,8 @@
 #include <dirent.h>
 #include <filesystem>
 #include <mutex>
+#include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include "config.hpp"
@@ -223,6 +225,13 @@ namespace FS {
             // If stat fails, entry stays as invalid (already set)
         }
     }
+    
+    void RefreshDirectory(std::vector<FsDirectoryEntry> &entries, std::vector<FileMetadataCache> &cache, bool clear_selection) {
+        FS::GetDirList(device, cwd, entries);
+        FS::PopulateMetadataCache(entries, cache);
+        if (clear_selection)
+            g_selection.Clear();
+    }
 
     bool Rename(FsDirectoryEntry &entry, const std::string &dest_path) {
         std::string src_path = FS::BuildPath(entry);
@@ -293,6 +302,28 @@ namespace FS {
         }
         
         return true;
+    }
+    
+    bool DeletePath(const std::string &path) {
+        struct stat path_stat = { 0 };
+        if (stat(path.c_str(), &path_stat) != 0) {
+            // Path doesn't exist or stat failed - try remove as file anyway
+            if (remove(path.c_str()) != 0) {
+                Log::Error("FS::DeletePath(%s) failed - path not found.\n", path.c_str());
+                return false;
+            }
+            return true;
+        }
+        
+        if (S_ISDIR(path_stat.st_mode)) {
+            return FS::DeleteRecursive(path);
+        } else {
+            if (remove(path.c_str()) != 0) {
+                Log::Error("FS::DeletePath(%s) failed to delete file.\n", path.c_str());
+                return false;
+            }
+            return true;
+        }
     }
     
     static bool CopyFile(const std::string &src_path, const std::string &dest_path) {
@@ -460,76 +491,112 @@ namespace FS {
         return fs_copy_entry.filename;
     }
 
+    // File extension to FileType lookup table
+    static const std::unordered_map<std::string, FileType> extension_map = {
+        // Archive formats
+        {".ZIP", FileTypeArchive}, {".RAR", FileTypeArchive}, {".7Z", FileTypeArchive},
+        
+        // Image formats
+        {".BMP", FileTypeImage}, {".GIF", FileTypeImage}, {".JPG", FileTypeImage},
+        {".JPEG", FileTypeImage}, {".PGM", FileTypeImage}, {".PPM", FileTypeImage},
+        {".PNG", FileTypeImage}, {".PSD", FileTypeImage}, {".TGA", FileTypeImage},
+        {".WEBP", FileTypeImage},
+        
+        // Binary/Executable formats
+        {".BIN", FileTypeBinary}, {".DAT", FileTypeBinary}, {".ROM", FileTypeBinary},
+        {".NRO", FileTypeBinary}, {".NSO", FileTypeBinary}, {".NCA", FileTypeBinary},
+        {".NSP", FileTypeBinary}, {".XCI", FileTypeBinary},
+        {".EXE", FileTypeBinary}, {".DLL", FileTypeBinary}, {".SYS", FileTypeBinary},
+        {".SO", FileTypeBinary}, {".DYLIB", FileTypeBinary}, {".A", FileTypeBinary},
+        {".O", FileTypeBinary}, {".ELF", FileTypeBinary}, {".AXF", FileTypeBinary},
+        {".FW", FileTypeBinary}, {".BIOS", FileTypeBinary},
+        
+        // Text formats - common
+        {".TXT", FileTypeText}, {".LOG", FileTypeText}, {".MD", FileTypeText},
+        {".MARKDOWN", FileTypeText},
+        
+        // Text formats - configuration
+        {".JSON", FileTypeText}, {".XML", FileTypeText}, {".YAML", FileTypeText},
+        {".YML", FileTypeText}, {".CFG", FileTypeText}, {".INI", FileTypeText},
+        {".CONF", FileTypeText}, {".CONFIG", FileTypeText}, {".TOML", FileTypeText},
+        {".ENV", FileTypeText}, {".PROPERTIES", FileTypeText},
+        
+        // Text formats - C/C++
+        {".C", FileTypeText}, {".CPP", FileTypeText}, {".CC", FileTypeText},
+        {".CXX", FileTypeText}, {".H", FileTypeText}, {".HPP", FileTypeText},
+        {".HH", FileTypeText}, {".HXX", FileTypeText},
+        
+        // Text formats - JVM languages
+        {".CS", FileTypeText}, {".JAVA", FileTypeText}, {".KT", FileTypeText},
+        {".SCALA", FileTypeText},
+        
+        // Text formats - Python
+        {".PY", FileTypeText}, {".PYW", FileTypeText}, {".PYX", FileTypeText},
+        
+        // Text formats - Web
+        {".JS", FileTypeText}, {".JSX", FileTypeText}, {".TS", FileTypeText},
+        {".TSX", FileTypeText}, {".HTML", FileTypeText}, {".HTM", FileTypeText},
+        {".CSS", FileTypeText}, {".SCSS", FileTypeText}, {".SASS", FileTypeText},
+        {".LESS", FileTypeText}, {".PHP", FileTypeText},
+        
+        // Text formats - Ruby
+        {".RB", FileTypeText}, {".RUBY", FileTypeText},
+        
+        // Text formats - Other languages
+        {".GO", FileTypeText}, {".RS", FileTypeText}, {".RUST", FileTypeText},
+        {".SWIFT", FileTypeText}, {".M", FileTypeText}, {".MM", FileTypeText},
+        {".LUA", FileTypeText}, {".PL", FileTypeText}, {".PM", FileTypeText},
+        {".PERL", FileTypeText},
+        
+        // Text formats - Shell scripts
+        {".SH", FileTypeText}, {".BASH", FileTypeText}, {".ZSH", FileTypeText},
+        {".FISH", FileTypeText}, {".BAT", FileTypeText}, {".CMD", FileTypeText},
+        {".PS1", FileTypeText},
+        
+        // Text formats - Data/Query
+        {".SQL", FileTypeText}, {".R", FileTypeText}, {".MATLAB", FileTypeText},
+        {".OCTAVE", FileTypeText}, {".CSV", FileTypeText}, {".TSV", FileTypeText},
+        
+        // Text formats - Assembly
+        {".ASM", FileTypeText}, {".S", FileTypeText},
+        
+        // Text formats - Documentation
+        {".RST", FileTypeText}, {".TEX", FileTypeText}, {".LATEX", FileTypeText},
+        {".NFO", FileTypeText}, {".DIZ", FileTypeText},
+        
+        // Text formats - Build/Project files
+        {".CMAKE", FileTypeText}, {".MAKEFILE", FileTypeText}, {".MAKE", FileTypeText},
+        {".GRADLE", FileTypeText}, {".MAVEN", FileTypeText}, {".SBT", FileTypeText},
+        {".GITIGNORE", FileTypeText}, {".GITATTRIBUTES", FileTypeText},
+        {".GITMODULES", FileTypeText}, {".DOCKERIGNORE", FileTypeText},
+        {".EDITORCONFIG", FileTypeText},
+        
+        // Text formats - Nintendo Switch specific
+        {".PCHTXT", FileTypeText}, {".IPS", FileTypeText},
+    };
+    
+    // Common extensionless text files (case-insensitive basename match)
+    static const std::unordered_set<std::string> text_basenames = {
+        "README", "LICENSE", "LICENCE", "CHANGELOG", "AUTHORS", "CONTRIBUTORS",
+        "MAKEFILE", "DOCKERFILE", "CMAKELISTS.TXT", "GEMFILE", "RAKEFILE", "VAGRANTFILE"
+    };
+    
     FileType GetFileType(const std::string &filename) {
         std::string ext = FS::GetFileExt(filename);
         
-        if ((!ext.compare(".ZIP")) || (!ext.compare(".RAR")) || (!ext.compare(".7Z")))
-            return FileTypeArchive;
-        else if ((!ext.compare(".BMP")) || (!ext.compare(".GIF")) || (!ext.compare(".JPG")) || (!ext.compare(".JPEG")) || (!ext.compare(".PGM"))
-            || (!ext.compare(".PPM")) || (!ext.compare(".PNG")) || (!ext.compare(".PSD")) || (!ext.compare(".TGA")) || (!ext.compare(".WEBP")))
-            return FileTypeImage;
-        else if (
-            // Binary/Executable formats - default to hex mode
-            (!ext.compare(".BIN")) || (!ext.compare(".DAT")) || (!ext.compare(".ROM")) ||
-            // Nintendo Switch executables
-            (!ext.compare(".NRO")) || (!ext.compare(".NSO")) || (!ext.compare(".NCA")) || 
-            (!ext.compare(".NSP")) || (!ext.compare(".XCI")) ||
-            // Windows executables
-            (!ext.compare(".EXE")) || (!ext.compare(".DLL")) || (!ext.compare(".SYS")) ||
-            // Other binary formats
-            (!ext.compare(".SO")) || (!ext.compare(".DYLIB")) || (!ext.compare(".A")) || (!ext.compare(".O")) ||
-            (!ext.compare(".ELF")) || (!ext.compare(".AXF")) ||
-            // Firmware/BIOS
-            (!ext.compare(".FW")) || (!ext.compare(".BIOS")) ||
-            false)
-            return FileTypeBinary;
-        else if (
-            // Common text formats
-            (!ext.compare(".TXT")) || (!ext.compare(".LOG")) || (!ext.compare(".MD")) || (!ext.compare(".MARKDOWN")) ||
-            // Configuration files
-            (!ext.compare(".JSON")) || (!ext.compare(".XML")) || (!ext.compare(".YAML")) || (!ext.compare(".YML")) ||
-            (!ext.compare(".CFG")) || (!ext.compare(".INI")) || (!ext.compare(".CONF")) || (!ext.compare(".CONFIG")) ||
-            (!ext.compare(".TOML")) || (!ext.compare(".ENV")) || (!ext.compare(".PROPERTIES")) ||
-            // Source code files
-            (!ext.compare(".C")) || (!ext.compare(".CPP")) || (!ext.compare(".CC")) || (!ext.compare(".CXX")) ||
-            (!ext.compare(".H")) || (!ext.compare(".HPP")) || (!ext.compare(".HH")) || (!ext.compare(".HXX")) ||
-            (!ext.compare(".CS")) || (!ext.compare(".JAVA")) || (!ext.compare(".KT")) || (!ext.compare(".SCALA")) ||
-            (!ext.compare(".PY")) || (!ext.compare(".PYW")) || (!ext.compare(".PYX")) ||
-            (!ext.compare(".JS")) || (!ext.compare(".JSX")) || (!ext.compare(".TS")) || (!ext.compare(".TSX")) ||
-            (!ext.compare(".HTML")) || (!ext.compare(".HTM")) || (!ext.compare(".CSS")) || (!ext.compare(".SCSS")) || (!ext.compare(".SASS")) || (!ext.compare(".LESS")) ||
-            (!ext.compare(".PHP")) || (!ext.compare(".RB")) || (!ext.compare(".RUBY")) ||
-            (!ext.compare(".GO")) || (!ext.compare(".RS")) || (!ext.compare(".RUST")) ||
-            (!ext.compare(".SWIFT")) || (!ext.compare(".M")) || (!ext.compare(".MM")) ||
-            (!ext.compare(".LUA")) || (!ext.compare(".PL")) || (!ext.compare(".PM")) || (!ext.compare(".PERL")) ||
-            (!ext.compare(".SH")) || (!ext.compare(".BASH")) || (!ext.compare(".ZSH")) || (!ext.compare(".FISH")) ||
-            (!ext.compare(".BAT")) || (!ext.compare(".CMD")) || (!ext.compare(".PS1")) ||
-            (!ext.compare(".SQL")) || (!ext.compare(".R")) || (!ext.compare(".MATLAB")) || (!ext.compare(".OCTAVE")) ||
-            (!ext.compare(".ASM")) || (!ext.compare(".S")) ||
-            // Script and data files
-            (!ext.compare(".CSV")) || (!ext.compare(".TSV")) ||
-            // Documentation and misc text
-            (!ext.compare(".RST")) || (!ext.compare(".TEX")) || (!ext.compare(".LATEX")) ||
-            (!ext.compare(".NFO")) || (!ext.compare(".DIZ")) ||
-            // Build and project files
-            (!ext.compare(".CMAKE")) || (!ext.compare(".MAKEFILE")) || (!ext.compare(".MAKE")) ||
-            (!ext.compare(".GRADLE")) || (!ext.compare(".MAVEN")) || (!ext.compare(".SBT")) ||
-            (!ext.compare(".GITIGNORE")) || (!ext.compare(".GITATTRIBUTES")) || (!ext.compare(".GITMODULES")) ||
-            (!ext.compare(".DOCKERIGNORE")) || (!ext.compare(".EDITORCONFIG")) ||
-            // Nintendo Switch specific
-            (!ext.compare(".PCHTXT")) || (!ext.compare(".IPS")) ||
-            // License and readme without extension are handled below
-            false)
-            return FileTypeText;
+        // Lookup extension in map
+        auto it = extension_map.find(ext);
+        if (it != extension_map.end()) {
+            return it->second;
+        }
         
-        // Check for common extensionless text files (case-insensitive filename match)
+        // Check for common extensionless text files
         std::string basename = std::filesystem::path(filename).filename().string();
         std::transform(basename.begin(), basename.end(), basename.begin(), ::toupper);
-        if ((!basename.compare("README")) || (!basename.compare("LICENSE")) || (!basename.compare("LICENCE")) ||
-            (!basename.compare("CHANGELOG")) || (!basename.compare("AUTHORS")) || (!basename.compare("CONTRIBUTORS")) ||
-            (!basename.compare("MAKEFILE")) || (!basename.compare("DOCKERFILE")) || (!basename.compare("CMAKELISTS.TXT")) ||
-            (!basename.compare("GEMFILE")) || (!basename.compare("RAKEFILE")) || (!basename.compare("VAGRANTFILE")))
+        if (text_basenames.count(basename)) {
             return FileTypeText;
-            
+        }
+        
         return FileTypeNone;
     }
     
@@ -722,14 +789,14 @@ namespace FS {
     }
     
     void SaveCurrentPath(void) {
-        cfg.last_device = device;
-        cfg.last_cwd = cwd;
+        Config::SetLastDevice(device);
+        Config::SetLastCwd(cwd);
         Config::Save(cfg);
     }
     
     bool RestoreSavedPath(std::vector<FsDirectoryEntry> &entries) {
         // If saved device is empty, user was at partition root
-        if (cfg.last_device.empty()) {
+        if (Config::GetLastDevice().empty()) {
             GoToPartitionRoot(entries);
             return true;
         }
@@ -738,8 +805,8 @@ namespace FS {
         std::scoped_lock lock(::devices_list_mutex);
         bool device_found = false;
         for (std::size_t i = 0; i < ::devices_list.size(); i++) {
-            if (::devices_list[i] == cfg.last_device) {
-                device = cfg.last_device;
+            if (::devices_list[i] == Config::GetLastDevice()) {
+                device = Config::GetLastDevice();
                 fs = std::addressof(devices[i]);
                 device_found = true;
                 break;
@@ -748,13 +815,13 @@ namespace FS {
         
         if (!device_found) {
             // Device no longer exists (e.g., USB was removed) - go to partition root
-            Log::Debug("FS::RestoreSavedPath - device %s not found, going to partition root\n", cfg.last_device.c_str());
+            Log::Debug("FS::RestoreSavedPath - device %s not found, going to partition root\n", Config::GetLastDevice().c_str());
             GoToPartitionRoot(entries);
             return false;
         }
         
         // Try to open the saved path
-        cwd = cfg.last_cwd;
+        cwd = Config::GetLastCwd();
         if (!GetDirList(device, cwd, entries)) {
             // Path doesn't exist - try going up until we find a valid directory
             Log::Debug("FS::RestoreSavedPath - path %s%s not found, searching for valid parent\n", device.c_str(), cwd.c_str());

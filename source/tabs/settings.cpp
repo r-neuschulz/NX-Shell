@@ -15,6 +15,21 @@
 
 static bool need_focus_settings = false;
 
+// Helper to disable UI elements in applet mode
+static void BeginAppletDisabled(void) {
+    if (GUI::IsAppletMode()) {
+        ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
+        ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
+    }
+}
+
+static void EndAppletDisabled(void) {
+    if (GUI::IsAppletMode()) {
+        ImGui::PopItemFlag();
+        ImGui::PopStyleVar();
+    }
+}
+
 namespace Tabs {
     void RequestSettingsFocus(void) {
         need_focus_settings = true;
@@ -41,6 +56,8 @@ namespace Tabs {
             // Language selector
             ImGui::Indent(10.f);
             Internal::Indent(strings[lang][Lang::SettingsLanguageTitle]);
+            
+            BeginAppletDisabled();
 
             // Show all available languages, alphabetically sorted
             struct LanguageOption {
@@ -107,10 +124,13 @@ namespace Tabs {
                 need_focus_settings = true;
             }
             ImGui::PopItemWidth();
+            
+            EndAppletDisabled();
 
             Internal::Separator();
 
             // USB unmount
+            BeginAppletDisabled();
             Internal::Indent(strings[lang][Lang::SettingsUSBTitle]);
 
             if (!USB::Connected()) {
@@ -127,10 +147,13 @@ namespace Tabs {
                 ImGui::PopItemFlag();
                 ImGui::PopStyleVar();
             }
+            
+            EndAppletDisabled();
 
             Internal::Separator();
 
             // Image viewer options
+            BeginAppletDisabled();
             Internal::Indent(strings[lang][Lang::SettingsImageViewTitle]);
 
             ImGui::PushID("image_filename");
@@ -144,27 +167,38 @@ namespace Tabs {
             if (ImGui::Checkbox(strings[lang][Lang::SettingsImageViewFullscreenToggle], std::addressof(cfg.enter_images_fullscreen)))
                 Config::Save(cfg);
             ImGui::PopID();
+            
+            EndAppletDisabled();
 
             Internal::Separator();
 
             // Developer Options
             Internal::Indent(strings[lang][Lang::SettingsDevOptsTitle]);
 
+            // Logging is the only setting that works in applet mode (uses separate applet_dev_options)
             ImGui::PushID("dev_logs");
-            if (ImGui::Checkbox(strings[lang][Lang::SettingsDevOptsLogsToggle], std::addressof(cfg.dev_options)))
-                Config::Save(cfg);
+            if (GUI::IsAppletMode()) {
+                if (ImGui::Checkbox(strings[lang][Lang::SettingsDevOptsLogsToggle], std::addressof(cfg.applet_dev_options)))
+                    Config::Save(cfg);
+            } else {
+                if (ImGui::Checkbox(strings[lang][Lang::SettingsDevOptsLogsToggle], std::addressof(cfg.dev_options)))
+                    Config::Save(cfg);
+            }
             ImGui::PopID();
             
             ImGui::Dummy(ImVec2(0.0f, 5.0f)); // Spacing
             
+            BeginAppletDisabled();
             ImGui::PushID("show_stats");
             if (ImGui::Checkbox(strings[lang][Lang::SettingsStatsToggle], std::addressof(cfg.show_stats)))
                 Config::Save(cfg);
             ImGui::PopID();
+            EndAppletDisabled();
 
             Internal::Separator();
 
             // Display Resolution
+            BeginAppletDisabled();
             {
                 // Build the title with current resolution indicator
                 char resolution_title[128];
@@ -185,10 +219,12 @@ namespace Tabs {
                 if (ImGui::RadioButton(strings[lang][Lang::SettingsResolution720p], &cfg.resolution_mode, ResolutionMode_720p))
                     Config::Save(cfg);
             }
+            EndAppletDisabled();
 
             Internal::Separator();
 
             // Theme
+            BeginAppletDisabled();
             {
                 Internal::Indent(strings[lang][Lang::SettingsThemeTitle]);
                 
@@ -262,10 +298,12 @@ namespace Tabs {
                 ImGui::SameLine(0, spacing);
                 DrawThemeButton(strings[lang][Lang::SettingsThemeLight], ThemeMode_Light, light_bg, light_text);
             }
+            EndAppletDisabled();
 
             Internal::Separator();
 
             // Accent Color
+            BeginAppletDisabled();
             {
                 Internal::Indent(strings[lang][Lang::SettingsAccentColorTitle]);
                 
@@ -394,16 +432,18 @@ namespace Tabs {
                     ImGui::EndPopup();
                 }
             }
+            EndAppletDisabled();
 
             Internal::Separator();
 
             // Button Style
+            BeginAppletDisabled();
             {
                 Internal::Indent(strings[lang][Lang::SettingsButtonStyleTitle]);
                 
                 const float btn_radius = 12.0f;  // Match bottom bar size
                 const float btn_spacing = 8.0f;
-                const float buttons_offset = 130.0f;  // X offset from row start to button preview
+                const float buttons_offset = 162.0f;  // X offset from row start to button preview
                 const bool is_dark = GUI::IsCurrentThemeDark();
                 
                 // Helper to draw button preview
@@ -578,10 +618,12 @@ namespace Tabs {
                     }
                 }
             }
+            EndAppletDisabled();
 
             Internal::Separator();
 
             // Reset All Settings
+            BeginAppletDisabled();
             {
                 Internal::Indent(strings[lang][Lang::SettingsResetTitle]);
                 
@@ -590,6 +632,7 @@ namespace Tabs {
                 if (ImGui::Button(reset_text, ImVec2(reset_button_width, 40)))
                     reset_settings_popup = true;
             }
+            EndAppletDisabled();
             
             ImGui::EndChild();
             

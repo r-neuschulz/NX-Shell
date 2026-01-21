@@ -1,12 +1,8 @@
-#include <algorithm>
 #include <cstring>
-#include <glad/glad.h>
 #include <sys/stat.h>
 
 #include "config.hpp"
 #include "fs.hpp"
-#include "gui.hpp"
-#include "imgui_impl_switch.hpp"
 #include "imgui_internal.h"
 #include "keyboard.hpp"
 #include "language.hpp"
@@ -19,11 +15,7 @@ namespace Options {
     static bool pending_multi_move = false;
     
     static void RefreshEntries(bool clear_selection) {
-        FS::GetDirList(device, cwd, data.entries);
-        FS::PopulateMetadataCache(data.entries, data.metadata_cache);
-
-        if (clear_selection)
-            g_selection.Clear();
+        FS::RefreshDirectory(data.entries, data.metadata_cache, clear_selection);
     }
 
     static void HandleMultipleCopy(WindowData &data, bool (*func)(), bool is_move) {
@@ -48,14 +40,7 @@ namespace Options {
             }
             else if (conflict_mode == ConflictHandling_ReplaceAll) {
                 // Delete existing destination first if it exists
-                struct stat dest_stat = { 0 };
-                if (stat(dest_path.c_str(), &dest_stat) == 0) {
-                    if (S_ISDIR(dest_stat.st_mode)) {
-                        FS::DeleteRecursive(dest_path);
-                    } else {
-                        remove(dest_path.c_str());
-                    }
-                }
+                FS::DeletePath(dest_path);
             }
             
             // Extract parent directory path

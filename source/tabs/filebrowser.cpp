@@ -2,6 +2,7 @@
 #include <cstring>
 
 #include "archive.hpp"
+#include "bottombar.hpp"
 #include "config.hpp"
 #include "fs.hpp"
 #include "gui.hpp"
@@ -22,7 +23,6 @@ static std::string pending_focus_name;  // Name of entry to focus after navigati
 static std::string current_focused_name;  // Track current focused entry name for table ID transitions
 static bool go_to_partition_root = false;
 static bool go_to_parent_directory = false;
-static bool hint_button_clicked = false;  // Track if a hint button was clicked this frame
 static bool prev_at_partition_root = false;  // Track previous partition root state
 static bool prev_show_details = false;  // Track previous details state
 
@@ -127,28 +127,12 @@ namespace Tabs {
         ImGui::Dummy(size);  // Advance cursor
     }
     
-    // Helper to draw a progress arc around a button (used for hold-to-close and refresh animations)
-    static void DrawProgressArc(ImDrawList *draw_list, ImVec2 center, float radius, float progress, ImU32 color) {
-        const float start_angle = -IM_PI * 0.5f;  // Start from top
-        const float end_angle = start_angle + (progress * IM_PI * 2.0f);
-        const int num_segments = static_cast<int>(24 * progress) + 1;
-        
-        for (int i = 0; i < num_segments; i++) {
-            float a1 = start_angle + (end_angle - start_angle) * (static_cast<float>(i) / num_segments);
-            float a2 = start_angle + (end_angle - start_angle) * (static_cast<float>(i + 1) / num_segments);
-            ImVec2 p1(center.x + cosf(a1) * radius, center.y + sinf(a1) * radius);
-            ImVec2 p2(center.x + cosf(a2) * radius, center.y + sinf(a2) * radius);
-            draw_list->AddLine(p1, p2, color, 3.0f);
-        }
-    }
-
     void FileBrowser(WindowData &data, int &current_tab, int &active_tab) {
         ImGuiTabItemFlags flags = (current_tab == 0) ? ImGuiTabItemFlags_SetSelected : 0;
         if (current_tab == 0) current_tab = -1; // Reset after applying
         
         if (ImGui::BeginTabItem(strings[Config::GetLang()][Lang::TabFiles], nullptr, flags)) {
             active_tab = 0;  // Update active tab when this tab is visible
-            hint_button_clicked = false;  // Reset hint button flag each frame
             
             // When tab is clicked/touched, focus the first table entry instead of staying on the tab
             // This allows pressing down to select the first file, not the table header
@@ -780,226 +764,38 @@ namespace Tabs {
                 return;
             }
             
-            ImDrawList *draw_list = ImGui::GetWindowDrawList();
-            const float button_radius = 12.0f;
-            const float hint_spacing = 25.0f;
-            
-            // Button colors - use style-aware helpers from GUI module
-            const ImU32 color_a = GUI::GetButtonColorA();
-            const ImU32 color_b = GUI::GetButtonColorB();
-            const ImU32 color_y = GUI::GetButtonColorY();
-            const ImU32 color_x = GUI::GetButtonColorX();
-            const ImU32 color_text = GUI::GetButtonTextColor();
-            const ImU32 color_label = GUI::GetThemeLabelColor();
-            
-            ImVec2 cursor_pos = ImGui::GetCursorScreenPos();
-            float center_y = cursor_pos.y + (button_bar_height * 0.5f);
-            
-            // Left-aligned: Hold-to-close indicator (minus button)
-            {
-                const int lang = Config::GetLang();
-                const ImU32 color_minus_bg = GUI::GetButtonColorMinus();
-                
-                float left_x = cursor_pos.x + 10.0f;
-                ImVec2 minus_center(left_x + button_radius, center_y);
-                
-                // Check if we're holding to close
-                float hold_progress = 0.0f;
-                bool is_holding = GUI::IsHoldingToClose(hold_progress);
-                
-                // Draw background circle
-                draw_list->AddCircleFilled(minus_center, button_radius, color_minus_bg, 24);
-                
-                // Draw progress arc when holding
-                if (is_holding && hold_progress > 0.0f) {
-                    DrawProgressArc(draw_list, minus_center, button_radius + 3.0f, hold_progress, GUI::GetAccentColorU32());
-                }
-                
-                // Draw minus sign
-                const float minus_width = button_radius * 0.8f;
-                draw_list->AddLine(
-                    ImVec2(minus_center.x - minus_width, minus_center.y),
-                    ImVec2(minus_center.x + minus_width, minus_center.y),
-                    color_text, 2.0f
-                );
-                
-                // Draw label
-                float label_x = left_x + button_radius * 2 + 6.0f;
-                const char* exit_label = strings[lang][Lang::HintExit];
-                
-                // Fade label based on hold progress
-                ImU32 label_color = is_holding 
-                    ? GUI::GetAccentColorU32WithAlpha(200 + static_cast<int>(55 * hold_progress))
-                    : color_label;
-                draw_list->AddText(ImVec2(label_x, center_y - ImGui::GetTextLineHeight() * 0.5f), label_color, exit_label);
-            }
-            
-            struct ButtonHint {
-                const char* letter;
-                const char* label;
-                ImU32 color;
-                int action;  // 0=none, 1=back, 2=select, 3=options, 4=drive
-                bool show_at_partition_root;  // Whether to show this button at partition root
-            };
-            
             const int lang = Config::GetLang();
-            const ImU32 color_plus = GUI::GetButtonColorPlus();
             bool is_at_partition_root = FS::IsAtPartitionRoot();
             
-            // Actions: 0=open (no-op, handled by selectables), 1=back, 2=select, 3=options, 4=drive/refresh
-            // At partition root: only show A (Open) and + (Refresh) buttons
-            // The + button shows "Refresh" at partition root, "Drive" elsewhere
-            ButtonHint hints[] = {
-                {"A", strings[lang][Lang::HintOpen], color_a, 0, true},
-                {"B", strings[lang][Lang::HintBack], color_b, 1, false},         // Hide at partition root
-                {"Y", strings[lang][Lang::HintSelect], color_y, 2, false},       // Hide at partition root
-                {"X", strings[lang][Lang::HintOptions], color_x, 3, false},      // Hide at partition root
-                {"+", is_at_partition_root ? "Refresh" : strings[lang][Lang::HintDrive], color_plus, 4, true}
+            // Left-aligned items (minus button for exit)
+            std::vector<BottomBar::HintItem> left_items = {
+                {BottomBar::ButtonType::Minus, strings[lang][Lang::HintExit]}
             };
             
-            // Calculate total width of visible button hints (including ZR button)
-            const float zr_width = 32.0f;
-            float total_width = 0.0f;
-            for (const auto& hint : hints) {
-                if (!is_at_partition_root || hint.show_at_partition_root) {
-                    total_width += button_radius * 2 + 6.0f + ImGui::CalcTextSize(hint.label).x + hint_spacing;
-                }
-            }
-            // Add ZR button width (always shown)
-            total_width += zr_width + 6.0f + ImGui::CalcTextSize(strings[lang][Lang::HintDetails]).x;
+            // Right-aligned items - conditionally show based on partition root state
+            std::vector<BottomBar::HintItem> right_items;
+            right_items.push_back({BottomBar::ButtonType::CircleA, strings[lang][Lang::HintOpen]});
             
-            // Start from the right side
-            float right_edge = cursor_pos.x + ImGui::GetContentRegionAvail().x - 10.0f;
-            float x_offset = right_edge - total_width;
-            
-            for (int hint_idx = 0; hint_idx < 5; hint_idx++) {
-                const auto& hint = hints[hint_idx];
-                
-                // Skip buttons that shouldn't be shown at partition root
-                if (is_at_partition_root && !hint.show_at_partition_root) {
-                    continue;
-                }
-                
-                ImVec2 center(x_offset + button_radius, center_y);
-                
-                // Calculate button area dimensions (circle + label)
-                ImVec2 label_size = ImGui::CalcTextSize(hint.label);
-                float btn_width = button_radius * 2 + 6.0f + label_size.x;
-                float btn_height = button_bar_height - 8.0f;
-                
-                // Create invisible button for touch interaction
-                ImGui::SetCursorScreenPos(ImVec2(x_offset, center_y - btn_height * 0.5f));
-                ImGui::PushID(hint_idx);
-                if (ImGui::InvisibleButton("##hint", ImVec2(btn_width, btn_height))) {
-                    hint_button_clicked = true;  // Prevent Selectable from also activating
-                    // Handle button action
-                    switch (hint.action) {
-                        case 1: // Back
-                            Tabs::RequestParentDirectory();
-                            break;
-                        case 2: // Select (Y) - toggle selection using SelectionStore
-                            if ((std::strncmp(data.entries[data.selected].name, "..", 2)) != 0) {
-                                std::string selected_path = device + cwd;
-                                if (!selected_path.empty() && selected_path.back() != '/')
-                                    selected_path += "/";
-                                selected_path += data.entries[data.selected].name;
-                                
-                                // For folders, use recursive selection/deselection
-                                // This allows users to later unselect individual items within
-                                if (data.entries[data.selected].type == FsDirEntryType_Dir) {
-                                    g_selection.ToggleFolder(selected_path);
-                                } else {
-                                    g_selection.Toggle(selected_path);
-                                }
-                            }
-                            break;
-                        case 3: // Options (X)
-                            data.state = WINDOW_STATE_OPTIONS;
-                            break;
-                        case 4: // Drive (+) - go to partition root, or refresh if already there
-                            if (is_at_partition_root) {
-                                // Start visual feedback animation and refresh the partition list
-                                GUI::StartRefreshAnimation();
-                                FS::GetPartitionList(data.entries);
-                                pending_focus_name = "sdmc:";  // Default to SD card
-                            } else {
-                                Tabs::RequestDeviceCombo();
-                            }
-                            break;
-                        default:
-                            break;
-                    }
-                }
-                ImGui::PopID();
-                
-                // Draw filled circle
-                draw_list->AddCircleFilled(center, button_radius, hint.color, 24);
-                
-                // Draw refresh animation arc for + button at partition root
-                if (hint.action == 4 && is_at_partition_root) {
-                    float refresh_progress = 0.0f;
-                    if (GUI::IsRefreshAnimating(refresh_progress)) {
-                        DrawProgressArc(draw_list, center, button_radius + 3.0f, refresh_progress, GUI::GetAccentColorU32());
-                    }
-                }
-                
-                // Draw letter centered in the circle
-                ImVec2 text_size = ImGui::CalcTextSize(hint.letter);
-                ImVec2 text_pos(center.x - text_size.x * 0.5f + 1.0f, center.y - text_size.y * 0.5f);
-                draw_list->AddText(text_pos, color_text, hint.letter);
-                
-                // Draw label next to the button
-                float label_x = x_offset + button_radius * 2 + 6.0f;
-                draw_list->AddText(ImVec2(label_x, center_y - ImGui::GetTextLineHeight() * 0.5f), color_label, hint.label);
-                
-                // Calculate offset for next button
-                x_offset = label_x + label_size.x + hint_spacing;
+            if (!is_at_partition_root) {
+                right_items.push_back({BottomBar::ButtonType::CircleB, strings[lang][Lang::HintBack]});
+                right_items.push_back({BottomBar::ButtonType::CircleY, strings[lang][Lang::HintSelect]});
+                right_items.push_back({BottomBar::ButtonType::CircleX, strings[lang][Lang::HintOptions]});
             }
             
-            // ZR button (outlined shoulder button style) for Details toggle
-            {
-                const float zr_height = 18.0f;
-                const float zr_chamfer = 6.0f;
-                const ImU32 color_zr_outline = cfg.show_details ? GUI::GetAccentColorU32() : IM_COL32(120, 120, 120, 255);
-                
-                // Position after the last hint
-                float zr_x = x_offset;
-                float zr_y = center_y - zr_height * 0.5f;
-                
-                // Calculate ZR button area dimensions
-                ImVec2 zr_label_size = ImGui::CalcTextSize(strings[lang][Lang::HintDetails]);
-                float zr_btn_width = zr_width + 6.0f + zr_label_size.x;
-                float zr_btn_height = button_bar_height - 8.0f;
-                
-                // Create invisible button for touch interaction
-                ImGui::SetCursorScreenPos(ImVec2(zr_x, center_y - zr_btn_height * 0.5f));
-                if (ImGui::InvisibleButton("##zr_hint", ImVec2(zr_btn_width, zr_btn_height))) {
-                    hint_button_clicked = true;  // Prevent Selectable from also activating
-                    Tabs::ToggleDetails();
-                }
-                
-                // Draw outlined shape with chamfered top-right corner (like R button)
-                ImVec2 points[5];
-                points[0] = ImVec2(zr_x, zr_y);                           // Top-left
-                points[1] = ImVec2(zr_x + zr_width - zr_chamfer, zr_y);   // Top edge end (before chamfer)
-                points[2] = ImVec2(zr_x + zr_width, zr_y + zr_chamfer);   // Right edge (after chamfer)
-                points[3] = ImVec2(zr_x + zr_width, zr_y + zr_height);    // Bottom-right
-                points[4] = ImVec2(zr_x, zr_y + zr_height);               // Bottom-left
-                
-                // Draw outline only (not filled)
-                draw_list->AddPolyline(points, 5, color_zr_outline, ImDrawFlags_Closed, 2.0f);
-                
-                // Draw "ZR" text centered (smaller font)
-                const char* zr_text = "ZR";
-                const float zr_font_size = ImGui::GetFontSize() * 0.75f;
-                ImVec2 zr_text_size = ImGui::GetFont()->CalcTextSizeA(zr_font_size, FLT_MAX, 0.0f, zr_text);
-                ImVec2 zr_text_pos(zr_x + (zr_width - zr_text_size.x) * 0.5f, center_y - zr_text_size.y * 0.5f);
-                draw_list->AddText(ImGui::GetFont(), zr_font_size, zr_text_pos, color_zr_outline, zr_text);
-                
-                // Draw label next to the button
-                float zr_label_x = zr_x + zr_width + 6.0f;
-                draw_list->AddText(ImVec2(zr_label_x, center_y - ImGui::GetTextLineHeight() * 0.5f), color_label, strings[lang][Lang::HintDetails]);
-            }
+            // + button: "Refresh" at partition root (with animation), "Drive" elsewhere
+            right_items.push_back({BottomBar::ButtonType::Plus, 
+                is_at_partition_root ? "Refresh" : strings[lang][Lang::HintDrive],
+                is_at_partition_root});  // active = true triggers refresh animation at partition root
+            
+            // ZR button for details toggle
+            right_items.push_back({BottomBar::ButtonType::ShoulderZR, strings[lang][Lang::HintDetails], cfg.show_details});
+            
+            BottomBar::Config config;
+            config.use_foreground_draw_list = false;  // Within window
+            config.draw_background = false;
+            config.hint_spacing = 25.0f;
+            
+            BottomBar::Draw(config, left_items, right_items);
 
             ImGui::EndTabItem();
         }

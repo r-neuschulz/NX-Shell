@@ -57,6 +57,7 @@ namespace FS {
     bool Rename(FsDirectoryEntry &entry, const std::string &dest_path);
     bool Delete(FsDirectoryEntry &entry);
     bool DeleteRecursive(const std::string &path);  // Delete directory recursively by full path
+    bool DeletePath(const std::string &path);       // Delete file or directory by full path (auto-detects type)
     void Copy(FsDirectoryEntry &entry, const std::string &path);
     bool Paste(void);
     bool Move(void);
@@ -74,6 +75,10 @@ namespace FS {
     
     // Populate metadata cache for all entries (call once after GetDirList)
     void PopulateMetadataCache(const std::vector<FsDirectoryEntry> &entries, std::vector<FileMetadataCache> &cache);
+    
+    // Refresh current directory listing and optionally clear selection
+    // Consolidates the common pattern: GetDirList + PopulateMetadataCache + Clear
+    void RefreshDirectory(std::vector<FsDirectoryEntry> &entries, std::vector<FileMetadataCache> &cache, bool clear_selection);
     
     // Partition root support (virtual root showing all available partitions)
     bool IsAtPartitionRoot(void);

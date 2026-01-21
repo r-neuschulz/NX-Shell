@@ -313,6 +313,23 @@ namespace Windows {
         return 62.0f + STATUS_ITEM_SPACING + 78.0f + STATUS_ITEM_SPACING + 64.0f;
     }
     
+    // Draw the Applet Mode banner centered in the title bar
+    static void DrawAppletModeBanner(ImDrawList *draw_list, ImVec2 title_bar_min, ImVec2 title_bar_max) {
+        const char* banner_text = "Applet Mode";
+        
+        ImVec2 text_size = ImGui::CalcTextSize(banner_text);
+        
+        // Calculate centered position
+        float center_x = (title_bar_min.x + title_bar_max.x) / 2.0f;
+        float center_y = (title_bar_min.y + title_bar_max.y) / 2.0f;
+        ImVec2 text_pos = ImVec2(center_x - text_size.x / 2.0f, center_y - text_size.y / 2.0f);
+        
+        // Red color for warning
+        ImU32 banner_color = IM_COL32(255, 60, 60, 255);
+        
+        draw_list->AddText(text_pos, banner_color, banner_text);
+    }
+    
     // Draw the complete status bar in the title bar area
     static void DrawStatusBar(ImDrawList *draw_list, ImVec2 title_bar_max) {
         // Get battery info
@@ -410,8 +427,14 @@ namespace Windows {
             // Skip drawing when in fullscreen image viewer mode (user wants distraction-free viewing)
             ImGuiWindow* window = ImGui::GetCurrentWindow();
             if (window && !(data.state == WINDOW_STATE_IMAGEVIEWER && data.image_fullscreen)) {
+                ImVec2 title_bar_min = ImVec2(window->Pos.x, window->Pos.y);
                 ImVec2 title_bar_max = ImVec2(window->Pos.x + window->Size.x, window->Pos.y + ImGui::GetFrameHeight());
                 DrawStatusBar(ImGui::GetForegroundDrawList(), title_bar_max);
+                
+                // Draw applet mode warning banner if running in applet mode
+                if (GUI::IsAppletMode()) {
+                    DrawAppletModeBanner(ImGui::GetForegroundDrawList(), title_bar_min, title_bar_max);
+                }
             }
             
             ImVec2 cursor_start = ImGui::GetCursorScreenPos();

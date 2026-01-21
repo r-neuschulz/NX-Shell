@@ -32,10 +32,7 @@ namespace Popups {
                     
                     cwd = "/";
                     data.entries.clear();
-                    FS::GetDirList(device, cwd, data.entries);
-                    FS::PopulateMetadataCache(data.entries, data.metadata_cache);
-                    
-                    g_selection.Clear();  // Clear any selections when unmounting USB
+                    FS::RefreshDirectory(data.entries, data.metadata_cache, true);
                     FS::GetUsedStorageSpace(data.used_storage);
                     FS::GetTotalStorageSpace(data.total_storage);
                     sort = -1;

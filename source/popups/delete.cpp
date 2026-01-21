@@ -1,6 +1,4 @@
-#include <algorithm>
 #include <cstring>
-#include <sys/stat.h>
 
 #include "config.hpp"
 #include "fs.hpp"
@@ -48,24 +46,10 @@ namespace Popups {
                         if (filename == "..")
                             continue;
                         
-                        // Determine if it's a file or directory and delete appropriately
-                        struct stat path_stat;
-                        if (stat(full_path.c_str(), &path_stat) == 0) {
-                            if (S_ISDIR(path_stat.st_mode)) {
-                                ret = FS::DeleteRecursive(full_path);
-                            } else {
-                                ret = (remove(full_path.c_str()) == 0);
-                            }
-                        } else {
-                            // Stat failed, try remove as file
-                            ret = (remove(full_path.c_str()) == 0);
-                        }
+                        ret = FS::DeletePath(full_path);
                         
                         if (!ret) {
-                            Log::Error("Failed to delete: %s\n", full_path.c_str());
-                            FS::GetDirList(device, cwd, data.entries);
-                            FS::PopulateMetadataCache(data.entries, data.metadata_cache);
-                            g_selection.Clear();
+                            FS::RefreshDirectory(data.entries, data.metadata_cache, true);
                             break;
                         }
                     }
@@ -78,9 +62,7 @@ namespace Popups {
                 }
                 
                 if (ret) {
-                    FS::GetDirList(device, cwd, data.entries);
-                    FS::PopulateMetadataCache(data.entries, data.metadata_cache);
-                    g_selection.Clear();
+                    FS::RefreshDirectory(data.entries, data.metadata_cache, true);
                 }
 
                 sort = -1;

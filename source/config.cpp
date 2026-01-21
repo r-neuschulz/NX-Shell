@@ -4,6 +4,7 @@
 
 #include "config.hpp"
 #include "fs.hpp"
+#include "gui.hpp"
 #include "log.hpp"
 
 #define CONFIG_VERSION 16
@@ -61,6 +62,11 @@ namespace Config {
         json_object_set_new(root, "accent_color", accent_array);
         
         SetInt(root, "button_style", config.button_style);
+        
+        // Applet mode settings (separate from title mode)
+        SetInt(root, "applet_dev_options", config.applet_dev_options);
+        SetString(root, "applet_last_device", config.applet_last_device);
+        SetString(root, "applet_last_cwd", config.applet_last_cwd);
         
         char *buf = json_dumps(root, JSON_INDENT(1));
         json_decref(root);
@@ -170,6 +176,11 @@ namespace Config {
                 cfg.accent_color[i] = static_cast<float>(json_real_value(json_array_get(accent_color, i)));
         }
 
+        // Load applet mode settings (separate from title mode)
+        cfg.applet_dev_options = GetInt(root, "applet_dev_options");
+        cfg.applet_last_device = GetString(root, "applet_last_device", "sdmc:");
+        cfg.applet_last_cwd = GetString(root, "applet_last_cwd", "/");
+
         json_decref(root);
         return 0;
     }
@@ -197,6 +208,11 @@ namespace Config {
     }
 
     int GetLang(void) {
+        // Force English in applet mode
+        if (GUI::IsAppletMode()) {
+            return 1; // English
+        }
+        
         if (cfg.lang == LANG_AUTO) {
             u64 lang_code = 0;
             SetLanguage lang = SetLanguage_ENUS;
@@ -219,5 +235,132 @@ namespace Config {
             return cfg.lang;
         }
         return 1; // English fallback
+    }
+    
+    int GetEffectiveThemeMode(void) {
+        // Force Dark theme in applet mode
+        if (GUI::IsAppletMode()) {
+            return ThemeMode_Dark;
+        }
+        return cfg.theme_mode;
+    }
+    
+    int GetEffectiveButtonStyle(void) {
+        // Force Mono buttons in applet mode
+        if (GUI::IsAppletMode()) {
+            return ButtonStyle_Mono;
+        }
+        return cfg.button_style;
+    }
+    
+    bool IsLoggingEnabled(void) {
+        // Use separate setting for applet mode
+        if (GUI::IsAppletMode()) {
+            return cfg.applet_dev_options;
+        }
+        return cfg.dev_options;
+    }
+    
+    bool IsStatsEnabled(void) {
+        // Stats overlay is disabled in applet mode (forced off)
+        if (GUI::IsAppletMode()) {
+            return false;
+        }
+        return cfg.show_stats;
+    }
+    
+    int GetEffectiveResolutionMode(void) {
+        // Force Auto resolution in applet mode
+        if (GUI::IsAppletMode()) {
+            return ResolutionMode_Auto;
+        }
+        return cfg.resolution_mode;
+    }
+    
+    bool IsImageFilenameEnabled(void) {
+        // Forced false in applet mode (use default)
+        if (GUI::IsAppletMode()) {
+            return false;
+        }
+        return cfg.image_filename;
+    }
+    
+    bool IsEnterImagesFullscreen(void) {
+        // Forced false in applet mode (use default)
+        if (GUI::IsAppletMode()) {
+            return false;
+        }
+        return cfg.enter_images_fullscreen;
+    }
+    
+    bool IsShowDetails(void) {
+        // Forced false in applet mode (use default)
+        if (GUI::IsAppletMode()) {
+            return false;
+        }
+        return cfg.show_details;
+    }
+    
+    void SetShowDetails(bool value) {
+        // No-op in applet mode - don't modify title mode settings
+        if (GUI::IsAppletMode()) {
+            return;
+        }
+        cfg.show_details = value;
+    }
+    
+    void ToggleShowDetails(void) {
+        // No-op in applet mode - don't modify title mode settings
+        if (GUI::IsAppletMode()) {
+            return;
+        }
+        cfg.show_details = !cfg.show_details;
+    }
+    
+    void GetEffectiveAccentColor(float out[3]) {
+        // Use default teal in applet mode
+        if (GUI::IsAppletMode()) {
+            out[0] = 0.0f;
+            out[1] = 0.50f;
+            out[2] = 0.50f;
+            return;
+        }
+        out[0] = cfg.accent_color[0];
+        out[1] = cfg.accent_color[1];
+        out[2] = cfg.accent_color[2];
+    }
+    
+    std::string& GetLastDevice(void) {
+        // Use applet-specific navigation in applet mode
+        if (GUI::IsAppletMode()) {
+            return cfg.applet_last_device;
+        }
+        return cfg.last_device;
+    }
+    
+    std::string& GetLastCwd(void) {
+        // Use applet-specific navigation in applet mode
+        if (GUI::IsAppletMode()) {
+            return cfg.applet_last_cwd;
+        }
+        return cfg.last_cwd;
+    }
+    
+    void SetLastDevice(const std::string& dev) {
+        // Save to applet-specific setting in applet mode
+        if (GUI::IsAppletMode()) {
+            cfg.applet_last_device = dev;
+        } else {
+            cfg.last_device = dev;
+        }
+    }
+    
+    void SetLastCwd(const std::string& cwd) {
+        // Save to applet-specific setting in applet mode
+        if (GUI::IsAppletMode()) {
+            cfg.applet_last_cwd = cwd;
+        } else {
+            cfg.last_cwd = cwd;
+        }
     }
 }

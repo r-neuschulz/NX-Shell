@@ -1,12 +1,9 @@
-#include <cstdio>
 #include <cstring>
-#include <sys/stat.h>
 
 #include "config.hpp"
 #include "fs.hpp"
 #include "imgui.h"
 #include "language.hpp"
-#include "log.hpp"
 #include "popups.hpp"
 #include "selection.hpp"
 
@@ -28,16 +25,7 @@ namespace Popups {
             if (ImGui::Button(strings[lang][Lang::ReplaceButton], ImVec2(120, 0))) {
                 // Build destination path and delete existing file/directory first
                 std::string dest_path = FS::BuildPath(FS::GetCopyEntryFilename(), true);
-                
-                struct stat dest_stat = { 0 };
-                if (stat(dest_path.c_str(), std::addressof(dest_stat)) == 0) {
-                    // Delete the existing destination
-                    if (S_ISDIR(dest_stat.st_mode)) {
-                        FS::DeleteRecursive(dest_path);
-                    } else {
-                        remove(dest_path.c_str());
-                    }
-                }
+                FS::DeletePath(dest_path);
                 
                 bool ret = false;
                 if (is_move) {
@@ -52,9 +40,7 @@ namespace Popups {
                     copy = false;
                     
                     if (ret) {
-                        FS::GetDirList(device, cwd, data.entries);
-                        FS::PopulateMetadataCache(data.entries, data.metadata_cache);
-                        g_selection.Clear();
+                        FS::RefreshDirectory(data.entries, data.metadata_cache, true);
                         sort = -1;
                     }
                     
@@ -63,9 +49,7 @@ namespace Popups {
                 }
                 
                 if (ret) {
-                    FS::GetDirList(device, cwd, data.entries);
-                    FS::PopulateMetadataCache(data.entries, data.metadata_cache);
-                    g_selection.Clear();
+                    FS::RefreshDirectory(data.entries, data.metadata_cache, true);
                     sort = -1;
                 }
                 

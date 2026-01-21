@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 
+#include "bottombar.hpp"
 #include "config.hpp"
 #include "fs.hpp"
 #include "gui.hpp"
@@ -110,44 +111,29 @@ namespace TextReader {
         return TextReader::LoadFile(path, restore_offset);
     }
     
-    bool HandlePrev(void) {
-        bool ret = false;
+    // Navigate to adjacent text file (direction: -1 = prev, +1 = next)
+    static bool HandleNavigate(int direction) {
+        const int count = static_cast<int>(data.entries.size());
+        const int start = static_cast<int>(data.selected) + direction;
+        
+        // Bounds check
+        if (direction > 0 && data.selected >= static_cast<u64>(count))
+            return false;
         
         // Save current offset before navigating
         TextReader::SaveScrollOffset();
         
-        for (int i = data.selected - 1; i > 0; i--) {
-            std::string filename = data.entries[i].name;
-            if (filename.empty())
-                continue;
-            
-            if (!(ret = TextReader::HandleScroll(i, true)))  // restore_offset = true
-                continue;
-            else
-                break;
+        for (int i = start; direction > 0 ? i < count : i > 0; i += direction) {
+            if (TextReader::HandleScroll(i, true))  // restore_offset = true
+                return true;
         }
         
-        return ret;
+        return false;
     }
-    
-    bool HandleNext(void) {
-        bool ret = false;
-        
-        if (data.selected == data.entries.size())
-            return ret;
-        
-        // Save current offset before navigating
-        TextReader::SaveScrollOffset();
-        
-        for (unsigned int i = data.selected + 1; i < data.entries.size(); i++) {
-            if (!(ret = TextReader::HandleScroll(i, true)))  // restore_offset = true
-                continue;
-            else
-                break;
-        }
-        
-        return ret;
-    }
+
+    // Public API wrappers
+    bool HandlePrev(void) { return HandleNavigate(-1); }
+    bool HandleNext(void) { return HandleNavigate(+1); }
     
     void HandleControls(u64 &key, bool &properties) {
         if (key & HidNpadButton_X)
@@ -240,206 +226,27 @@ namespace TextReader {
 namespace Windows {
     static void DrawTextReaderBottomBar(void) {
         const int lang = Config::GetLang();
-        ImDrawList *draw_list = ImGui::GetForegroundDrawList();
         
-        // Bottom bar dimensions
-        const float button_bar_height = 45.0f;
-        const float button_radius = 12.0f;
-        const float hint_spacing = 20.0f;
-        const float display_w = static_cast<float>(GUI::display_width);
-        const float display_h = static_cast<float>(GUI::display_height);
+        // Left-aligned items (minus button for exit)
+        std::vector<BottomBar::HintItem> left_items = {
+            {BottomBar::ButtonType::Minus, strings[lang][Lang::HintExit]}
+        };
         
-        // Bar position at bottom of screen
-        const float bar_y = display_h - button_bar_height;
-        const float center_y = bar_y + button_bar_height * 0.5f;
+        // Right-aligned items
+        std::vector<BottomBar::HintItem> right_items = {
+            {BottomBar::ButtonType::CircleB, strings[lang][Lang::HintBack]},
+            {BottomBar::ButtonType::CircleY, strings[lang][Lang::HintHexMode], TextReader::IsHexMode()},
+            {BottomBar::ButtonType::CircleX, strings[lang][Lang::HintProperties]},
+            {BottomBar::ButtonType::ShoulderL, strings[lang][Lang::HintPrev]},
+            {BottomBar::ButtonType::ShoulderR, strings[lang][Lang::HintNext]},
+            {BottomBar::ButtonType::RightStick, "Scroll"}
+        };
         
-        // Theme-aware colors
-        const bool is_dark = GUI::IsCurrentThemeDark();
+        BottomBar::Config config;
+        config.use_foreground_draw_list = true;
+        config.draw_background = true;
         
-        // Draw semi-transparent background bar
-        const ImU32 bar_bg = is_dark ? IM_COL32(0, 0, 0, 180) : IM_COL32(240, 240, 245, 220);
-        draw_list->AddRectFilled(ImVec2(0, bar_y), ImVec2(display_w, display_h), bar_bg);
-        
-        // Button colors - use style-aware helpers from GUI module
-        const ImU32 color_b = GUI::GetButtonColorB();
-        const ImU32 color_x = GUI::GetButtonColorX();
-        const ImU32 color_text = GUI::GetButtonTextColor();
-        const ImU32 color_label = GUI::GetThemeLabelColor();
-        const ImU32 color_minus_bg = GUI::GetButtonColorMinus();
-        
-        // Shoulder button style dimensions
-        const float shoulder_width = 32.0f;
-        const float shoulder_height = 18.0f;
-        const float shoulder_chamfer = 6.0f;
-        const ImU32 color_shoulder = is_dark ? IM_COL32(100, 100, 100, 255) : IM_COL32(150, 150, 155, 255);
-        
-        // Right stick style (for scroll hint)
-        const float stick_radius = 10.0f;
-        const ImU32 color_dpad = is_dark ? IM_COL32(80, 80, 80, 255) : IM_COL32(140, 140, 145, 255);
-        
-        // Left side: (-) Quit with hold-to-close indicator
-        {
-            float left_x = 20.0f;
-            ImVec2 minus_center(left_x + button_radius, center_y);
-            
-            float hold_progress = 0.0f;
-            bool is_holding = GUI::IsHoldingToClose(hold_progress);
-            
-            draw_list->AddCircleFilled(minus_center, button_radius, color_minus_bg, 24);
-            
-            if (is_holding && hold_progress > 0.0f) {
-                const float arc_radius = button_radius + 3.0f;
-                const float start_angle = -IM_PI * 0.5f;
-                const float end_angle = start_angle + (hold_progress * IM_PI * 2.0f);
-                
-                const int num_segments = static_cast<int>(24 * hold_progress) + 1;
-                for (int i = 0; i < num_segments; i++) {
-                    float a1 = start_angle + (end_angle - start_angle) * (static_cast<float>(i) / num_segments);
-                    float a2 = start_angle + (end_angle - start_angle) * (static_cast<float>(i + 1) / num_segments);
-                    ImVec2 p1(minus_center.x + cosf(a1) * arc_radius, minus_center.y + sinf(a1) * arc_radius);
-                    ImVec2 p2(minus_center.x + cosf(a2) * arc_radius, minus_center.y + sinf(a2) * arc_radius);
-                    draw_list->AddLine(p1, p2, GUI::GetAccentColorU32(), 3.0f);
-                }
-            }
-            
-            const float minus_width = button_radius * 0.8f;
-            draw_list->AddLine(
-                ImVec2(minus_center.x - minus_width, minus_center.y),
-                ImVec2(minus_center.x + minus_width, minus_center.y),
-                color_text, 2.0f
-            );
-            
-            float label_x = left_x + button_radius * 2 + 6.0f;
-            ImU32 label_color = is_holding 
-                ? GUI::GetAccentColorU32WithAlpha(200 + static_cast<int>(55 * hold_progress))
-                : color_label;
-            draw_list->AddText(ImVec2(label_x, center_y - ImGui::GetTextLineHeight() * 0.5f), label_color, strings[lang][Lang::HintExit]);
-        }
-        
-        // Calculate total width of right-aligned hints
-        float total_width = 0.0f;
-        total_width += button_radius * 2 + 6.0f + ImGui::CalcTextSize(strings[lang][Lang::HintBack]).x + hint_spacing;
-        total_width += button_radius * 2 + 6.0f + ImGui::CalcTextSize(strings[lang][Lang::HintHexMode]).x + hint_spacing;  // Y button for hex
-        total_width += button_radius * 2 + 6.0f + ImGui::CalcTextSize(strings[lang][Lang::HintProperties]).x + hint_spacing;
-        total_width += shoulder_width + 6.0f + ImGui::CalcTextSize(strings[lang][Lang::HintPrev]).x + hint_spacing;
-        total_width += shoulder_width + 6.0f + ImGui::CalcTextSize(strings[lang][Lang::HintNext]).x + hint_spacing;
-        // Right stick for scroll
-        total_width += stick_radius * 2 + 6.0f + ImGui::CalcTextSize("Scroll").x;
-        
-        float x_offset = display_w - total_width - 20.0f;
-        
-        // Draw B button (Back)
-        {
-            ImVec2 center(x_offset + button_radius, center_y);
-            draw_list->AddCircleFilled(center, button_radius, color_b, 24);
-            ImVec2 text_size = ImGui::CalcTextSize("B");
-            draw_list->AddText(ImVec2(center.x - text_size.x * 0.5f + 1.0f, center.y - text_size.y * 0.5f), color_text, "B");
-            float label_x = x_offset + button_radius * 2 + 6.0f;
-            draw_list->AddText(ImVec2(label_x, center_y - ImGui::GetTextLineHeight() * 0.5f), color_label, strings[lang][Lang::HintBack]);
-            x_offset = label_x + ImGui::CalcTextSize(strings[lang][Lang::HintBack]).x + hint_spacing;
-        }
-        
-        // Draw Y button (Hex Mode toggle)
-        {
-            const ImU32 color_y = GUI::GetButtonColorY();
-            ImVec2 center(x_offset + button_radius, center_y);
-            
-            // Draw filled accent ring when hex mode is active
-            if (TextReader::IsHexMode()) {
-                const float arc_radius = button_radius + 3.0f;
-                draw_list->AddCircle(center, arc_radius, GUI::GetAccentColorU32(), 24, 3.0f);
-            }
-            
-            // Draw Y button
-            draw_list->AddCircleFilled(center, button_radius, color_y, 24);
-            
-            // Draw "Y" text centered in the circle
-            ImVec2 text_size = ImGui::CalcTextSize("Y");
-            draw_list->AddText(ImVec2(center.x - text_size.x * 0.5f + 1.0f, center.y - text_size.y * 0.5f), color_text, "Y");
-            
-            float label_x = x_offset + button_radius * 2 + 6.0f;
-            ImU32 hex_label_color = TextReader::IsHexMode() ? GUI::GetAccentColorU32() : color_label;
-            draw_list->AddText(ImVec2(label_x, center_y - ImGui::GetTextLineHeight() * 0.5f), hex_label_color, strings[lang][Lang::HintHexMode]);
-            x_offset = label_x + ImGui::CalcTextSize(strings[lang][Lang::HintHexMode]).x + hint_spacing;
-        }
-        
-        // Draw X button (Properties)
-        {
-            ImVec2 center(x_offset + button_radius, center_y);
-            draw_list->AddCircleFilled(center, button_radius, color_x, 24);
-            ImVec2 text_size = ImGui::CalcTextSize("X");
-            draw_list->AddText(ImVec2(center.x - text_size.x * 0.5f + 1.0f, center.y - text_size.y * 0.5f), color_text, "X");
-            float label_x = x_offset + button_radius * 2 + 6.0f;
-            draw_list->AddText(ImVec2(label_x, center_y - ImGui::GetTextLineHeight() * 0.5f), color_label, strings[lang][Lang::HintProperties]);
-            x_offset = label_x + ImGui::CalcTextSize(strings[lang][Lang::HintProperties]).x + hint_spacing;
-        }
-        
-        // Draw L button (Prev)
-        {
-            float btn_y = center_y - shoulder_height * 0.5f;
-            ImVec2 pts_l[5] = {
-                ImVec2(x_offset + shoulder_chamfer, btn_y),
-                ImVec2(x_offset + shoulder_width, btn_y),
-                ImVec2(x_offset + shoulder_width, btn_y + shoulder_height),
-                ImVec2(x_offset, btn_y + shoulder_height),
-                ImVec2(x_offset, btn_y + shoulder_chamfer)
-            };
-            draw_list->AddConvexPolyFilled(pts_l, 5, color_shoulder);
-            
-            ImVec2 text_size = ImGui::CalcTextSize("L");
-            draw_list->AddText(ImVec2(x_offset + shoulder_width * 0.5f - text_size.x * 0.5f, center_y - text_size.y * 0.5f), color_text, "L");
-            float label_x = x_offset + shoulder_width + 6.0f;
-            draw_list->AddText(ImVec2(label_x, center_y - ImGui::GetTextLineHeight() * 0.5f), color_label, strings[lang][Lang::HintPrev]);
-            x_offset = label_x + ImGui::CalcTextSize(strings[lang][Lang::HintPrev]).x + hint_spacing;
-        }
-        
-        // Draw R button (Next)
-        {
-            float btn_y = center_y - shoulder_height * 0.5f;
-            ImVec2 pts_r[5] = {
-                ImVec2(x_offset, btn_y),
-                ImVec2(x_offset + shoulder_width - shoulder_chamfer, btn_y),
-                ImVec2(x_offset + shoulder_width, btn_y + shoulder_chamfer),
-                ImVec2(x_offset + shoulder_width, btn_y + shoulder_height),
-                ImVec2(x_offset, btn_y + shoulder_height)
-            };
-            draw_list->AddConvexPolyFilled(pts_r, 5, color_shoulder);
-            
-            ImVec2 text_size = ImGui::CalcTextSize("R");
-            draw_list->AddText(ImVec2(x_offset + shoulder_width * 0.5f - text_size.x * 0.5f, center_y - text_size.y * 0.5f), color_text, "R");
-            float label_x = x_offset + shoulder_width + 6.0f;
-            draw_list->AddText(ImVec2(label_x, center_y - ImGui::GetTextLineHeight() * 0.5f), color_label, strings[lang][Lang::HintNext]);
-            x_offset = label_x + ImGui::CalcTextSize(strings[lang][Lang::HintNext]).x + hint_spacing;
-        }
-        
-        // Draw Right Stick (Scroll) - circle with vertical arrows
-        {
-            const float stick_radius = 10.0f;
-            ImVec2 stick_center(x_offset + stick_radius, center_y);
-            
-            // Draw stick circle outline
-            draw_list->AddCircle(stick_center, stick_radius, color_dpad, 16, 2.0f);
-            
-            // Draw small up/down arrows inside the circle
-            const float arrow_size = 4.0f;
-            // Up arrow
-            draw_list->AddTriangleFilled(
-                ImVec2(stick_center.x, stick_center.y - arrow_size - 1.0f),
-                ImVec2(stick_center.x - arrow_size * 0.6f, stick_center.y - 1.0f),
-                ImVec2(stick_center.x + arrow_size * 0.6f, stick_center.y - 1.0f),
-                color_dpad
-            );
-            // Down arrow
-            draw_list->AddTriangleFilled(
-                ImVec2(stick_center.x, stick_center.y + arrow_size + 1.0f),
-                ImVec2(stick_center.x - arrow_size * 0.6f, stick_center.y + 1.0f),
-                ImVec2(stick_center.x + arrow_size * 0.6f, stick_center.y + 1.0f),
-                color_dpad
-            );
-            
-            float label_x = x_offset + stick_radius * 2 + 6.0f;
-            draw_list->AddText(ImVec2(label_x, center_y - ImGui::GetTextLineHeight() * 0.5f), color_label, "Scroll");
-        }
+        BottomBar::Draw(config, left_items, right_items);
     }
     
     // Helper function to render hex view with virtual scrolling for performance
@@ -601,32 +408,7 @@ namespace Windows {
         
         // Draw filename toast overlay (when enabled in settings)
         if (cfg.image_filename) {
-            ImDrawList *draw_list = ImGui::GetForegroundDrawList();
-            
-            const char* filename = data.entries[data.selected].name;
-            ImVec2 text_size = ImGui::CalcTextSize(filename);
-            
-            const float padding_x = 10.0f;
-            const float padding_y = 6.0f;
-            const float toast_x = 2.0f;
-            const float toast_y = 2.0f;
-            const float toast_w = text_size.x + padding_x * 2;
-            const float toast_h = text_size.y + padding_y * 2;
-            
-            const bool is_dark = GUI::IsCurrentThemeDark();
-            ImU32 bg_color = is_dark ? IM_COL32(0, 0, 0, 180) : IM_COL32(255, 255, 255, 220);
-            ImU32 text_color = is_dark ? IM_COL32(255, 255, 255, 255) : IM_COL32(0, 0, 0, 255);
-            
-            draw_list->AddRectFilled(
-                ImVec2(toast_x, toast_y), 
-                ImVec2(toast_x + toast_w, toast_y + toast_h), 
-                bg_color, 6.0f
-            );
-            draw_list->AddText(
-                ImVec2(toast_x + padding_x, toast_y + padding_y), 
-                text_color, 
-                filename
-            );
+            Toast::DrawFilename(data.entries[data.selected].name);
         }
         
         if (properties)

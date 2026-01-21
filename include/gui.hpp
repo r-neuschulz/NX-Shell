@@ -16,6 +16,9 @@ namespace GUI {
     // Returns true if console is docked (1080p), false if handheld (720p)
     bool IsDocked(void);
     
+    // Returns true if running in applet mode (limited memory, launched from album)
+    bool IsAppletMode(void);
+    
     // Updates display dimensions based on current dock state
     void UpdateDisplayDimensions(void);
     
@@ -63,4 +66,14 @@ namespace GUI {
     ImU32 GetButtonColorPlus(void);   // Gray (same for both styles)
     ImU32 GetButtonColorMinus(void);  // Gray (same for both styles)
     ImU32 GetButtonTextColor(void);   // White (colored) or contrasting color (mono)
+}
+
+// Toast overlay drawing utilities
+namespace Toast {
+    // Draw a filename toast at top-left corner (for image/text viewer filename display)
+    void DrawFilename(const char* text);
+    
+    // Draw a centered notification toast near bottom (for temporary messages like "Press ZR to exit fullscreen")
+    // alpha: 0.0-1.0 for fade-out effects
+    void DrawCentered(const char* text, float alpha = 1.0f);
 }

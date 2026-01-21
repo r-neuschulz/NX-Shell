@@ -101,9 +101,9 @@ namespace Services {
         Config::Load();
         Log::Init();
         
-        // Socket/nxlink only if dev_options enabled (for console output via nxlink)
+        // Socket/nxlink only if logging enabled (for console output via nxlink)
         // Normal users skip this entirely - saves ~60-70ms
-        if (cfg.dev_options) {
+        if (Config::IsLoggingEnabled()) {
             Net::InitSocketWithNxlink();
         }
         LogTiming("Config/Log/Socket init", phase_tick);
@@ -275,8 +275,8 @@ int main(int argc, char* argv[]) {
     if (previous_crash) {
         // Previous run crashed - reset to safe defaults
         Log::Error("Crash marker detected - previous run crashed. Resetting to safe defaults.\n");
-        cfg.last_device = "";  // Reset to partition root
-        cfg.last_cwd = "/";
+        Config::SetLastDevice("");  // Reset to partition root
+        Config::SetLastCwd("/");
         Config::Save(cfg);
     }
     

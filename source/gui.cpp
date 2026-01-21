@@ -54,6 +54,13 @@ namespace GUI {
         return s_operation_mode == AppletOperationMode_Console;
     }
     
+    bool IsAppletMode(void) {
+        AppletType type = appletGetAppletType();
+        // Application type means full memory access (title override or installed NSP)
+        // Any other type (LibraryApplet, SystemApplet, etc.) means applet mode with limited memory
+        return type != AppletType_Application;
+    }
+    
     // Recreate the EGL surface for new dimensions (needed for runtime resolution changes)
     static bool RecreateSurface(void) {
         if (!s_display || !s_window || !s_config)
@@ -102,7 +109,7 @@ namespace GUI {
         int target_width = 1280;
         int target_height = 720;
         
-        switch (cfg.resolution_mode) {
+        switch (Config::GetEffectiveResolutionMode()) {
             case ResolutionMode_Auto:
                 // Auto-detect based on dock state
                 if (IsDocked()) {
@@ -253,7 +260,7 @@ namespace GUI {
     }
 
     bool IsCurrentThemeDark(void) {
-        switch (cfg.theme_mode) {
+        switch (Config::GetEffectiveThemeMode()) {
             case ThemeMode_Auto:
                 return IsSystemThemeDark();
             case ThemeMode_Dark:
@@ -422,12 +429,13 @@ namespace GUI {
         return true;
     }
     
-    // Button color functions - returns colors based on cfg.button_style
+    // Button color functions - returns colors based on effective button style (respects applet mode)
     ImU32 GetButtonColorA(void) {
-        if (cfg.button_style == ButtonStyle_Accent) {
+        int style = Config::GetEffectiveButtonStyle();
+        if (style == ButtonStyle_Accent) {
             return GetAccentColorU32();
         }
-        if (cfg.button_style == ButtonStyle_Mono) {
+        if (style == ButtonStyle_Mono) {
             return IsCurrentThemeDark() 
                 ? IM_COL32(180, 180, 180, 255)   // Light gray on dark
                 : IM_COL32(80, 80, 80, 255);     // Dark gray on light
@@ -436,10 +444,11 @@ namespace GUI {
     }
     
     ImU32 GetButtonColorB(void) {
-        if (cfg.button_style == ButtonStyle_Accent) {
+        int style = Config::GetEffectiveButtonStyle();
+        if (style == ButtonStyle_Accent) {
             return GetAccentColorU32();
         }
-        if (cfg.button_style == ButtonStyle_Mono) {
+        if (style == ButtonStyle_Mono) {
             return IsCurrentThemeDark() 
                 ? IM_COL32(180, 180, 180, 255)
                 : IM_COL32(80, 80, 80, 255);
@@ -448,10 +457,11 @@ namespace GUI {
     }
     
     ImU32 GetButtonColorX(void) {
-        if (cfg.button_style == ButtonStyle_Accent) {
+        int style = Config::GetEffectiveButtonStyle();
+        if (style == ButtonStyle_Accent) {
             return GetAccentColorU32();
         }
-        if (cfg.button_style == ButtonStyle_Mono) {
+        if (style == ButtonStyle_Mono) {
             return IsCurrentThemeDark() 
                 ? IM_COL32(180, 180, 180, 255)
                 : IM_COL32(80, 80, 80, 255);
@@ -460,10 +470,11 @@ namespace GUI {
     }
     
     ImU32 GetButtonColorY(void) {
-        if (cfg.button_style == ButtonStyle_Accent) {
+        int style = Config::GetEffectiveButtonStyle();
+        if (style == ButtonStyle_Accent) {
             return GetAccentColorU32();
         }
-        if (cfg.button_style == ButtonStyle_Mono) {
+        if (style == ButtonStyle_Mono) {
             return IsCurrentThemeDark() 
                 ? IM_COL32(180, 180, 180, 255)
                 : IM_COL32(80, 80, 80, 255);
@@ -486,13 +497,14 @@ namespace GUI {
     }
     
     ImU32 GetButtonTextColor(void) {
+        int style = Config::GetEffectiveButtonStyle();
         // Text on buttons - white for colored/accent style, contrasting for mono
-        if (cfg.button_style == ButtonStyle_Mono) {
+        if (style == ButtonStyle_Mono) {
             return IsCurrentThemeDark() 
                 ? IM_COL32(40, 40, 40, 255)      // Dark text on light buttons (dark theme)
                 : IM_COL32(240, 240, 240, 255);  // Light text on dark buttons (light theme)
         }
-        if (cfg.button_style == ButtonStyle_Accent) {
+        if (style == ButtonStyle_Accent) {
             // Calculate luminance of accent color to determine text color
             float luminance = 0.299f * cfg.accent_color[0] + 0.587f * cfg.accent_color[1] + 0.114f * cfg.accent_color[2];
             return luminance > 0.5f 
@@ -829,7 +841,7 @@ namespace GUI {
     }
 
     void RenderStatsOverlay(void) {
-        if (!cfg.show_stats) {
+        if (!Config::IsStatsEnabled()) {
             return;
         }
         
@@ -938,5 +950,68 @@ namespace GUI {
             }
         }
         ImGui::End();
+    }
+}
+
+namespace Toast {
+    void DrawFilename(const char* text) {
+        ImDrawList *draw_list = ImGui::GetForegroundDrawList();
+        
+        ImVec2 text_size = ImGui::CalcTextSize(text);
+        
+        // Toast positioned at top-left with 2px offset
+        const float padding_x = 10.0f;
+        const float padding_y = 6.0f;
+        const float toast_x = 2.0f;
+        const float toast_y = 2.0f;
+        const float toast_w = text_size.x + padding_x * 2;
+        const float toast_h = text_size.y + padding_y * 2;
+        
+        // Theme-aware colors
+        const bool is_dark = GUI::IsCurrentThemeDark();
+        ImU32 bg_color = is_dark ? IM_COL32(0, 0, 0, 180) : IM_COL32(255, 255, 255, 220);
+        ImU32 text_color = is_dark ? IM_COL32(255, 255, 255, 255) : IM_COL32(0, 0, 0, 255);
+        
+        draw_list->AddRectFilled(
+            ImVec2(toast_x, toast_y), 
+            ImVec2(toast_x + toast_w, toast_y + toast_h), 
+            bg_color, 6.0f
+        );
+        draw_list->AddText(
+            ImVec2(toast_x + padding_x, toast_y + padding_y), 
+            text_color, 
+            text
+        );
+    }
+    
+    void DrawCentered(const char* text, float alpha) {
+        ImDrawList *draw_list = ImGui::GetForegroundDrawList();
+        
+        const float display_w = static_cast<float>(GUI::display_width);
+        const float display_h = static_cast<float>(GUI::display_height);
+        
+        ImVec2 text_size = ImGui::CalcTextSize(text);
+        
+        // Toast background with padding, centered near bottom
+        const float padding_x = 20.0f;
+        const float padding_y = 10.0f;
+        const float toast_w = text_size.x + padding_x * 2;
+        const float toast_h = text_size.y + padding_y * 2;
+        const float toast_x = (display_w - toast_w) * 0.5f;
+        const float toast_y = display_h - toast_h - 60.0f;  // Position near bottom
+        
+        ImU32 bg_color = IM_COL32(0, 0, 0, static_cast<int>(200 * alpha));
+        ImU32 text_color = IM_COL32(255, 255, 255, static_cast<int>(255 * alpha));
+        
+        draw_list->AddRectFilled(
+            ImVec2(toast_x, toast_y), 
+            ImVec2(toast_x + toast_w, toast_y + toast_h), 
+            bg_color, 8.0f
+        );
+        draw_list->AddText(
+            ImVec2(toast_x + padding_x, toast_y + padding_y), 
+            text_color, 
+            text
+        );
     }
 }

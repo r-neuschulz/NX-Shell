@@ -1,5 +1,6 @@
 #include <string>
 
+#include "bottombar.hpp"
 #include "config.hpp"
 #include "gui.hpp"
 #include "imgui.h"
@@ -62,63 +63,40 @@ namespace ImageViewer {
         ProcessDeferredDeletions();
     }
 
-    // Find the index of the previous image file (cycling to the end if needed)
-    int FindPrevImageIndex(int from_index) {
-        // Search backwards from current position
-        for (int i = from_index - 1; i >= 0; i--) {
-            if (data.entries[i].type != FsDirEntryType_Dir) {
-                std::string filename = data.entries[i].name;
-                if (!filename.empty()) {
-                    FileType ft = FS::GetFileType(filename.c_str());
-                    if (ft == FileTypeImage)
-                        return i;
-                }
-            }
+    // Helper to check if an entry is a valid image file
+    static bool IsImageEntry(int index) {
+        if (index < 0 || index >= static_cast<int>(data.entries.size()))
+            return false;
+        if (data.entries[index].type == FsDirEntryType_Dir)
+            return false;
+        const char* name = data.entries[index].name;
+        return name[0] != '\0' && FS::GetFileType(name) == FileTypeImage;
+    }
+
+    // Find adjacent image file in given direction (direction: -1 = prev, +1 = next)
+    static int FindAdjacentImageIndex(int from_index, int direction) {
+        const int count = static_cast<int>(data.entries.size());
+        
+        // Search in direction from current position
+        for (int i = from_index + direction; direction > 0 ? i < count : i >= 0; i += direction) {
+            if (IsImageEntry(i))
+                return i;
         }
         
-        // Wrap around: search from the end
-        for (int i = static_cast<int>(data.entries.size()) - 1; i > from_index; i--) {
-            if (data.entries[i].type != FsDirEntryType_Dir) {
-                std::string filename = data.entries[i].name;
-                if (!filename.empty()) {
-                    FileType ft = FS::GetFileType(filename.c_str());
-                    if (ft == FileTypeImage)
-                        return i;
-                }
-            }
+        // Wrap around: search from opposite end
+        int wrap_start = direction > 0 ? 0 : count - 1;
+        int wrap_end = from_index;
+        for (int i = wrap_start; direction > 0 ? i < wrap_end : i > wrap_end; i += direction) {
+            if (IsImageEntry(i))
+                return i;
         }
         
         return -1;  // No other images found
     }
 
-    // Find the index of the next image file (cycling to the beginning if needed)
-    int FindNextImageIndex(int from_index) {
-        // Search forwards from current position
-        for (unsigned int i = from_index + 1; i < data.entries.size(); i++) {
-            if (data.entries[i].type != FsDirEntryType_Dir) {
-                std::string filename = data.entries[i].name;
-                if (!filename.empty()) {
-                    FileType ft = FS::GetFileType(filename.c_str());
-                    if (ft == FileTypeImage)
-                        return static_cast<int>(i);
-                }
-            }
-        }
-        
-        // Wrap around: search from the beginning
-        for (int i = 0; i < from_index; i++) {
-            if (data.entries[i].type != FsDirEntryType_Dir) {
-                std::string filename = data.entries[i].name;
-                if (!filename.empty()) {
-                    FileType ft = FS::GetFileType(filename.c_str());
-                    if (ft == FileTypeImage)
-                        return i;
-                }
-            }
-        }
-        
-        return -1;  // No other images found
-    }
+    // Public API wrappers
+    int FindPrevImageIndex(int from_index) { return FindAdjacentImageIndex(from_index, -1); }
+    int FindNextImageIndex(int from_index) { return FindAdjacentImageIndex(from_index, +1); }
 
     // Pre-load ONE adjacent image (called only when idle, alternates between prev/next)
     void PreloadAdjacentImages(void) {
@@ -182,31 +160,40 @@ namespace ImageViewer {
         return false;
     }
 
-    bool HandlePrev(void) {
-        int prev_idx = FindPrevImageIndex(static_cast<int>(data.selected));
+    // Navigate to adjacent image (direction: -1 = prev, +1 = next)
+    static bool HandleNavigate(int direction) {
+        int target_idx = FindAdjacentImageIndex(static_cast<int>(data.selected), direction);
         
-        if (prev_idx < 0)
+        if (target_idx < 0)
             return false;  // No other images, stay on current
         
         // Reset pre-load delay counter
         s_frames_since_navigation = 0;
         
+        // Select source/opposite preload buffers based on direction
+        // When going prev (-1): source = textures_prev, opposite = textures_next
+        // When going next (+1): source = textures_next, opposite = textures_prev
+        auto& source_textures = direction < 0 ? data.textures_prev : data.textures_next;
+        auto& opposite_textures = direction < 0 ? data.textures_next : data.textures_prev;
+        int& source_preload_index = direction < 0 ? data.preload_prev_index : data.preload_next_index;
+        int& opposite_preload_index = direction < 0 ? data.preload_next_index : data.preload_prev_index;
+        
         // Check if we have this image pre-loaded and ready
-        if (prev_idx == data.preload_prev_index && !data.textures_prev.empty() && data.textures_prev[0].id != 0) {
-            // Hand over current image to become next preload (avoid re-decoding)
-            // Free the old next preload first (it's now 2 images ahead, stale)
-            FreeTextureVector(data.textures_next);
+        if (target_idx == source_preload_index && !source_textures.empty() && source_textures[0].id != 0) {
+            // Hand over current image to become opposite preload (avoid re-decoding)
+            // Free the old opposite preload first (it's now 2 images away, stale)
+            FreeTextureVector(opposite_textures);
             
-            // Move current -> next preload (the image we just left is now "next")
-            data.textures_next = std::move(data.textures);
-            data.preload_next_index = static_cast<int>(data.selected);
+            // Move current -> opposite preload (the image we just left)
+            opposite_textures = std::move(data.textures);
+            opposite_preload_index = static_cast<int>(data.selected);
             
-            // Move prev preload -> current
-            data.textures = std::move(data.textures_prev);
-            data.textures_prev.clear();
-            data.preload_prev_index = -1;
+            // Move source preload -> current
+            data.textures = std::move(source_textures);
+            source_textures.clear();
+            source_preload_index = -1;
             
-            data.selected = prev_idx;
+            data.selected = target_idx;
             data.frame_count = 0;
             return true;
         }
@@ -214,24 +201,21 @@ namespace ImageViewer {
         // Pre-load not available - load directly (keeps current image visible during load)
         std::vector<Tex> new_textures;
         char fs_path[FS_MAX_PATH + 1];
-        if (std::snprintf(fs_path, FS_MAX_PATH, "%s/%s", cwd.c_str(), data.entries[prev_idx].name) > 0) {
+        if (std::snprintf(fs_path, FS_MAX_PATH, "%s/%s", cwd.c_str(), data.entries[target_idx].name) > 0) {
             if (Textures::LoadImageFile(fs_path, new_textures)) {
-                // Hand over current image to become next preload (avoid re-decoding)
-                // Free the old next preload first
-                FreeTextureVector(data.textures_next);
-                
-                // Move current -> next preload
-                data.textures_next = std::move(data.textures);
-                data.preload_next_index = static_cast<int>(data.selected);
+                // Hand over current image to become opposite preload (avoid re-decoding)
+                FreeTextureVector(opposite_textures);
+                opposite_textures = std::move(data.textures);
+                opposite_preload_index = static_cast<int>(data.selected);
                 
                 // Set new current
                 data.textures = std::move(new_textures);
                 
-                // Clear prev preload (will be loaded by PreloadAdjacentImages)
-                FreeTextureVector(data.textures_prev);
-                data.preload_prev_index = -1;
+                // Clear source preload (will be loaded by PreloadAdjacentImages)
+                FreeTextureVector(source_textures);
+                source_preload_index = -1;
                 
-                data.selected = prev_idx;
+                data.selected = target_idx;
                 data.frame_count = 0;
                 return true;
             }
@@ -240,63 +224,9 @@ namespace ImageViewer {
         return false;
     }
 
-    bool HandleNext(void) {
-        int next_idx = FindNextImageIndex(static_cast<int>(data.selected));
-        
-        if (next_idx < 0)
-            return false;  // No other images, stay on current
-        
-        // Reset pre-load delay counter
-        s_frames_since_navigation = 0;
-        
-        // Check if we have this image pre-loaded and ready
-        if (next_idx == data.preload_next_index && !data.textures_next.empty() && data.textures_next[0].id != 0) {
-            // Hand over current image to become prev preload (avoid re-decoding)
-            // Free the old prev preload first (it's now 2 images behind, stale)
-            FreeTextureVector(data.textures_prev);
-            
-            // Move current -> prev preload (the image we just left is now "prev")
-            data.textures_prev = std::move(data.textures);
-            data.preload_prev_index = static_cast<int>(data.selected);
-            
-            // Move next preload -> current
-            data.textures = std::move(data.textures_next);
-            data.textures_next.clear();
-            data.preload_next_index = -1;
-            
-            data.selected = next_idx;
-            data.frame_count = 0;
-            return true;
-        }
-        
-        // Pre-load not available - load directly (keeps current image visible during load)
-        std::vector<Tex> new_textures;
-        char fs_path[FS_MAX_PATH + 1];
-        if (std::snprintf(fs_path, FS_MAX_PATH, "%s/%s", cwd.c_str(), data.entries[next_idx].name) > 0) {
-            if (Textures::LoadImageFile(fs_path, new_textures)) {
-                // Hand over current image to become prev preload (avoid re-decoding)
-                // Free the old prev preload first
-                FreeTextureVector(data.textures_prev);
-                
-                // Move current -> prev preload
-                data.textures_prev = std::move(data.textures);
-                data.preload_prev_index = static_cast<int>(data.selected);
-                
-                // Set new current
-                data.textures = std::move(new_textures);
-                
-                // Clear next preload (will be loaded by PreloadAdjacentImages)
-                FreeTextureVector(data.textures_next);
-                data.preload_next_index = -1;
-                
-                data.selected = next_idx;
-                data.frame_count = 0;
-                return true;
-            }
-        }
-        
-        return false;
-    }
+    // Public API wrappers
+    bool HandlePrev(void) { return HandleNavigate(-1); }
+    bool HandleNext(void) { return HandleNavigate(+1); }
 
     void HandleControls(u64 &key, bool &properties) {
         if (key & HidNpadButton_X)
@@ -365,216 +295,28 @@ namespace ImageViewer {
 namespace Windows {
     static void DrawImageViewerBottomBar(void) {
         const int lang = Config::GetLang();
-        ImDrawList *draw_list = ImGui::GetForegroundDrawList();
         
-        // Bottom bar dimensions
-        const float button_bar_height = 45.0f;
-        const float button_radius = 12.0f;
-        const float hint_spacing = 20.0f;
-        const float display_w = static_cast<float>(GUI::display_width);
-        const float display_h = static_cast<float>(GUI::display_height);
+        // Left-aligned items (minus button for exit)
+        std::vector<BottomBar::HintItem> left_items = {
+            {BottomBar::ButtonType::Minus, strings[lang][Lang::HintExit]}
+        };
         
-        // Bar position at bottom of screen
-        const float bar_y = display_h - button_bar_height;
-        const float center_y = bar_y + button_bar_height * 0.5f;
+        // Right-aligned items
+        std::vector<BottomBar::HintItem> right_items = {
+            {BottomBar::ButtonType::CircleB, strings[lang][Lang::HintBack]},
+            {BottomBar::ButtonType::CircleX, strings[lang][Lang::HintProperties]},
+            {BottomBar::ButtonType::ShoulderL, strings[lang][Lang::HintPrev]},
+            {BottomBar::ButtonType::ShoulderR, strings[lang][Lang::HintNext]},
+            {BottomBar::ButtonType::DPadUp, strings[lang][Lang::HintZoomIn]},
+            {BottomBar::ButtonType::DPadDown, strings[lang][Lang::HintZoomOut]},
+            {BottomBar::ButtonType::ShoulderZR, strings[lang][Lang::HintFullscreen], data.image_fullscreen}
+        };
         
-        // Theme-aware colors
-        const bool is_dark = GUI::IsCurrentThemeDark();
+        BottomBar::Config config;
+        config.use_foreground_draw_list = true;
+        config.draw_background = true;
         
-        // Draw semi-transparent background bar (dark or light based on theme)
-        const ImU32 bar_bg = is_dark ? IM_COL32(0, 0, 0, 180) : IM_COL32(240, 240, 245, 220);
-        draw_list->AddRectFilled(ImVec2(0, bar_y), ImVec2(display_w, display_h), bar_bg);
-        
-        // Button colors - use style-aware helpers from GUI module
-        const ImU32 color_b = GUI::GetButtonColorB();
-        const ImU32 color_x = GUI::GetButtonColorX();
-        const ImU32 color_text = GUI::GetButtonTextColor();
-        const ImU32 color_label = GUI::GetThemeLabelColor();
-        const ImU32 color_minus_bg = GUI::GetButtonColorMinus();
-        
-        // Shoulder button style dimensions (matching file browser ZR button)
-        const float shoulder_width = 32.0f;
-        const float shoulder_height = 18.0f;
-        const float shoulder_chamfer = 6.0f;
-        const ImU32 color_shoulder = is_dark ? IM_COL32(100, 100, 100, 255) : IM_COL32(150, 150, 155, 255);
-        
-        // DPad style (for zoom hints)
-        const float dpad_size = 10.0f;
-        const ImU32 color_dpad = is_dark ? IM_COL32(80, 80, 80, 255) : IM_COL32(140, 140, 145, 255);
-        
-        // ZR button dimensions
-        const float zr_width = 32.0f;
-        const float zr_height = 18.0f;
-        const float zr_chamfer = 6.0f;
-        
-        // Left side: (-) Quit with hold-to-close indicator
-        {
-            float left_x = 20.0f;
-            ImVec2 minus_center(left_x + button_radius, center_y);
-            
-            // Check if we're holding to close
-            float hold_progress = 0.0f;
-            bool is_holding = GUI::IsHoldingToClose(hold_progress);
-            
-            // Draw background circle
-            draw_list->AddCircleFilled(minus_center, button_radius, color_minus_bg, 24);
-            
-            // Draw progress arc when holding
-            if (is_holding && hold_progress > 0.0f) {
-                const float arc_radius = button_radius + 3.0f;
-                const float start_angle = -IM_PI * 0.5f;
-                const float end_angle = start_angle + (hold_progress * IM_PI * 2.0f);
-                
-                const int num_segments = static_cast<int>(24 * hold_progress) + 1;
-                for (int i = 0; i < num_segments; i++) {
-                    float a1 = start_angle + (end_angle - start_angle) * (static_cast<float>(i) / num_segments);
-                    float a2 = start_angle + (end_angle - start_angle) * (static_cast<float>(i + 1) / num_segments);
-                    ImVec2 p1(minus_center.x + cosf(a1) * arc_radius, minus_center.y + sinf(a1) * arc_radius);
-                    ImVec2 p2(minus_center.x + cosf(a2) * arc_radius, minus_center.y + sinf(a2) * arc_radius);
-                    draw_list->AddLine(p1, p2, GUI::GetAccentColorU32(), 3.0f);
-                }
-            }
-            
-            // Draw minus sign
-            const float minus_width = button_radius * 0.8f;
-            draw_list->AddLine(
-                ImVec2(minus_center.x - minus_width, minus_center.y),
-                ImVec2(minus_center.x + minus_width, minus_center.y),
-                color_text, 2.0f
-            );
-            
-            // Draw label
-            float label_x = left_x + button_radius * 2 + 6.0f;
-            ImU32 label_color = is_holding 
-                ? GUI::GetAccentColorU32WithAlpha(200 + static_cast<int>(55 * hold_progress))
-                : color_label;
-            draw_list->AddText(ImVec2(label_x, center_y - ImGui::GetTextLineHeight() * 0.5f), label_color, strings[lang][Lang::HintExit]);
-        }
-        
-        // Calculate total width of right-aligned hints
-        float total_width = 0.0f;
-        
-        total_width += button_radius * 2 + 6.0f + ImGui::CalcTextSize(strings[lang][Lang::HintBack]).x + hint_spacing;
-        total_width += button_radius * 2 + 6.0f + ImGui::CalcTextSize(strings[lang][Lang::HintProperties]).x + hint_spacing;
-        total_width += shoulder_width + 6.0f + ImGui::CalcTextSize(strings[lang][Lang::HintPrev]).x + hint_spacing;
-        total_width += shoulder_width + 6.0f + ImGui::CalcTextSize(strings[lang][Lang::HintNext]).x + hint_spacing;
-        total_width += dpad_size * 2 + 6.0f + ImGui::CalcTextSize(strings[lang][Lang::HintZoomIn]).x + hint_spacing;
-        total_width += dpad_size * 2 + 6.0f + ImGui::CalcTextSize(strings[lang][Lang::HintZoomOut]).x + hint_spacing;
-        total_width += zr_width + 6.0f + ImGui::CalcTextSize(strings[lang][Lang::HintFullscreen]).x;
-        
-        float x_offset = display_w - total_width - 20.0f;
-        
-        // Draw B button (Back)
-        {
-            ImVec2 center(x_offset + button_radius, center_y);
-            draw_list->AddCircleFilled(center, button_radius, color_b, 24);
-            ImVec2 text_size = ImGui::CalcTextSize("B");
-            draw_list->AddText(ImVec2(center.x - text_size.x * 0.5f + 1.0f, center.y - text_size.y * 0.5f), color_text, "B");
-            float label_x = x_offset + button_radius * 2 + 6.0f;
-            draw_list->AddText(ImVec2(label_x, center_y - ImGui::GetTextLineHeight() * 0.5f), color_label, strings[lang][Lang::HintBack]);
-            x_offset = label_x + ImGui::CalcTextSize(strings[lang][Lang::HintBack]).x + hint_spacing;
-        }
-        
-        // Draw X button (Properties)
-        {
-            ImVec2 center(x_offset + button_radius, center_y);
-            draw_list->AddCircleFilled(center, button_radius, color_x, 24);
-            ImVec2 text_size = ImGui::CalcTextSize("X");
-            draw_list->AddText(ImVec2(center.x - text_size.x * 0.5f + 1.0f, center.y - text_size.y * 0.5f), color_text, "X");
-            float label_x = x_offset + button_radius * 2 + 6.0f;
-            draw_list->AddText(ImVec2(label_x, center_y - ImGui::GetTextLineHeight() * 0.5f), color_label, strings[lang][Lang::HintProperties]);
-            x_offset = label_x + ImGui::CalcTextSize(strings[lang][Lang::HintProperties]).x + hint_spacing;
-        }
-        
-        // Draw L button (Prev)
-        {
-            float btn_y = center_y - shoulder_height * 0.5f;
-            ImVec2 pts_l[5] = {
-                ImVec2(x_offset + shoulder_chamfer, btn_y),
-                ImVec2(x_offset + shoulder_width, btn_y),
-                ImVec2(x_offset + shoulder_width, btn_y + shoulder_height),
-                ImVec2(x_offset, btn_y + shoulder_height),
-                ImVec2(x_offset, btn_y + shoulder_chamfer)
-            };
-            draw_list->AddConvexPolyFilled(pts_l, 5, color_shoulder);
-            
-            ImVec2 text_size = ImGui::CalcTextSize("L");
-            draw_list->AddText(ImVec2(x_offset + shoulder_width * 0.5f - text_size.x * 0.5f, center_y - text_size.y * 0.5f), color_text, "L");
-            float label_x = x_offset + shoulder_width + 6.0f;
-            draw_list->AddText(ImVec2(label_x, center_y - ImGui::GetTextLineHeight() * 0.5f), color_label, strings[lang][Lang::HintPrev]);
-            x_offset = label_x + ImGui::CalcTextSize(strings[lang][Lang::HintPrev]).x + hint_spacing;
-        }
-        
-        // Draw R button (Next)
-        {
-            float btn_y = center_y - shoulder_height * 0.5f;
-            ImVec2 pts_r[5] = {
-                ImVec2(x_offset, btn_y),
-                ImVec2(x_offset + shoulder_width - shoulder_chamfer, btn_y),
-                ImVec2(x_offset + shoulder_width, btn_y + shoulder_chamfer),
-                ImVec2(x_offset + shoulder_width, btn_y + shoulder_height),
-                ImVec2(x_offset, btn_y + shoulder_height)
-            };
-            draw_list->AddConvexPolyFilled(pts_r, 5, color_shoulder);
-            
-            ImVec2 text_size = ImGui::CalcTextSize("R");
-            draw_list->AddText(ImVec2(x_offset + shoulder_width * 0.5f - text_size.x * 0.5f, center_y - text_size.y * 0.5f), color_text, "R");
-            float label_x = x_offset + shoulder_width + 6.0f;
-            draw_list->AddText(ImVec2(label_x, center_y - ImGui::GetTextLineHeight() * 0.5f), color_label, strings[lang][Lang::HintNext]);
-            x_offset = label_x + ImGui::CalcTextSize(strings[lang][Lang::HintNext]).x + hint_spacing;
-        }
-        
-        // Draw DPad Up (Zoom In)
-        {
-            float arrow_x = x_offset + dpad_size;
-            ImVec2 p1(arrow_x, center_y - dpad_size);
-            ImVec2 p2(arrow_x - dpad_size, center_y + dpad_size * 0.5f);
-            ImVec2 p3(arrow_x + dpad_size, center_y + dpad_size * 0.5f);
-            draw_list->AddTriangleFilled(p1, p2, p3, color_dpad);
-            
-            float label_x = x_offset + dpad_size * 2 + 6.0f;
-            draw_list->AddText(ImVec2(label_x, center_y - ImGui::GetTextLineHeight() * 0.5f), color_label, strings[lang][Lang::HintZoomIn]);
-            x_offset = label_x + ImGui::CalcTextSize(strings[lang][Lang::HintZoomIn]).x + hint_spacing;
-        }
-        
-        // Draw DPad Down (Zoom Out)
-        {
-            float arrow_x = x_offset + dpad_size;
-            ImVec2 p1(arrow_x, center_y + dpad_size);
-            ImVec2 p2(arrow_x - dpad_size, center_y - dpad_size * 0.5f);
-            ImVec2 p3(arrow_x + dpad_size, center_y - dpad_size * 0.5f);
-            draw_list->AddTriangleFilled(p1, p2, p3, color_dpad);
-            
-            float label_x = x_offset + dpad_size * 2 + 6.0f;
-            draw_list->AddText(ImVec2(label_x, center_y - ImGui::GetTextLineHeight() * 0.5f), color_label, strings[lang][Lang::HintZoomOut]);
-            x_offset = label_x + ImGui::CalcTextSize(strings[lang][Lang::HintZoomOut]).x + hint_spacing;
-        }
-        
-        // Draw ZR button (Fullscreen)
-        {
-            float zr_x = x_offset;
-            float zr_y = center_y - zr_height * 0.5f;
-            
-            ImU32 color_zr_outline = data.image_fullscreen ? GUI::GetAccentColorU32() : (is_dark ? IM_COL32(120, 120, 120, 255) : IM_COL32(100, 100, 105, 255));
-            
-            ImVec2 points[5];
-            points[0] = ImVec2(zr_x, zr_y);
-            points[1] = ImVec2(zr_x + zr_width - zr_chamfer, zr_y);
-            points[2] = ImVec2(zr_x + zr_width, zr_y + zr_chamfer);
-            points[3] = ImVec2(zr_x + zr_width, zr_y + zr_height);
-            points[4] = ImVec2(zr_x, zr_y + zr_height);
-            
-            draw_list->AddPolyline(points, 5, color_zr_outline, ImDrawFlags_Closed, 2.0f);
-            
-            const char* zr_text = "ZR";
-            const float zr_font_size = ImGui::GetFontSize() * 0.75f;
-            ImVec2 zr_text_size = ImGui::GetFont()->CalcTextSizeA(zr_font_size, FLT_MAX, 0.0f, zr_text);
-            ImVec2 zr_text_pos(zr_x + (zr_width - zr_text_size.x) * 0.5f, center_y - zr_text_size.y * 0.5f);
-            draw_list->AddText(ImGui::GetFont(), zr_font_size, zr_text_pos, color_zr_outline, zr_text);
-            
-            float zr_label_x = zr_x + zr_width + 6.0f;
-            draw_list->AddText(ImVec2(zr_label_x, center_y - ImGui::GetTextLineHeight() * 0.5f), color_label, strings[lang][Lang::HintFullscreen]);
-        }
+        BottomBar::Draw(config, left_items, right_items);
     }
     
     void ImageViewer(bool &properties, bool &file_stat) {
@@ -650,40 +392,12 @@ namespace Windows {
         
         // Draw filename toast overlay (when enabled in settings)
         if (cfg.image_filename) {
-            ImDrawList *draw_list = ImGui::GetForegroundDrawList();
-            
-            const char* filename = data.entries[data.selected].name;
-            ImVec2 text_size = ImGui::CalcTextSize(filename);
-            
-            // Toast positioned at top-left with 2px offset
-            const float padding_x = 10.0f;
-            const float padding_y = 6.0f;
-            const float toast_x = 2.0f;
-            const float toast_y = 2.0f;
-            const float toast_w = text_size.x + padding_x * 2;
-            const float toast_h = text_size.y + padding_y * 2;
-            
-            // Theme-aware colors
-            const bool is_dark = GUI::IsCurrentThemeDark();
-            ImU32 bg_color = is_dark ? IM_COL32(0, 0, 0, 180) : IM_COL32(255, 255, 255, 220);
-            ImU32 text_color = is_dark ? IM_COL32(255, 255, 255, 255) : IM_COL32(0, 0, 0, 255);
-            
-            draw_list->AddRectFilled(
-                ImVec2(toast_x, toast_y), 
-                ImVec2(toast_x + toast_w, toast_y + toast_h), 
-                bg_color, 6.0f
-            );
-            draw_list->AddText(
-                ImVec2(toast_x + padding_x, toast_y + padding_y), 
-                text_color, 
-                filename
-            );
+            Toast::DrawFilename(data.entries[data.selected].name);
         }
         
         // Draw fullscreen toast notification (temporary, shows when entering fullscreen)
         if (data.image_fullscreen && ImageViewer::s_toast_timer > 0.0f) {
             const int lang = Config::GetLang();
-            ImDrawList *draw_list = ImGui::GetForegroundDrawList();
             
             // Fade out in the last 0.5 seconds
             float alpha = 1.0f;
@@ -691,30 +405,7 @@ namespace Windows {
                 alpha = ImageViewer::s_toast_timer / 0.5f;
             }
             
-            const char* toast_text = strings[lang][Lang::HintExitFullscreen];
-            ImVec2 text_size = ImGui::CalcTextSize(toast_text);
-            
-            // Toast background with padding
-            float padding_x = 20.0f;
-            float padding_y = 10.0f;
-            float toast_w = text_size.x + padding_x * 2;
-            float toast_h = text_size.y + padding_y * 2;
-            float toast_x = (display_w - toast_w) * 0.5f;
-            float toast_y = display_h - toast_h - 60.0f;  // Position near bottom
-            
-            ImU32 bg_color = IM_COL32(0, 0, 0, static_cast<int>(200 * alpha));
-            ImU32 text_color = IM_COL32(255, 255, 255, static_cast<int>(255 * alpha));
-            
-            draw_list->AddRectFilled(
-                ImVec2(toast_x, toast_y), 
-                ImVec2(toast_x + toast_w, toast_y + toast_h), 
-                bg_color, 8.0f
-            );
-            draw_list->AddText(
-                ImVec2(toast_x + padding_x, toast_y + padding_y), 
-                text_color, 
-                toast_text
-            );
+            Toast::DrawCentered(strings[lang][Lang::HintExitFullscreen], alpha);
             
             // Decrement timer
             ImageViewer::s_toast_timer -= ImGui::GetIO().DeltaTime;
