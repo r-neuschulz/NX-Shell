@@ -32,7 +32,6 @@ typedef struct {
     bool dev_options = false;
     bool image_filename = false;
     bool enter_images_fullscreen = false;  // Open images in fullscreen mode by default
-    bool multi_lang = true;
     int resolution_mode = ResolutionMode_Auto;
     int theme_mode = ThemeMode_Auto;  // UI theme: Auto, Dark, or Light
     bool show_details = false;
@@ -42,7 +41,6 @@ typedef struct {
     // Accent color stored as RGB floats (0.0 - 1.0)
     float accent_color[3] = {0.0f, 0.50f, 0.50f};  // Default: Teal (current theme color)
     int button_style = ButtonStyle_Colored;  // Navigation button style: Colored or Mono
-    std::string nxmp_nro_path = "";  // Path to NXMP media player NRO (empty if not configured)
 } config_t;
 
 extern config_t cfg;

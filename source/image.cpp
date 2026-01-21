@@ -193,18 +193,18 @@ namespace ImageViewer {
         
         // Check if we have this image pre-loaded and ready
         if (prev_idx == data.preload_prev_index && !data.textures_prev.empty() && data.textures_prev[0].id != 0) {
-            // Atomic swap: move pre-loaded into current, then free old
-            std::vector<Tex> old_textures = std::move(data.textures);
+            // Hand over current image to become next preload (avoid re-decoding)
+            // Free the old next preload first (it's now 2 images ahead, stale)
+            FreeTextureVector(data.textures_next);
+            
+            // Move current -> next preload (the image we just left is now "next")
+            data.textures_next = std::move(data.textures);
+            data.preload_next_index = static_cast<int>(data.selected);
+            
+            // Move prev preload -> current
             data.textures = std::move(data.textures_prev);
             data.textures_prev.clear();
             data.preload_prev_index = -1;
-            
-            // Now free the old textures (after swap is complete)
-            FreeTextureVector(old_textures);
-            
-            // Clear "next" preload since it's now stale (2 images ahead)
-            FreeTextureVector(data.textures_next);
-            data.preload_next_index = -1;
             
             data.selected = prev_idx;
             data.frame_count = 0;
@@ -216,13 +216,20 @@ namespace ImageViewer {
         char fs_path[FS_MAX_PATH + 1];
         if (std::snprintf(fs_path, FS_MAX_PATH, "%s/%s", cwd.c_str(), data.entries[prev_idx].name) > 0) {
             if (Textures::LoadImageFile(fs_path, new_textures)) {
-                // Success - atomic swap
-                std::vector<Tex> old_textures = std::move(data.textures);
-                data.textures = std::move(new_textures);
-                FreeTextureVector(old_textures);
+                // Hand over current image to become next preload (avoid re-decoding)
+                // Free the old next preload first
+                FreeTextureVector(data.textures_next);
                 
-                // Clear all pre-loaded since they're now stale
-                ClearPreloadedTextures();
+                // Move current -> next preload
+                data.textures_next = std::move(data.textures);
+                data.preload_next_index = static_cast<int>(data.selected);
+                
+                // Set new current
+                data.textures = std::move(new_textures);
+                
+                // Clear prev preload (will be loaded by PreloadAdjacentImages)
+                FreeTextureVector(data.textures_prev);
+                data.preload_prev_index = -1;
                 
                 data.selected = prev_idx;
                 data.frame_count = 0;
@@ -244,18 +251,18 @@ namespace ImageViewer {
         
         // Check if we have this image pre-loaded and ready
         if (next_idx == data.preload_next_index && !data.textures_next.empty() && data.textures_next[0].id != 0) {
-            // Atomic swap: move pre-loaded into current, then free old
-            std::vector<Tex> old_textures = std::move(data.textures);
+            // Hand over current image to become prev preload (avoid re-decoding)
+            // Free the old prev preload first (it's now 2 images behind, stale)
+            FreeTextureVector(data.textures_prev);
+            
+            // Move current -> prev preload (the image we just left is now "prev")
+            data.textures_prev = std::move(data.textures);
+            data.preload_prev_index = static_cast<int>(data.selected);
+            
+            // Move next preload -> current
             data.textures = std::move(data.textures_next);
             data.textures_next.clear();
             data.preload_next_index = -1;
-            
-            // Now free the old textures (after swap is complete)
-            FreeTextureVector(old_textures);
-            
-            // Clear "prev" preload since it's now stale (2 images behind)
-            FreeTextureVector(data.textures_prev);
-            data.preload_prev_index = -1;
             
             data.selected = next_idx;
             data.frame_count = 0;
@@ -267,13 +274,20 @@ namespace ImageViewer {
         char fs_path[FS_MAX_PATH + 1];
         if (std::snprintf(fs_path, FS_MAX_PATH, "%s/%s", cwd.c_str(), data.entries[next_idx].name) > 0) {
             if (Textures::LoadImageFile(fs_path, new_textures)) {
-                // Success - atomic swap
-                std::vector<Tex> old_textures = std::move(data.textures);
-                data.textures = std::move(new_textures);
-                FreeTextureVector(old_textures);
+                // Hand over current image to become prev preload (avoid re-decoding)
+                // Free the old prev preload first
+                FreeTextureVector(data.textures_prev);
                 
-                // Clear all pre-loaded since they're now stale
-                ClearPreloadedTextures();
+                // Move current -> prev preload
+                data.textures_prev = std::move(data.textures);
+                data.preload_prev_index = static_cast<int>(data.selected);
+                
+                // Set new current
+                data.textures = std::move(new_textures);
+                
+                // Clear next preload (will be loaded by PreloadAdjacentImages)
+                FreeTextureVector(data.textures_next);
+                data.preload_next_index = -1;
                 
                 data.selected = next_idx;
                 data.frame_count = 0;

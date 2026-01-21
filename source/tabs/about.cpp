@@ -44,25 +44,6 @@ namespace Tabs {
             ImGui::Text("%s: Preetisketch", strings[lang][Lang::SettingsAboutBanner]);
             ImGui::Dummy(ImVec2(0.0f, 5.0f)); // Spacing
             ImGui::Text("%s: GPL-2.0", strings[lang][Lang::SettingsAboutLicense]);
-            ImGui::Dummy(ImVec2(0.0f, 5.0f)); // Spacing
-            
-            // Paths Section - own heading at same level as About
-            ImGui::Dummy(ImVec2(0.0f, 10.0f));
-            ImGui::Unindent(10.f);
-            Internal::Indent("Paths");
-            ImGui::Indent(10.f);
-            
-            // Current NRO path (with sdmc: prefix for absolute path)
-            ImGui::TextWrapped("Current NRO: sdmc:%s", __application_path);
-            ImGui::Dummy(ImVec2(0.0f, 5.0f));
-            
-            // NXMP NRO path (if configured)
-            if (!cfg.nxmp_nro_path.empty()) {
-                ImGui::TextWrapped("NXMP NRO: %s", cfg.nxmp_nro_path.c_str());
-            } else {
-                ImGui::TextDisabled("NXMP NRO: Not configured");
-            }
-            
             ImGui::Dummy(ImVec2(0.0f, 15.0f));
             
             // Unindent before "Check for Updates" button

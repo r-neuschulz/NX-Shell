@@ -6,7 +6,7 @@
 #include "fs.hpp"
 #include "log.hpp"
 
-#define CONFIG_VERSION 15
+#define CONFIG_VERSION 16
 
 config_t cfg;
 
@@ -14,33 +14,53 @@ namespace Config {
     static const char *config_path = "/switch/NX-Shell/config.json";
     static int config_version_holder = 0;
     
+    // JSON helper functions to reduce repetition
+    static inline void SetInt(json_t *obj, const char *key, int val) {
+        json_object_set_new(obj, key, json_integer(val));
+    }
+    
+    static inline void SetString(json_t *obj, const char *key, const std::string &val) {
+        json_object_set_new(obj, key, json_string(val.c_str()));
+    }
+    
+    static inline int GetInt(json_t *root, const char *key) {
+        return static_cast<int>(json_integer_value(json_object_get(root, key)));
+    }
+    
+    static inline std::string GetString(json_t *root, const char *key, const std::string &fallback = "") {
+        json_t *val = json_object_get(root, key);
+        return (val && json_is_string(val)) ? json_string_value(val) : fallback;
+    }
+    
+    static inline void EnsureDirExists(const char *path) {
+        if (!FS::DirExists(path))
+            fsFsCreateDirectory(std::addressof(devices[FileSystemSDMC]), path);
+    }
+    
     int Save(config_t &config) {
         Result ret = 0;
         
         // Build JSON using jansson for proper string escaping
         json_t *root = json_object();
-        json_object_set_new(root, "config_version", json_integer(CONFIG_VERSION));
-        json_object_set_new(root, "language", json_integer(config.lang));
-        json_object_set_new(root, "dev_options", json_integer(config.dev_options));
-        json_object_set_new(root, "image_filename", json_integer(config.image_filename));
-        json_object_set_new(root, "enter_images_fullscreen", json_integer(config.enter_images_fullscreen));
-        json_object_set_new(root, "multi_lang", json_integer(config.multi_lang));
-        json_object_set_new(root, "resolution_mode", json_integer(config.resolution_mode));
-        json_object_set_new(root, "theme_mode", json_integer(config.theme_mode));
-        json_object_set_new(root, "show_details", json_integer(config.show_details));
-        json_object_set_new(root, "show_stats", json_integer(config.show_stats));
-        json_object_set_new(root, "last_device", json_string(config.last_device.c_str()));
-        json_object_set_new(root, "last_cwd", json_string(config.last_cwd.c_str()));
+        SetInt(root, "config_version", CONFIG_VERSION);
+        SetInt(root, "language", config.lang);
+        SetInt(root, "dev_options", config.dev_options);
+        SetInt(root, "image_filename", config.image_filename);
+        SetInt(root, "enter_images_fullscreen", config.enter_images_fullscreen);
+        SetInt(root, "resolution_mode", config.resolution_mode);
+        SetInt(root, "theme_mode", config.theme_mode);
+        SetInt(root, "show_details", config.show_details);
+        SetInt(root, "show_stats", config.show_stats);
+        SetString(root, "last_device", config.last_device);
+        SetString(root, "last_cwd", config.last_cwd);
         
         // Save accent color as array of 3 floats
         json_t *accent_array = json_array();
-        json_array_append_new(accent_array, json_real(config.accent_color[0]));
-        json_array_append_new(accent_array, json_real(config.accent_color[1]));
-        json_array_append_new(accent_array, json_real(config.accent_color[2]));
+        for (int i = 0; i < 3; i++)
+            json_array_append_new(accent_array, json_real(config.accent_color[i]));
         json_object_set_new(root, "accent_color", accent_array);
         
-        json_object_set_new(root, "button_style", json_integer(config.button_style));
-        json_object_set_new(root, "nxmp_nro_path", json_string(config.nxmp_nro_path.c_str()));
+        SetInt(root, "button_style", config.button_style);
         
         char *buf = json_dumps(root, JSON_INDENT(1));
         json_decref(root);
@@ -81,10 +101,8 @@ namespace Config {
     int Load(void) {
         Result ret = 0;
         
-        if (!FS::DirExists("/switch/"))
-            fsFsCreateDirectory(std::addressof(devices[FileSystemSDMC]), "/switch");
-        if (!FS::DirExists("/switch/NX-Shell/"))
-            fsFsCreateDirectory(std::addressof(devices[FileSystemSDMC]), "/switch/NX-Shell");
+        EnsureDirExists("/switch/");
+        EnsureDirExists("/switch/NX-Shell/");
             
         if (!FS::FileExists(config_path)) {
             cfg = {};
@@ -101,7 +119,7 @@ namespace Config {
             return ret;
         }
 
-        char *buf =  new char[size + 1];
+        char *buf = new char[size + 1];
         if (R_FAILED(ret = fsFileRead(std::addressof(file), 0, buf, static_cast<u64>(size) + 1, FsReadOption_None, nullptr))) {
             delete[] buf;
             fsFileClose(std::addressof(file));
@@ -120,65 +138,37 @@ namespace Config {
             return -1;
         }
         
-        json_t *config_ver = json_object_get(root, "config_version");
-        config_version_holder = json_integer_value(config_ver);
+        config_version_holder = GetInt(root, "config_version");
 
         // Delete config file if config file is updated. This will rarely happen.
         if (config_version_holder < CONFIG_VERSION) {
+            json_decref(root);
             fsFsDeleteFile(std::addressof(devices[FileSystemSDMC]), config_path);
             cfg = {};
             return Config::Save(cfg);
         }
 
-        json_t *language = json_object_get(root, "language");
-        cfg.lang = json_integer_value(language);
-        
-        json_t *dev_options = json_object_get(root, "dev_options");
-        cfg.dev_options = json_integer_value(dev_options);
+        // Load integer/boolean fields
+        cfg.lang = GetInt(root, "language");
+        cfg.dev_options = GetInt(root, "dev_options");
+        cfg.image_filename = GetInt(root, "image_filename");
+        cfg.enter_images_fullscreen = GetInt(root, "enter_images_fullscreen");
+        cfg.resolution_mode = GetInt(root, "resolution_mode");
+        cfg.theme_mode = GetInt(root, "theme_mode");
+        cfg.show_details = GetInt(root, "show_details");
+        cfg.show_stats = GetInt(root, "show_stats");
+        cfg.button_style = GetInt(root, "button_style");
 
-        json_t *image_filename = json_object_get(root, "image_filename");
-        cfg.image_filename = json_integer_value(image_filename);
+        // Load string fields with defaults
+        cfg.last_device = GetString(root, "last_device", "sdmc:");
+        cfg.last_cwd = GetString(root, "last_cwd", "/");
 
-        json_t *enter_images_fullscreen = json_object_get(root, "enter_images_fullscreen");
-        cfg.enter_images_fullscreen = json_integer_value(enter_images_fullscreen);
-
-        json_t *multi_lang = json_object_get(root, "multi_lang");
-        cfg.multi_lang = json_integer_value(multi_lang);
-
-        json_t *resolution_mode = json_object_get(root, "resolution_mode");
-        cfg.resolution_mode = json_integer_value(resolution_mode);
-
-        json_t *theme_mode = json_object_get(root, "theme_mode");
-        cfg.theme_mode = json_integer_value(theme_mode);
-
-        json_t *show_details = json_object_get(root, "show_details");
-        cfg.show_details = json_integer_value(show_details);
-
-        json_t *show_stats = json_object_get(root, "show_stats");
-        cfg.show_stats = json_integer_value(show_stats);
-
-        json_t *last_device = json_object_get(root, "last_device");
-        if (last_device && json_is_string(last_device))
-            cfg.last_device = json_string_value(last_device);
-        
-        json_t *last_cwd = json_object_get(root, "last_cwd");
-        if (last_cwd && json_is_string(last_cwd))
-            cfg.last_cwd = json_string_value(last_cwd);
-
-        // Load accent color
+        // Load accent color array
         json_t *accent_color = json_object_get(root, "accent_color");
         if (accent_color && json_is_array(accent_color) && json_array_size(accent_color) == 3) {
-            cfg.accent_color[0] = static_cast<float>(json_real_value(json_array_get(accent_color, 0)));
-            cfg.accent_color[1] = static_cast<float>(json_real_value(json_array_get(accent_color, 1)));
-            cfg.accent_color[2] = static_cast<float>(json_real_value(json_array_get(accent_color, 2)));
+            for (int i = 0; i < 3; i++)
+                cfg.accent_color[i] = static_cast<float>(json_real_value(json_array_get(accent_color, i)));
         }
-
-        json_t *button_style = json_object_get(root, "button_style");
-        cfg.button_style = json_integer_value(button_style);
-
-        json_t *nxmp_nro_path = json_object_get(root, "nxmp_nro_path");
-        if (nxmp_nro_path && json_is_string(nxmp_nro_path))
-            cfg.nxmp_nro_path = json_string_value(nxmp_nro_path);
 
         json_decref(root);
         return 0;

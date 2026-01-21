@@ -60,37 +60,19 @@ static void LogTiming(const char *label, u64 start_tick) {
 }
 
 namespace Services {
-    int Init(void) {
-        Result ret = 0;
-        u64 phase_tick;
-        
-        // Initialize environment service to get NRO path
-        phase_tick = armGetSystemTick();
-        if (R_SUCCEEDED(envInitialize())) {
-            LoaderInitInfo init_info;
-            if (R_SUCCEEDED(envGetLoaderInitInfo(&init_info))) {
-                // Get the NRO path using fsldr service
-                if (R_SUCCEEDED(fsldrInitialize())) {
-                    FsPath nro_path;
-                    if (R_SUCCEEDED(fsldrGetNroPath(&init_info.main_nro_path, &nro_path))) {
-                        // Convert FsPath to string (FsPath.str is a char array)
-                        strncpy(__application_path, (const char*)nro_path.str, FS_MAX_PATH - 1);
-                        __application_path[FS_MAX_PATH - 1] = '\0';
-                    } else {
-                        __application_path[0] = '\0';
-                    }
-                    fsldrExit();
-                } else {
-                    __application_path[0] = '\0';
-                }
-            } else {
-                __application_path[0] = '\0';
-            }
-            envExit();
+    // Set the application path from argv (called from main before Init)
+    void SetApplicationPath(int argc, char* argv[]) {
+        if (argc > 0 && argv[0] != nullptr) {
+            strncpy(__application_path, argv[0], FS_MAX_PATH - 1);
+            __application_path[FS_MAX_PATH - 1] = '\0';
         } else {
             __application_path[0] = '\0';
         }
-        LogTiming("NRO path initialization", phase_tick);
+    }
+    
+    int Init(void) {
+        Result ret = 0;
+        u64 phase_tick;
         
         // Filesystem setup
         phase_tick = armGetSystemTick();
@@ -280,6 +262,9 @@ int main(int argc, char* argv[]) {
     s_startup_begin_tick = armGetSystemTick();
     Log::Debug("[TIMING] ========== STARTUP BEGIN ==========\n");
 
+    // Set application path from argv (homebrew launcher passes NRO path in argv[0])
+    Services::SetApplicationPath(argc, argv);
+    
     phase_tick = armGetSystemTick();
     Services::Init();
     LogTiming("Services::Init (total)", phase_tick);

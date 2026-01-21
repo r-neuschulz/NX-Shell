@@ -164,16 +164,6 @@ namespace Tabs {
 
             Internal::Separator();
 
-            // Multi lang Checkbox
-            Internal::Indent(strings[lang][Lang::SettingsMultiLangTitle]);
-
-            ImGui::PushID("multi_lang");
-            if (ImGui::Checkbox(strings[lang][Lang::SettingsMultiLangLogsToggle], std::addressof(cfg.multi_lang)))
-                Config::Save(cfg);
-            ImGui::PopID();
-
-            Internal::Separator();
-
             // Display Resolution
             {
                 // Build the title with current resolution indicator
@@ -202,8 +192,21 @@ namespace Tabs {
             {
                 Internal::Indent(strings[lang][Lang::SettingsThemeTitle]);
                 
-                // Button dimensions - wide buttons that fill the available space
-                const float button_width = 70.0f;
+                // Auto-size button width based on content for localization support
+                const char* theme_labels[] = {
+                    strings[lang][Lang::SettingsThemeAuto],
+                    strings[lang][Lang::SettingsThemeDark],
+                    strings[lang][Lang::SettingsThemeLight]
+                };
+                float max_text_width = 0.0f;
+                for (int i = 0; i < 3; i++) {
+                    float text_width = ImGui::CalcTextSize(theme_labels[i]).x;
+                    if (text_width > max_text_width)
+                        max_text_width = text_width;
+                }
+                
+                // Button dimensions - auto-sized with padding
+                const float button_width = max_text_width + 24.0f;  // Padding for button edges
                 const float button_height = 36.0f;
                 const float spacing = 8.0f;
                 
@@ -282,19 +285,58 @@ namespace Tabs {
                 const float button_size = 36.0f;
                 const float spacing = 8.0f;
                 
-                // Row 1: First 5 presets
-                for (int i = 0; i < 5; i++) {
-                    if (i > 0) ImGui::SameLine(0, spacing);
+                // Helper to check if current accent color matches a preset
+                auto IsPresetSelected = [](const ImVec4& preset) {
+                    const float epsilon = 0.01f;
+                    return std::abs(cfg.accent_color[0] - preset.x) < epsilon &&
+                           std::abs(cfg.accent_color[1] - preset.y) < epsilon &&
+                           std::abs(cfg.accent_color[2] - preset.z) < epsilon;
+                };
+                
+                // Find which preset is selected (if any), or -1 for custom
+                int selected_preset = -1;
+                for (int i = 0; i < 9; i++) {
+                    if (IsPresetSelected(preset_colors[i])) {
+                        selected_preset = i;
+                        break;
+                    }
+                }
+                
+                // Helper to draw a color preset button with selection indicator
+                auto DrawColorPreset = [&](int index, const ImVec4& color) {
+                    bool is_selected = (selected_preset == index);
                     
-                    ImGui::PushID(i);
-                    if (ImGui::ColorButton("##preset", preset_colors[i], ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoBorder, ImVec2(button_size, button_size))) {
-                        cfg.accent_color[0] = preset_colors[i].x;
-                        cfg.accent_color[1] = preset_colors[i].y;
-                        cfg.accent_color[2] = preset_colors[i].z;
+                    ImGui::PushID(index);
+                    
+                    // Draw selection ring if selected
+                    if (is_selected) {
+                        ImVec2 cursor = ImGui::GetCursorScreenPos();
+                        ImDrawList* draw_list = ImGui::GetWindowDrawList();
+                        // Use contrasting color for selection ring (theme-aware)
+                        ImU32 ring_color = GUI::IsCurrentThemeDark() ? IM_COL32(255, 255, 255, 255) : IM_COL32(40, 40, 40, 255);
+                        draw_list->AddRect(
+                            ImVec2(cursor.x - 2, cursor.y - 2),
+                            ImVec2(cursor.x + button_size + 2, cursor.y + button_size + 2),
+                            ring_color,
+                            4.0f, 0, 2.0f
+                        );
+                    }
+                    
+                    if (ImGui::ColorButton("##preset", color, ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoBorder, ImVec2(button_size, button_size))) {
+                        cfg.accent_color[0] = color.x;
+                        cfg.accent_color[1] = color.y;
+                        cfg.accent_color[2] = color.z;
                         Config::Save(cfg);
                         GUI::UpdateAccentColors();
                     }
+                    
                     ImGui::PopID();
+                };
+                
+                // Row 1: First 5 presets
+                for (int i = 0; i < 5; i++) {
+                    if (i > 0) ImGui::SameLine(0, spacing);
+                    DrawColorPreset(i, preset_colors[i]);
                 }
                 
                 // Vertical spacing between rows
@@ -303,24 +345,28 @@ namespace Tabs {
                 // Row 2: Next 4 presets + custom color button with settings icon
                 for (int i = 5; i < 9; i++) {
                     if (i > 5) ImGui::SameLine(0, spacing);
-                    
-                    ImGui::PushID(i);
-                    if (ImGui::ColorButton("##preset", preset_colors[i], ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoBorder, ImVec2(button_size, button_size))) {
-                        cfg.accent_color[0] = preset_colors[i].x;
-                        cfg.accent_color[1] = preset_colors[i].y;
-                        cfg.accent_color[2] = preset_colors[i].z;
-                        Config::Save(cfg);
-                        GUI::UpdateAccentColors();
-                    }
-                    ImGui::PopID();
+                    DrawColorPreset(i, preset_colors[i]);
                 }
                 
                 // Custom color button with settings icon
                 ImGui::SameLine(0, spacing);
                 ImVec4 custom_color = ImVec4(cfg.accent_color[0], cfg.accent_color[1], cfg.accent_color[2], 1.0f);
+                bool is_custom = (selected_preset == -1);
+                
+                // Draw selection ring if custom color is selected
+                ImVec2 cursor_pos = ImGui::GetCursorScreenPos();
+                if (is_custom) {
+                    ImDrawList* draw_list = ImGui::GetWindowDrawList();
+                    ImU32 ring_color = GUI::IsCurrentThemeDark() ? IM_COL32(255, 255, 255, 255) : IM_COL32(40, 40, 40, 255);
+                    draw_list->AddRect(
+                        ImVec2(cursor_pos.x - 2, cursor_pos.y - 2),
+                        ImVec2(cursor_pos.x + button_size + 2, cursor_pos.y + button_size + 2),
+                        ring_color,
+                        4.0f, 0, 2.0f
+                    );
+                }
                 
                 // Draw custom color button as background
-                ImVec2 cursor_pos = ImGui::GetCursorScreenPos();
                 if (ImGui::ColorButton("##custom_bg", custom_color, ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoBorder, ImVec2(button_size, button_size))) {
                     ImGui::OpenPopup("##accent_picker");
                 }

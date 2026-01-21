@@ -126,6 +126,21 @@ namespace Tabs {
         );
         ImGui::Dummy(size);  // Advance cursor
     }
+    
+    // Helper to draw a progress arc around a button (used for hold-to-close and refresh animations)
+    static void DrawProgressArc(ImDrawList *draw_list, ImVec2 center, float radius, float progress, ImU32 color) {
+        const float start_angle = -IM_PI * 0.5f;  // Start from top
+        const float end_angle = start_angle + (progress * IM_PI * 2.0f);
+        const int num_segments = static_cast<int>(24 * progress) + 1;
+        
+        for (int i = 0; i < num_segments; i++) {
+            float a1 = start_angle + (end_angle - start_angle) * (static_cast<float>(i) / num_segments);
+            float a2 = start_angle + (end_angle - start_angle) * (static_cast<float>(i + 1) / num_segments);
+            ImVec2 p1(center.x + cosf(a1) * radius, center.y + sinf(a1) * radius);
+            ImVec2 p2(center.x + cosf(a2) * radius, center.y + sinf(a2) * radius);
+            draw_list->AddLine(p1, p2, color, 3.0f);
+        }
+    }
 
     void FileBrowser(WindowData &data, int &current_tab, int &active_tab) {
         ImGuiTabItemFlags flags = (current_tab == 0) ? ImGuiTabItemFlags_SetSelected : 0;
@@ -797,20 +812,7 @@ namespace Tabs {
                 
                 // Draw progress arc when holding
                 if (is_holding && hold_progress > 0.0f) {
-                    // Draw spinning arc progress
-                    const float arc_radius = button_radius + 3.0f;
-                    const float start_angle = -IM_PI * 0.5f;  // Start from top
-                    const float end_angle = start_angle + (hold_progress * IM_PI * 2.0f);
-                    
-                    // Draw arc segments
-                    const int num_segments = static_cast<int>(24 * hold_progress) + 1;
-                    for (int i = 0; i < num_segments; i++) {
-                        float a1 = start_angle + (end_angle - start_angle) * (static_cast<float>(i) / num_segments);
-                        float a2 = start_angle + (end_angle - start_angle) * (static_cast<float>(i + 1) / num_segments);
-                        ImVec2 p1(minus_center.x + cosf(a1) * arc_radius, minus_center.y + sinf(a1) * arc_radius);
-                        ImVec2 p2(minus_center.x + cosf(a2) * arc_radius, minus_center.y + sinf(a2) * arc_radius);
-                        draw_list->AddLine(p1, p2, GUI::GetAccentColorU32(), 3.0f);
-                    }
+                    DrawProgressArc(draw_list, minus_center, button_radius + 3.0f, hold_progress, GUI::GetAccentColorU32());
                 }
                 
                 // Draw minus sign
@@ -937,19 +939,7 @@ namespace Tabs {
                 if (hint.action == 4 && is_at_partition_root) {
                     float refresh_progress = 0.0f;
                     if (GUI::IsRefreshAnimating(refresh_progress)) {
-                        const float arc_radius = button_radius + 3.0f;
-                        const float start_angle = -IM_PI * 0.5f;  // Start from top
-                        const float end_angle = start_angle + (refresh_progress * IM_PI * 2.0f);
-                        
-                        // Draw arc segments
-                        const int num_segments = static_cast<int>(24 * refresh_progress) + 1;
-                        for (int i = 0; i < num_segments; i++) {
-                            float a1 = start_angle + (end_angle - start_angle) * (static_cast<float>(i) / num_segments);
-                            float a2 = start_angle + (end_angle - start_angle) * (static_cast<float>(i + 1) / num_segments);
-                            ImVec2 p1(center.x + cosf(a1) * arc_radius, center.y + sinf(a1) * arc_radius);
-                            ImVec2 p2(center.x + cosf(a2) * arc_radius, center.y + sinf(a2) * arc_radius);
-                            draw_list->AddLine(p1, p2, GUI::GetAccentColorU32(), 3.0f);
-                        }
+                        DrawProgressArc(draw_list, center, button_radius + 3.0f, refresh_progress, GUI::GetAccentColorU32());
                     }
                 }
                 

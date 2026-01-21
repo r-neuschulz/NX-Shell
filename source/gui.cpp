@@ -550,15 +550,11 @@ namespace GUI {
         // Determine which fonts are needed based on current language setting
         int lang = Config::GetLang();
         int font_reqs = GetFontRequirements(lang);
-        bool need_chinese_simplified = (font_reqs & FontReq_ChineseSimplified) != 0;
-        bool need_chinese_traditional = (font_reqs & FontReq_ChineseTraditional) != 0;
-        bool need_korean = (font_reqs & FontReq_Korean) != 0;
         
-        // Override: if multi_lang is enabled, load all fonts for full character support
-        if (cfg.multi_lang) {
-            need_chinese_simplified = true;
-            need_korean = true;
-        }
+        // Always load CJK fonts for proper display of all filenames/paths
+        bool need_chinese_simplified = true;
+        bool need_chinese_traditional = (font_reqs & FontReq_ChineseTraditional) != 0;
+        bool need_korean = true;
         
         // Load nintendo fonts - always need Standard + NintendoExt
         PlFontData standard, extended;
