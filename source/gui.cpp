@@ -2,13 +2,20 @@
 #include <EGL/eglext.h>
 #include <glad/glad.h>
 #include <cstdio>
+#include <cstring>
 #include <memory>
 #include <switch.h>
 
 #include "config.hpp"
+#include "fs.hpp"
 #include "gui.hpp"
+#include "language.hpp"
+#include "imgui.h"
+#define IMGUI_DEFINE_MATH_OPERATORS
+#include "imgui_internal.h"
 #include "imgui_impl_switch.hpp"
 #include "log.hpp"
+#include "windows.hpp"
 
 namespace GUI {
     static EGLDisplay s_display = EGL_NO_DISPLAY;
@@ -17,6 +24,27 @@ namespace GUI {
     static EGLConfig s_config = nullptr;
     static NWindow *s_window = nullptr;
     static AppletOperationMode s_operation_mode = AppletOperationMode_Handheld;
+    
+    // Hold-to-close state
+    static PadState s_pad;
+    static bool s_pad_initialized = false;
+    static u64 s_minus_hold_start = 0;
+    static bool s_minus_is_held = false;
+    static constexpr float HOLD_TO_CLOSE_SECONDS = 0.8f;
+    
+    // Refresh animation state (full circle animation for visual feedback)
+    static u64 s_refresh_anim_start = 0;
+    static bool s_refresh_anim_active = false;
+    static constexpr float REFRESH_ANIM_SECONDS = 0.4f;  // Duration of full circle animation
+    
+    // Track popup state when B is pressed (to avoid double-handling B for popup close + tab switch)
+    static bool s_popup_was_open_on_b_press = false;
+    
+    // Track theme state for auto-refresh when system theme changes
+    static bool s_last_theme_dark = true;
+    
+    // Track when surface is recreated to reapply vsync setting after swap
+    static bool s_surface_recreated = false;
     
     // Display dimensions - exported for use by other modules
     int display_width = 1280;
@@ -52,6 +80,13 @@ namespace GUI {
         
         // Rebind the new surface
         eglMakeCurrent(s_display, s_surface, s_surface, s_context);
+        
+        // Re-apply VSync setting for uncapped frame rate (must be done after surface bind)
+        eglSwapInterval(s_display, 0);
+        
+        // Mark that we need to reapply swap interval after the first buffer swap
+        // (some drivers only honor the setting after a swap has occurred)
+        s_surface_recreated = true;
         
         // Update the GL viewport to match new dimensions
         glViewport(0, 0, display_width, display_height);
@@ -173,11 +208,19 @@ namespace GUI {
         }
         
         eglMakeCurrent(s_display, s_surface, s_surface, s_context);
+        
+        // Disable VSync for uncapped frame rate
+        eglSwapInterval(s_display, 0);
+        
         return true;
     }
     
     static void ExitEGL(void) {
         if (s_display) {
+            // Ensure all GL commands are finished before destroying context
+            // This prevents crashes from in-flight GPU operations
+            glFinish();
+            
             eglMakeCurrent(s_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
             
             if (s_context) {
@@ -197,64 +240,291 @@ namespace GUI {
     }
 
     bool SwapBuffers(void) {
-        return eglSwapBuffers(s_display, s_surface);
+        bool result = eglSwapBuffers(s_display, s_surface);
+        
+        // After a surface recreation, reapply swap interval after the first successful swap
+        // This ensures the driver has fully initialized the new surface before we configure it
+        if (s_surface_recreated && result) {
+            eglSwapInterval(s_display, 0);
+            s_surface_recreated = false;
+        }
+        
+        return result;
     }
 
+    bool IsCurrentThemeDark(void) {
+        switch (cfg.theme_mode) {
+            case ThemeMode_Auto:
+                return IsSystemThemeDark();
+            case ThemeMode_Dark:
+                return true;
+            case ThemeMode_Light:
+                return false;
+            default:
+                return true;  // default to dark
+        }
+    }
+    
+    ImU32 GetThemeLabelColor(void) {
+        // Light gray for dark theme, dark gray for light theme
+        return IsCurrentThemeDark() 
+            ? IM_COL32(200, 200, 200, 255)   // Light gray on dark background
+            : IM_COL32(60, 60, 65, 255);     // Dark gray on light background
+    }
+    
+    void UpdateThemeColors(void) {
+        ImVec4 *colors = ImGui::GetStyle().Colors;
+        
+        // Determine if we should use dark or light theme
+        bool use_dark = IsCurrentThemeDark();
+        
+        if (use_dark) {
+            // Dark theme colors (background and text)
+            colors[ImGuiCol_Text] = ImVec4(0.95f, 0.96f, 0.98f, 1.00f);
+            colors[ImGuiCol_TextDisabled] = ImVec4(0.36f, 0.42f, 0.47f, 1.00f);
+            colors[ImGuiCol_WindowBg] = ImVec4(0.11f, 0.15f, 0.17f, 1.00f);
+            colors[ImGuiCol_ChildBg] = ImVec4(0.15f, 0.18f, 0.22f, 1.00f);
+            colors[ImGuiCol_PopupBg] = ImVec4(0.08f, 0.08f, 0.08f, 0.94f);
+            colors[ImGuiCol_Border] = ImVec4(0.08f, 0.10f, 0.12f, 1.00f);
+            colors[ImGuiCol_FrameBg] = ImVec4(0.24f, 0.24f, 0.24f, 1.00f);
+            colors[ImGuiCol_FrameBgHovered] = ImVec4(0.32f, 0.32f, 0.32f, 1.00f);
+            colors[ImGuiCol_FrameBgActive] = ImVec4(0.18f, 0.18f, 0.18f, 1.00f);
+            colors[ImGuiCol_TitleBg] = ImVec4(0.09f, 0.12f, 0.14f, 0.65f);
+            colors[ImGuiCol_TitleBgActive] = ImVec4(0.08f, 0.10f, 0.12f, 1.00f);
+            colors[ImGuiCol_TitleBgCollapsed] = ImVec4(0.00f, 0.00f, 0.00f, 0.51f);
+            colors[ImGuiCol_MenuBarBg] = ImVec4(0.15f, 0.18f, 0.22f, 1.00f);
+            colors[ImGuiCol_ScrollbarBg] = ImVec4(0.02f, 0.02f, 0.02f, 0.39f);
+            colors[ImGuiCol_ScrollbarGrab] = ImVec4(0.24f, 0.24f, 0.24f, 1.00f);
+            colors[ImGuiCol_ScrollbarGrabHovered] = ImVec4(0.30f, 0.30f, 0.30f, 1.00f);
+            colors[ImGuiCol_ScrollbarGrabActive] = ImVec4(0.36f, 0.36f, 0.36f, 1.00f);
+            colors[ImGuiCol_Button] = ImVec4(0.24f, 0.24f, 0.24f, 1.00f);
+            colors[ImGuiCol_Header] = ImVec4(0.24f, 0.24f, 0.24f, 0.55f);
+            colors[ImGuiCol_Separator] = ImVec4(0.24f, 0.24f, 0.24f, 1.00f);
+            colors[ImGuiCol_Tab] = ImVec4(0.11f, 0.15f, 0.17f, 1.00f);
+            colors[ImGuiCol_TabDimmed] = ImVec4(0.11f, 0.15f, 0.17f, 1.00f);
+            colors[ImGuiCol_TabDimmedSelected] = ImVec4(0.11f, 0.15f, 0.17f, 1.00f);
+            // Table colors
+            colors[ImGuiCol_TableHeaderBg] = ImVec4(0.19f, 0.19f, 0.20f, 1.00f);
+            colors[ImGuiCol_TableBorderStrong] = ImVec4(0.31f, 0.31f, 0.35f, 1.00f);
+            colors[ImGuiCol_TableBorderLight] = ImVec4(0.23f, 0.23f, 0.25f, 1.00f);
+            colors[ImGuiCol_TableRowBg] = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
+            colors[ImGuiCol_TableRowBgAlt] = ImVec4(1.00f, 1.00f, 1.00f, 0.06f);
+            // Modal dim: light overlay on dark background for contrast
+            colors[ImGuiCol_ModalWindowDimBg] = ImVec4(0.80f, 0.80f, 0.80f, 0.35f);
+        } else {
+            // Light theme colors (background and text)
+            colors[ImGuiCol_Text] = ImVec4(0.10f, 0.10f, 0.12f, 1.00f);
+            colors[ImGuiCol_TextDisabled] = ImVec4(0.50f, 0.52f, 0.55f, 1.00f);
+            colors[ImGuiCol_WindowBg] = ImVec4(0.94f, 0.94f, 0.96f, 1.00f);
+            colors[ImGuiCol_ChildBg] = ImVec4(0.98f, 0.98f, 0.99f, 1.00f);
+            colors[ImGuiCol_PopupBg] = ImVec4(0.98f, 0.98f, 0.98f, 0.96f);
+            colors[ImGuiCol_Border] = ImVec4(0.80f, 0.82f, 0.85f, 1.00f);
+            colors[ImGuiCol_FrameBg] = ImVec4(0.89f, 0.89f, 0.89f, 1.00f);
+            colors[ImGuiCol_FrameBgHovered] = ImVec4(0.82f, 0.82f, 0.82f, 1.00f);
+            colors[ImGuiCol_FrameBgActive] = ImVec4(0.78f, 0.78f, 0.78f, 1.00f);
+            colors[ImGuiCol_TitleBg] = ImVec4(0.88f, 0.88f, 0.90f, 0.65f);
+            colors[ImGuiCol_TitleBgActive] = ImVec4(0.85f, 0.86f, 0.88f, 1.00f);
+            colors[ImGuiCol_TitleBgCollapsed] = ImVec4(0.92f, 0.92f, 0.94f, 0.51f);
+            colors[ImGuiCol_MenuBarBg] = ImVec4(0.90f, 0.90f, 0.92f, 1.00f);
+            colors[ImGuiCol_ScrollbarBg] = ImVec4(0.92f, 0.92f, 0.94f, 0.39f);
+            colors[ImGuiCol_ScrollbarGrab] = ImVec4(0.72f, 0.72f, 0.72f, 1.00f);
+            colors[ImGuiCol_ScrollbarGrabHovered] = ImVec4(0.62f, 0.62f, 0.62f, 1.00f);
+            colors[ImGuiCol_ScrollbarGrabActive] = ImVec4(0.55f, 0.55f, 0.55f, 1.00f);
+            colors[ImGuiCol_Button] = ImVec4(0.84f, 0.84f, 0.84f, 1.00f);
+            colors[ImGuiCol_Header] = ImVec4(0.84f, 0.84f, 0.84f, 0.55f);
+            colors[ImGuiCol_Separator] = ImVec4(0.77f, 0.77f, 0.77f, 1.00f);
+            colors[ImGuiCol_Tab] = ImVec4(0.90f, 0.91f, 0.93f, 1.00f);
+            colors[ImGuiCol_TabDimmed] = ImVec4(0.90f, 0.91f, 0.93f, 1.00f);
+            colors[ImGuiCol_TabDimmedSelected] = ImVec4(0.90f, 0.91f, 0.93f, 1.00f);
+            // Table colors
+            colors[ImGuiCol_TableHeaderBg] = ImVec4(0.85f, 0.86f, 0.88f, 1.00f);
+            colors[ImGuiCol_TableBorderStrong] = ImVec4(0.70f, 0.72f, 0.75f, 1.00f);
+            colors[ImGuiCol_TableBorderLight] = ImVec4(0.80f, 0.82f, 0.85f, 1.00f);
+            colors[ImGuiCol_TableRowBg] = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
+            colors[ImGuiCol_TableRowBgAlt] = ImVec4(0.00f, 0.00f, 0.00f, 0.03f);
+            // Modal dim: dark overlay on light background for contrast
+            colors[ImGuiCol_ModalWindowDimBg] = ImVec4(0.20f, 0.20f, 0.20f, 0.35f);
+        }
+    }
+    
     void SetDefaultTheme(void) {
         ImGui::GetStyle().FrameRounding = 4.0f;
         ImGui::GetStyle().GrabRounding = 4.0f;
         
+        // Initialize theme tracking to match current state
+        s_last_theme_dark = IsCurrentThemeDark();
+        
         ImVec4 *colors = ImGui::GetStyle().Colors;
-        colors[ImGuiCol_Text] = ImVec4(0.95f, 0.96f, 0.98f, 1.00f);
-        colors[ImGuiCol_TextDisabled] = ImVec4(0.36f, 0.42f, 0.47f, 1.00f);
-        colors[ImGuiCol_WindowBg] = ImVec4(0.11f, 0.15f, 0.17f, 1.00f);
-        colors[ImGuiCol_ChildBg] = ImVec4(0.15f, 0.18f, 0.22f, 1.00f);
-        colors[ImGuiCol_PopupBg] = ImVec4(0.08f, 0.08f, 0.08f, 0.94f);
-        colors[ImGuiCol_Border] = ImVec4(0.08f, 0.10f, 0.12f, 1.00f);
+        
+        // Theme-independent colors
         colors[ImGuiCol_BorderShadow] = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
-        colors[ImGuiCol_FrameBg] = ImVec4(0.20f, 0.25f, 0.29f, 1.00f);
-        colors[ImGuiCol_FrameBgHovered] = ImVec4(0.12f, 0.20f, 0.28f, 1.00f);
-        colors[ImGuiCol_FrameBgActive] = ImVec4(0.09f, 0.12f, 0.14f, 1.00f);
-        colors[ImGuiCol_TitleBg] = ImVec4(0.09f, 0.12f, 0.14f, 0.65f);
-        colors[ImGuiCol_TitleBgActive] = ImVec4(0.08f, 0.10f, 0.12f, 1.00f);
-        colors[ImGuiCol_TitleBgCollapsed] = ImVec4(0.00f, 0.00f, 0.00f, 0.51f);
-        colors[ImGuiCol_MenuBarBg] = ImVec4(0.15f, 0.18f, 0.22f, 1.00f);
-        colors[ImGuiCol_ScrollbarBg] = ImVec4(0.02f, 0.02f, 0.02f, 0.39f);
-        colors[ImGuiCol_ScrollbarGrab] = ImVec4(0.20f, 0.25f, 0.29f, 1.00f);
-        colors[ImGuiCol_ScrollbarGrabHovered] = ImVec4(0.18f, 0.22f, 0.25f, 1.00f);
-        colors[ImGuiCol_ScrollbarGrabActive] = ImVec4(0.09f, 0.21f, 0.31f, 1.00f);
-        colors[ImGuiCol_CheckMark] = ImVec4(0.00f, 0.50f, 0.50f, 1.0f);
         colors[ImGuiCol_SliderGrab] = ImVec4(0.28f, 0.56f, 1.00f, 1.00f);
         colors[ImGuiCol_SliderGrabActive] = ImVec4(0.37f, 0.61f, 1.00f, 1.00f);
-        colors[ImGuiCol_Button] = ImVec4(0.20f, 0.25f, 0.29f, 1.00f);
-        colors[ImGuiCol_ButtonHovered] = ImVec4(0.00f, 0.50f, 0.50f, 1.0f);
-        colors[ImGuiCol_ButtonActive] = ImVec4(0.00f, 0.50f, 0.50f, 1.0f);
-        colors[ImGuiCol_Header] = ImVec4(0.20f, 0.25f, 0.29f, 0.55f);
-        colors[ImGuiCol_HeaderHovered] = ImVec4(0.00f, 0.50f, 0.50f, 1.0f);
-        colors[ImGuiCol_HeaderActive] = ImVec4(0.00f, 0.50f, 0.50f, 1.0f);
-        colors[ImGuiCol_Separator] = ImVec4(0.20f, 0.25f, 0.29f, 1.00f);
         colors[ImGuiCol_SeparatorHovered] = ImVec4(0.10f, 0.40f, 0.75f, 0.78f);
         colors[ImGuiCol_SeparatorActive] = ImVec4(0.10f, 0.40f, 0.75f, 1.00f);
         colors[ImGuiCol_ResizeGrip] = ImVec4(0.26f, 0.59f, 0.98f, 0.25f);
         colors[ImGuiCol_ResizeGripHovered] = ImVec4(0.26f, 0.59f, 0.98f, 0.67f);
         colors[ImGuiCol_ResizeGripActive] = ImVec4(0.26f, 0.59f, 0.98f, 0.95f);
-        colors[ImGuiCol_Tab] = ImVec4(0.11f, 0.15f, 0.17f, 1.00f);
-        colors[ImGuiCol_TabHovered] = ImVec4(0.00f, 0.50f, 0.50f, 1.0f);
-        colors[ImGuiCol_TabSelected] = ImVec4(0.00f, 0.50f, 0.50f, 1.0f);
-        colors[ImGuiCol_TabDimmed] = ImVec4(0.11f, 0.15f, 0.17f, 1.00f);
-        colors[ImGuiCol_TabDimmedSelected] = ImVec4(0.11f, 0.15f, 0.17f, 1.00f);
-        colors[ImGuiCol_PlotLines] = ImVec4(0.00f, 0.50f, 0.50f, 1.0f);
         colors[ImGuiCol_PlotLinesHovered] = ImVec4(1.00f, 0.43f, 0.35f, 1.00f);
-        colors[ImGuiCol_PlotHistogram] = ImVec4(0.00f, 0.50f, 0.50f, 1.0f);
         colors[ImGuiCol_PlotHistogramHovered] = ImVec4(1.00f, 0.60f, 0.00f, 1.00f);
         colors[ImGuiCol_TextSelectedBg] = ImVec4(0.26f, 0.59f, 0.98f, 0.35f);
         colors[ImGuiCol_DragDropTarget] = ImVec4(1.00f, 1.00f, 0.00f, 0.90f);
-        colors[ImGuiCol_NavCursor] = ImVec4(0.00f, 0.50f, 0.50f, 1.0f);
         colors[ImGuiCol_NavWindowingHighlight] = ImVec4(1.00f, 1.00f, 1.00f, 0.70f);
         colors[ImGuiCol_NavWindowingDimBg] = ImVec4(0.80f, 0.80f, 0.80f, 0.20f);
-        colors[ImGuiCol_ModalWindowDimBg] = ImVec4(0.80f, 0.80f, 0.80f, 0.35f);
+        
+        // Apply theme-dependent colors (background, text, and modal dim)
+        UpdateThemeColors();
+        
+        // Apply accent colors from config
+        UpdateAccentColors();
+    }
+    
+    void UpdateAccentColors(void) {
+        ImVec4 accent = ImVec4(cfg.accent_color[0], cfg.accent_color[1], cfg.accent_color[2], 1.0f);
+        ImVec4 *colors = ImGui::GetStyle().Colors;
+        
+        colors[ImGuiCol_CheckMark] = accent;
+        colors[ImGuiCol_ButtonHovered] = accent;
+        colors[ImGuiCol_ButtonActive] = accent;
+        colors[ImGuiCol_HeaderHovered] = accent;
+        colors[ImGuiCol_HeaderActive] = accent;
+        colors[ImGuiCol_TabHovered] = accent;
+        colors[ImGuiCol_TabSelected] = accent;
+        colors[ImGuiCol_PlotLines] = accent;
+        colors[ImGuiCol_PlotHistogram] = accent;
+        colors[ImGuiCol_NavCursor] = accent;
+    }
+    
+    ImU32 GetAccentColorU32(void) {
+        return IM_COL32(
+            static_cast<int>(cfg.accent_color[0] * 255),
+            static_cast<int>(cfg.accent_color[1] * 255),
+            static_cast<int>(cfg.accent_color[2] * 255),
+            255
+        );
+    }
+    
+    ImU32 GetAccentColorU32WithAlpha(int alpha) {
+        return IM_COL32(
+            static_cast<int>(cfg.accent_color[0] * 255),
+            static_cast<int>(cfg.accent_color[1] * 255),
+            static_cast<int>(cfg.accent_color[2] * 255),
+            alpha
+        );
+    }
+    
+    bool IsSystemThemeDark(void) {
+        ColorSetId color_set = ColorSetId_Light;
+        if (R_SUCCEEDED(setsysGetColorSetId(&color_set))) {
+            return color_set == ColorSetId_Dark;
+        }
+        // Default to dark if we can't read the setting
+        return true;
+    }
+    
+    // Button color functions - returns colors based on cfg.button_style
+    ImU32 GetButtonColorA(void) {
+        if (cfg.button_style == ButtonStyle_Accent) {
+            return GetAccentColorU32();
+        }
+        if (cfg.button_style == ButtonStyle_Mono) {
+            return IsCurrentThemeDark() 
+                ? IM_COL32(180, 180, 180, 255)   // Light gray on dark
+                : IM_COL32(80, 80, 80, 255);     // Dark gray on light
+        }
+        return IM_COL32(235, 64, 52, 255);  // Red (Nintendo Switch A)
+    }
+    
+    ImU32 GetButtonColorB(void) {
+        if (cfg.button_style == ButtonStyle_Accent) {
+            return GetAccentColorU32();
+        }
+        if (cfg.button_style == ButtonStyle_Mono) {
+            return IsCurrentThemeDark() 
+                ? IM_COL32(180, 180, 180, 255)
+                : IM_COL32(80, 80, 80, 255);
+        }
+        return IM_COL32(200, 150, 0, 255);  // Yellow (Nintendo Switch B)
+    }
+    
+    ImU32 GetButtonColorX(void) {
+        if (cfg.button_style == ButtonStyle_Accent) {
+            return GetAccentColorU32();
+        }
+        if (cfg.button_style == ButtonStyle_Mono) {
+            return IsCurrentThemeDark() 
+                ? IM_COL32(180, 180, 180, 255)
+                : IM_COL32(80, 80, 80, 255);
+        }
+        return IM_COL32(65, 137, 230, 255);  // Blue (Nintendo Switch X)
+    }
+    
+    ImU32 GetButtonColorY(void) {
+        if (cfg.button_style == ButtonStyle_Accent) {
+            return GetAccentColorU32();
+        }
+        if (cfg.button_style == ButtonStyle_Mono) {
+            return IsCurrentThemeDark() 
+                ? IM_COL32(180, 180, 180, 255)
+                : IM_COL32(80, 80, 80, 255);
+        }
+        return IM_COL32(100, 180, 100, 255);  // Green (Nintendo Switch Y)
+    }
+    
+    ImU32 GetButtonColorPlus(void) {
+        // Plus/Minus are always gray (same in both styles, theme-aware)
+        return IsCurrentThemeDark() 
+            ? IM_COL32(80, 80, 80, 255)
+            : IM_COL32(140, 140, 145, 255);
+    }
+    
+    ImU32 GetButtonColorMinus(void) {
+        // Plus/Minus are always gray (same in both styles, theme-aware)
+        return IsCurrentThemeDark() 
+            ? IM_COL32(80, 80, 80, 255)
+            : IM_COL32(140, 140, 145, 255);
+    }
+    
+    ImU32 GetButtonTextColor(void) {
+        // Text on buttons - white for colored/accent style, contrasting for mono
+        if (cfg.button_style == ButtonStyle_Mono) {
+            return IsCurrentThemeDark() 
+                ? IM_COL32(40, 40, 40, 255)      // Dark text on light buttons (dark theme)
+                : IM_COL32(240, 240, 240, 255);  // Light text on dark buttons (light theme)
+        }
+        if (cfg.button_style == ButtonStyle_Accent) {
+            // Calculate luminance of accent color to determine text color
+            float luminance = 0.299f * cfg.accent_color[0] + 0.587f * cfg.accent_color[1] + 0.114f * cfg.accent_color[2];
+            return luminance > 0.5f 
+                ? IM_COL32(30, 30, 30, 255)      // Dark text on light accent
+                : IM_COL32(255, 255, 255, 255);  // White text on dark accent
+        }
+        return IM_COL32(255, 255, 255, 255);  // White text on colored buttons
     }
 
+    // Font requirement flags for different languages
+    enum FontRequirement {
+        FontReq_Standard = 0,            // Base font (all languages)
+        FontReq_ChineseSimplified = 1,   // Simplified Chinese (lang 6)
+        FontReq_ChineseTraditional = 2,  // Traditional Chinese (lang 11)
+        FontReq_Korean = 4,              // Korean (lang 7)
+    };
+    
+    // Determine which fonts are needed for a given language
+    // Extensible: add new languages by adding cases here
+    static int GetFontRequirements(int lang) {
+        switch (lang) {
+            case 6:  // Simplified Chinese
+                return FontReq_ChineseSimplified;
+            case 7:  // Korean
+                return FontReq_Korean;
+            case 11: // Traditional Chinese
+                return FontReq_ChineseTraditional;
+            default: // All other languages (jp, en, fr, de, it, es, nl, pt, ru)
+                return FontReq_Standard;
+        }
+    }
+    
     bool Init(void) {
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
@@ -263,6 +533,13 @@ namespace GUI {
         
         io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
         
+        // Set ImGui ini file path on SD card for persistent settings (table column widths, etc.)
+        static const char* imgui_ini_path = "/switch/NX-Shell/imgui.ini";
+        io.IniFilename = imgui_ini_path;
+        
+        // Try to load existing settings if the file exists
+        ImGui::LoadIniSettingsFromDisk(imgui_ini_path);
+        
         if (!GUI::InitEGL(nwindowGetDefault()))
             return false;
         
@@ -270,12 +547,24 @@ namespace GUI {
         
         ImGui_ImplSwitch_Init("#version 130");
         
-        // Load nintendo font
-        PlFontData standard, extended, chinese, korean;
+        // Determine which fonts are needed based on current language setting
+        int lang = Config::GetLang();
+        int font_reqs = GetFontRequirements(lang);
+        bool need_chinese_simplified = (font_reqs & FontReq_ChineseSimplified) != 0;
+        bool need_chinese_traditional = (font_reqs & FontReq_ChineseTraditional) != 0;
+        bool need_korean = (font_reqs & FontReq_Korean) != 0;
+        
+        // Override: if multi_lang is enabled, load all fonts for full character support
+        if (cfg.multi_lang) {
+            need_chinese_simplified = true;
+            need_korean = true;
+        }
+        
+        // Load nintendo fonts - always need Standard + NintendoExt
+        PlFontData standard, extended;
         static ImWchar extended_range[] = {0xE000, 0xE152, 0};
         
-        // CJK glyph ranges (modern replacement for obsolete GetGlyphRanges* functions)
-        // On-demand loading will handle additional glyphs as needed
+        // CJK glyph ranges (only used when needed)
         static const ImWchar chinese_ranges[] = {
             0x0020, 0x00FF, // Basic Latin + Latin Supplement
             0x2000, 0x206F, // General Punctuation
@@ -292,21 +581,42 @@ namespace GUI {
             0,
         };
         
-        if ((R_SUCCEEDED(plGetSharedFontByType(std::addressof(standard), PlSharedFontType_Standard))) &&
-            R_SUCCEEDED(plGetSharedFontByType(std::addressof(extended), PlSharedFontType_NintendoExt)) &&
-            R_SUCCEEDED(plGetSharedFontByType(std::addressof(chinese), PlSharedFontType_ChineseSimplified)) &&
-            R_SUCCEEDED(plGetSharedFontByType(std::addressof(korean), PlSharedFontType_KO))) {
+        // Always load Standard and NintendoExt fonts
+        if (R_SUCCEEDED(plGetSharedFontByType(std::addressof(standard), PlSharedFontType_Standard)) &&
+            R_SUCCEEDED(plGetSharedFontByType(std::addressof(extended), PlSharedFontType_NintendoExt))) {
                 
             ImFontConfig font_cfg;
-            
             font_cfg.FontDataOwnedByAtlas = false;
+            
+            // Base font (required)
             io.Fonts->AddFontFromMemoryTTF(standard.address, standard.size, 20.f, std::addressof(font_cfg), io.Fonts->GetGlyphRangesDefault());
-
-            if (cfg.multi_lang) {
-                font_cfg.MergeMode = true;
-                io.Fonts->AddFontFromMemoryTTF(extended.address, extended.size, 20.f, std::addressof(font_cfg), extended_range);
-                io.Fonts->AddFontFromMemoryTTF(chinese.address,  chinese.size,  20.f, std::addressof(font_cfg), chinese_ranges);
-                io.Fonts->AddFontFromMemoryTTF(korean.address,   korean.size,   20.f, std::addressof(font_cfg), korean_ranges);
+            
+            // Nintendo extended symbols (always needed for controller icons)
+            font_cfg.MergeMode = true;
+            io.Fonts->AddFontFromMemoryTTF(extended.address, extended.size, 20.f, std::addressof(font_cfg), extended_range);
+            
+            // Load CJK fonts only if needed (saves ~15-20ms on startup for non-CJK users)
+            if (need_chinese_simplified || need_chinese_traditional) {
+                PlFontData chinese;
+                PlSharedFontType chinese_type = need_chinese_traditional 
+                    ? PlSharedFontType_ChineseTraditional 
+                    : PlSharedFontType_ChineseSimplified;
+                    
+                if (R_SUCCEEDED(plGetSharedFontByType(std::addressof(chinese), chinese_type))) {
+                    io.Fonts->AddFontFromMemoryTTF(chinese.address, chinese.size, 20.f, std::addressof(font_cfg), chinese_ranges);
+                }
+                // Fallback: if Traditional Chinese font not available, try Simplified
+                else if (need_chinese_traditional && 
+                         R_SUCCEEDED(plGetSharedFontByType(std::addressof(chinese), PlSharedFontType_ChineseSimplified))) {
+                    io.Fonts->AddFontFromMemoryTTF(chinese.address, chinese.size, 20.f, std::addressof(font_cfg), chinese_ranges);
+                }
+            }
+            
+            if (need_korean) {
+                PlFontData korean;
+                if (R_SUCCEEDED(plGetSharedFontByType(std::addressof(korean), PlSharedFontType_KO))) {
+                    io.Fonts->AddFontFromMemoryTTF(korean.address, korean.size, 20.f, std::addressof(font_cfg), korean_ranges);
+                }
             }
             
             io.Fonts->Flags |= ImFontAtlasFlags_NoPowerOfTwoHeight;
@@ -321,10 +631,88 @@ namespace GUI {
         if (!appletMainLoop())
             return false;
         
+        // Initialize pad state for hold-to-close detection (once)
+        if (!s_pad_initialized) {
+            padInitializeDefault(&s_pad);
+            s_pad_initialized = true;
+        }
+        
+        // Update pad and check for hold-to-close (minus button held for 1 seconds)
+        padUpdate(&s_pad);
+        u64 buttons = padGetButtons(&s_pad);
+        
+        if (buttons & HidNpadButton_Minus) {
+            if (!s_minus_is_held) {
+                // Just started holding minus
+                s_minus_is_held = true;
+                s_minus_hold_start = armGetSystemTick();
+            } else {
+                // Check if held long enough (3 seconds)
+                u64 elapsed_ticks = armGetSystemTick() - s_minus_hold_start;
+                float elapsed_seconds = (elapsed_ticks * 625.0f / 12.0f) / 1000000000.0f;
+                if (elapsed_seconds >= HOLD_TO_CLOSE_SECONDS) {
+                    return false;  // Exit the app
+                }
+            }
+        } else {
+            // Minus button released, reset tracking
+            s_minus_is_held = false;
+            s_minus_hold_start = 0;
+        }
+        
         // Check for dock/undock and update resolution if needed
         UpdateDisplayDimensions();
         
+        // Check if theme has changed (for Auto mode or manual changes) and refresh colors
+        bool current_theme_dark = IsCurrentThemeDark();
+        if (current_theme_dark != s_last_theme_dark) {
+            s_last_theme_dark = current_theme_dark;
+            UpdateThemeColors();
+            UpdateAccentColors();
+        }
+        
         key = ImGui_ImplSwitch_NewFrame();
+        
+        // Apply gamepad scrolling (D-pad up/down held or right stick) to the focused nav window
+        // Scroll accelerates the longer the input is held
+        float right_stick_scroll = ImGui_ImplSwitch_GetRightStickScrollY();
+        if (right_stick_scroll != 0.0f) {
+            ImGuiContext& g = *GImGui;
+            // Find the best window to scroll - prefer the nav window or hovered window
+            ImGuiWindow* scroll_window = g.NavWindow;
+            if (scroll_window) {
+                // Walk up to find a scrollable parent if the nav window itself isn't scrollable
+                while (scroll_window && scroll_window->ScrollMax.y <= 0.0f && scroll_window->ParentWindow) {
+                    scroll_window = scroll_window->ParentWindow;
+                }
+                if (scroll_window && scroll_window->ScrollMax.y > 0.0f) {
+                    float new_scroll_y = scroll_window->Scroll.y + right_stick_scroll;
+                    new_scroll_y = ImClamp(new_scroll_y, 0.0f, scroll_window->ScrollMax.y);
+                    scroll_window->Scroll.y = new_scroll_y;
+                }
+            }
+        }
+        
+        // Handle B button for popup closing vs custom navigation
+        // B button is NOT mapped in imgui_impl_switch.cpp to prevent ImGui from intercepting it
+        // (FileBrowser uses B for parent directory, Settings/About use B to jump back to FileBrowser)
+        // BUT when a popup (including combo dropdown) is open, we need to send B to ImGui to close it
+        if (key & HidNpadButton_B) {
+            ImGuiContext& g = *GImGui;
+            // Track if a popup was open when B was pressed - used by window.cpp to avoid double-handling
+            s_popup_was_open_on_b_press = (g.OpenPopupStack.Size > 0);
+            // If a popup/combo is open, send B key event to ImGui so it can close the popup
+            if (g.OpenPopupStack.Size > 0) {
+                ImGuiIO& io = ImGui::GetIO();
+                io.AddKeyEvent(ImGuiKey_GamepadFaceRight, true);
+            }
+        } else {
+            s_popup_was_open_on_b_press = false;
+            // Release the B key when not pressed
+            ImGuiIO& io = ImGui::GetIO();
+            io.AddKeyEvent(ImGuiKey_GamepadFaceRight, false);
+        }
+        
         ImGui::NewFrame();
         return true;
     }
@@ -339,8 +727,220 @@ namespace GUI {
         GUI::SwapBuffers();
     }
     
+    // Module-level clkrst sessions for stats overlay (need cleanup on exit)
+    static ClkrstSession s_cpu_session = {0}, s_gpu_session = {0};
+    static bool s_clkrst_sessions_open = false;
+    
+    static void CleanupStatsOverlay(void) {
+        // Close clkrst sessions if they were opened
+        if (s_clkrst_sessions_open) {
+            clkrstCloseSession(&s_cpu_session);
+            clkrstCloseSession(&s_gpu_session);
+            s_clkrst_sessions_open = false;
+        }
+    }
+    
     void Exit(void) {
+        // Save ImGui settings (table column widths, etc.) to SD card
+        ImGui::SaveIniSettingsToDisk(ImGui::GetIO().IniFilename);
+        
+        // Clean up stats overlay resources (clkrst sessions) before ImGui shutdown
+        CleanupStatsOverlay();
+        
+        // Shutdown ImGui backend
         ImGui_ImplSwitch_Shutdown();
+        
+        // Destroy ImGui context to free all ImGui resources
+        ImGui::DestroyContext();
+        
+        // Clean up EGL (includes glFinish() for GPU sync)
         GUI::ExitEGL();
+    }
+    
+    bool IsHoldingToClose(float &progress) {
+        if (!s_minus_is_held) {
+            progress = 0.0f;
+            return false;
+        }
+        
+        u64 elapsed_ticks = armGetSystemTick() - s_minus_hold_start;
+        float elapsed_seconds = (elapsed_ticks * 625.0f / 12.0f) / 1000000000.0f;
+        progress = elapsed_seconds / HOLD_TO_CLOSE_SECONDS;
+        if (progress > 1.0f) progress = 1.0f;
+        return true;
+    }
+    
+    void StartRefreshAnimation(void) {
+        s_refresh_anim_start = armGetSystemTick();
+        s_refresh_anim_active = true;
+    }
+    
+    bool IsRefreshAnimating(float &progress) {
+        if (!s_refresh_anim_active) {
+            progress = 0.0f;
+            return false;
+        }
+        
+        u64 elapsed_ticks = armGetSystemTick() - s_refresh_anim_start;
+        float elapsed_seconds = (elapsed_ticks * 625.0f / 12.0f) / 1000000000.0f;
+        progress = elapsed_seconds / REFRESH_ANIM_SECONDS;
+        
+        if (progress >= 1.0f) {
+            // Animation complete
+            progress = 1.0f;
+            s_refresh_anim_active = false;
+            return false;  // Animation is done
+        }
+        
+        return true;
+    }
+    
+    void ResetUIState(void) {
+        // Called after language change - the overlay will re-assert its z-order
+        // in RenderStatsOverlay via BringWindowToDisplayFront
+        Log::Debug("ResetUIState called - cfg.show_stats=%d, cfg.lang=%d\n", cfg.show_stats, cfg.lang);
+    }
+    
+    void ResetImGuiSettings(void) {
+        // Clear in-memory ImGui settings (table column widths, window positions, etc.)
+        ImGui::ClearIniSettings();
+        
+        // Delete the ini file from disk so it won't be reloaded
+        static const char* imgui_ini_path = "/switch/NX-Shell/imgui.ini";
+        fsFsDeleteFile(std::addressof(devices[FileSystemSDMC]), imgui_ini_path);
+        
+        Log::Debug("ResetImGuiSettings - cleared in-memory settings and deleted %s\n", imgui_ini_path);
+    }
+    
+    bool WasPopupOpenOnBPress(void) {
+        // Returns true if a popup was open when B was pressed this frame
+        // Used to prevent double-handling B (ImGui closes popup, then we also switch tabs)
+        return s_popup_was_open_on_b_press;
+    }
+    
+    // Helper to build N/A display string by extracting label from format string
+    static void DisplayStatsNA(const char* format_str, const char* na_str) {
+        // Find the '%' to extract just the label portion
+        const char* pct = std::strchr(format_str, '%');
+        if (pct) {
+            char buf[64];
+            int label_len = static_cast<int>(pct - format_str);
+            std::snprintf(buf, sizeof(buf), "%.*s%s", label_len, format_str, na_str);
+            ImGui::TextDisabled("%s", buf);
+        } else {
+            ImGui::TextDisabled("%s", na_str);
+        }
+    }
+
+    void RenderStatsOverlay(void) {
+        if (!cfg.show_stats) {
+            return;
+        }
+        
+        ImGuiIO &io = ImGui::GetIO();
+        const int lang = Config::GetLang();
+        
+        // FPS history buffer for 1 minute graph (store one sample per frame, ~60 fps = 3600 samples)
+        static constexpr int FPS_HISTORY_SIZE = 3600;  // ~60 seconds at 60 fps
+        static float s_fps_history[FPS_HISTORY_SIZE] = {0};
+        static int s_fps_history_offset = 0;
+        static float s_fps_min = 0.0f, s_fps_max = 60.0f;
+        
+        // Update FPS history
+        s_fps_history[s_fps_history_offset] = io.Framerate;
+        s_fps_history_offset = (s_fps_history_offset + 1) % FPS_HISTORY_SIZE;
+        
+        // Calculate min/max for graph scaling (only from valid samples)
+        s_fps_min = 0.0f;
+        s_fps_max = 65.0f;  // Fixed max for consistent scale
+        
+        // Position in top-right corner with padding
+        const float padding = 10.0f;
+        const float overlay_width = 286.0f;  // 220 * 1.3 = 286
+        ImVec2 overlay_pos = ImVec2(io.DisplaySize.x - overlay_width - padding - 20.0f, padding + 20.0f);
+        
+        ImGui::SetNextWindowPos(overlay_pos, ImGuiCond_Always);
+        ImGui::SetNextWindowBgAlpha(0.6f);
+        
+        ImGuiWindowFlags flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoMove | 
+                                 ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings |
+                                 ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav |
+                                 ImGuiWindowFlags_NoInputs;
+        
+        if (ImGui::Begin("##StatsOverlay", nullptr, flags)) {
+            // Force this window to always be on top (in front of all other windows)
+            ImGuiWindow* window = ImGui::GetCurrentWindow();
+            if (window) {
+                ImGui::BringWindowToDisplayFront(window);
+            }
+            
+            // Resolution
+            ImGui::Text(strings[lang][Lang::StatsResolution], display_width, display_height);
+            
+            // Framerate and frame time
+            ImGui::Text(strings[lang][Lang::StatsFPS], io.Framerate, 1000.0f / io.Framerate);
+            
+            // FPS graph showing last 1 minute
+            ImGui::PlotLines("##FPSGraph", s_fps_history, FPS_HISTORY_SIZE, s_fps_history_offset,
+                             nullptr, s_fps_min, s_fps_max, ImVec2(overlay_width - 16.0f, 40.0f));
+            
+            // CPU/GPU Clock speeds (using clkrst service)
+            if (!s_clkrst_sessions_open) {
+                if (R_SUCCEEDED(clkrstOpenSession(&s_cpu_session, PcvModuleId_CpuBus, 3)))
+                    s_clkrst_sessions_open = true;
+                clkrstOpenSession(&s_gpu_session, PcvModuleId_GPU, 3);
+            }
+            
+            if (s_clkrst_sessions_open) {
+                u32 cpu_hz = 0, gpu_hz = 0;
+                if (R_SUCCEEDED(clkrstGetClockRate(&s_cpu_session, &cpu_hz))) {
+                    ImGui::Text(strings[lang][Lang::StatsCPU], cpu_hz / 1000000);
+                }
+                if (R_SUCCEEDED(clkrstGetClockRate(&s_gpu_session, &gpu_hz))) {
+                    ImGui::Text(strings[lang][Lang::StatsGPU], gpu_hz / 1000000);
+                }
+            }
+            
+            // Memory usage
+            u64 used_mem = 0, total_mem = 0;
+            svcGetInfo(&used_mem, InfoType_UsedMemorySize, CUR_PROCESS_HANDLE, 0);
+            svcGetInfo(&total_mem, InfoType_TotalMemorySize, CUR_PROCESS_HANDLE, 0);
+            
+            float used_mb = used_mem / (1024.0f * 1024.0f);
+            float total_mb = total_mem / (1024.0f * 1024.0f);
+            ImGui::Text(strings[lang][Lang::StatsMemory], used_mb, total_mb);
+            
+            // Temperatures - try multiple methods for compatibility with all Switch models
+            s32 soc_temp_mc = 0, skin_temp_mc = 0;
+            bool got_soc = false, got_skin = false;
+            
+            // Try ts service first (works on Erista)
+            if (R_SUCCEEDED(tsGetTemperatureMilliC(TsLocation_Internal, &soc_temp_mc))) {
+                got_soc = true;
+            }
+            
+            // Try tc service for skin temperature (more reliable on Mariko)
+            if (R_SUCCEEDED(tcGetSkinTemperatureMilliC(&skin_temp_mc))) {
+                got_skin = true;
+            } else if (R_SUCCEEDED(tsGetTemperatureMilliC(TsLocation_External, &skin_temp_mc))) {
+                // Fallback to ts service for skin/PCB temp
+                got_skin = true;
+            }
+            
+            if (got_soc) {
+                float soc_temp_c = soc_temp_mc / 1000.0f;
+                ImGui::Text(strings[lang][Lang::StatsSOCTemp], soc_temp_c);
+            } else {
+                DisplayStatsNA(strings[lang][Lang::StatsSOCTemp], strings[lang][Lang::StatsNA]);
+            }
+            
+            if (got_skin) {
+                float skin_temp_c = skin_temp_mc / 1000.0f;
+                ImGui::Text(strings[lang][Lang::StatsSkinTemp], skin_temp_c);
+            } else {
+                DisplayStatsNA(strings[lang][Lang::StatsSkinTemp], strings[lang][Lang::StatsNA]);
+            }
+        }
+        ImGui::End();
     }
 }

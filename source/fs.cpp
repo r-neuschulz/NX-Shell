@@ -3,18 +3,25 @@
 #include <cstring>
 #include <dirent.h>
 #include <filesystem>
+#include <mutex>
+#include <vector>
 
 #include "config.hpp"
 #include "fs.hpp"
 #include "language.hpp"
 #include "log.hpp"
 #include "popups.hpp"
+#include "selection.hpp"
 
 // Global vars
 FsFileSystem *fs;
 FsFileSystem devices[FileSystemMax];
 std::string cwd = "/";
 std::string device = "sdmc:";
+
+// External globals from filebrowser.cpp (for partition list)
+extern std::vector<std::string> devices_list;
+extern std::recursive_mutex devices_list_mutex;
 
 namespace FS {
 
@@ -25,6 +32,48 @@ namespace FS {
     } FSCopyEntry;
     
     FSCopyEntry fs_copy_entry;
+    
+    // Conflict handling state for multi-file operations
+    static ConflictHandling conflict_handling_mode = ConflictHandling_Ask;
+
+    size_t CountConflicts(void) {
+        const auto &selected_paths = g_selection.GetSelectedPaths();
+        size_t conflicts = 0;
+        
+        for (const auto &full_path : selected_paths) {
+            std::string filename = SelectionStore::GetFilename(full_path);
+            if (filename == "..")
+                continue;
+            
+            std::string dest_path = FS::BuildPath(filename, true);
+            struct stat dest_stat = { 0 };
+            if (stat(dest_path.c_str(), &dest_stat) == 0) {
+                conflicts++;
+            }
+        }
+        
+        return conflicts;
+    }
+    
+    void SetConflictHandling(ConflictHandling mode) {
+        conflict_handling_mode = mode;
+    }
+    
+    ConflictHandling GetConflictHandling(void) {
+        return conflict_handling_mode;
+    }
+    
+    void ClearConflictHandling(void) {
+        conflict_handling_mode = ConflictHandling_Ask;
+    }
+    
+    bool ShouldSkipDueToConflict(const std::string &dest_path) {
+        if (conflict_handling_mode != ConflictHandling_SkipAll)
+            return false;
+        
+        struct stat dest_stat = { 0 };
+        return (stat(dest_path.c_str(), &dest_stat) == 0);
+    }
 
     bool FileExists(const std::string &path) {
         struct stat file_stat = { 0 };
@@ -34,6 +83,15 @@ namespace FS {
     bool DirExists(const std::string &path) {
         struct stat dir_stat = { 0 };
         return (stat(path.c_str(), &dir_stat) == 0);
+    }
+
+    bool DestinationExists(void) {
+        if (fs_copy_entry.filename.empty())
+            return false;
+        
+        std::string dest_path = FS::BuildPath(fs_copy_entry.filename, true);
+        struct stat dest_stat = { 0 };
+        return (stat(dest_path.c_str(), std::addressof(dest_stat)) == 0);
     }
 
     bool GetFileSize(const std::string &path, std::size_t &size) {
@@ -92,6 +150,11 @@ namespace FS {
         
         bool ret = FS::GetDirList(device, new_path, new_entries);
         
+        if (ret) {
+            // Save the new path to config
+            SaveCurrentPath();
+        }
+        
         entries.clear();
         entries = new_entries;
         return ret;
@@ -127,6 +190,40 @@ namespace FS {
         return true;
     }
 
+    void PopulateMetadataCache(const std::vector<FsDirectoryEntry> &entries, std::vector<FileMetadataCache> &cache) {
+        cache.clear();
+        
+        // Pre-allocate with default-initialized structs
+        FileMetadataCache empty_cache;
+        empty_cache.file_size = 0;
+        empty_cache.modified_time = 0;
+        empty_cache.has_archive_bit = false;
+        empty_cache.valid = false;
+        cache.assign(entries.size(), empty_cache);
+        
+        for (size_t i = 0; i < entries.size(); i++) {
+            // Skip ".." entry
+            if (std::strncmp(entries[i].name, "..", 2) == 0) {
+                continue;  // Already initialized as invalid
+            }
+            
+            std::string full_path = FS::BuildPath(const_cast<FsDirectoryEntry&>(entries[i]));
+            struct stat file_stat = { 0 };
+            
+            if (stat(full_path.c_str(), std::addressof(file_stat)) == 0) {
+                cache[i].file_size = file_stat.st_size;
+                cache[i].modified_time = file_stat.st_mtime;
+                cache[i].valid = true;
+                
+                // Check archive bit for directories
+                if (entries[i].type == FsDirEntryType_Dir) {
+                    cache[i].has_archive_bit = FS::HasArchiveBit(full_path);
+                }
+            }
+            // If stat fails, entry stays as invalid (already set)
+        }
+    }
+
     bool Rename(FsDirectoryEntry &entry, const std::string &dest_path) {
         std::string src_path = FS::BuildPath(entry);
         std::string full_dest_path = FS::BuildPath(dest_path, true);
@@ -155,11 +252,15 @@ namespace FS {
                 file_path.append(filename);
 
                 if (entry->d_type & DT_DIR) {
-                    FS::DeleteRecursive(file_path);
+                    if (!FS::DeleteRecursive(file_path)) {
+                        closedir(dir);
+                        return false;
+                    }
                 }
                 else {
                     if (remove(file_path.c_str()) != 0) {
                         Log::Error("FS::DeleteRecursive(%s) failed to delete file.\n", file_path.c_str());
+                        closedir(dir);
                         return false;
                     }
                 }
@@ -305,6 +406,31 @@ namespace FS {
         }
     }
 
+    bool WouldCauseRecursiveCopy(void) {
+        // Only directories can cause recursive copy issues
+        if (!fs_copy_entry.is_directory)
+            return false;
+        
+        std::string src_path = fs_copy_entry.path;
+        std::string dest_parent = device + cwd;
+        
+        // Normalize paths (ensure no trailing slashes for comparison)
+        if (!src_path.empty() && src_path.back() == '/')
+            src_path.pop_back();
+        if (!dest_parent.empty() && dest_parent.back() == '/')
+            dest_parent.pop_back();
+        
+        // Check if destination parent is inside the source
+        // e.g., src="sdmc:/photos", dest_parent="sdmc:/photos/vacation" -> recursive
+        // We need to check if dest_parent starts with src_path + "/"
+        std::string src_with_slash = src_path + "/";
+        if (dest_parent.compare(0, src_with_slash.length(), src_with_slash) == 0) {
+            return true;
+        }
+        
+        return false;
+    }
+
     bool Paste(void) {
         bool ret = false;
         std::string path = FS::BuildPath(fs_copy_entry.filename, true);
@@ -330,6 +456,10 @@ namespace FS {
         return true;
     }
 
+    std::string GetCopyEntryFilename(void) {
+        return fs_copy_entry.filename;
+    }
+
     FileType GetFileType(const std::string &filename) {
         std::string ext = FS::GetFileExt(filename);
         
@@ -338,7 +468,66 @@ namespace FS {
         else if ((!ext.compare(".BMP")) || (!ext.compare(".GIF")) || (!ext.compare(".JPG")) || (!ext.compare(".JPEG")) || (!ext.compare(".PGM"))
             || (!ext.compare(".PPM")) || (!ext.compare(".PNG")) || (!ext.compare(".PSD")) || (!ext.compare(".TGA")) || (!ext.compare(".WEBP")))
             return FileTypeImage;
-        else if ((!ext.compare(".JSON")) || (!ext.compare(".LOG")) || (!ext.compare(".TXT")) || (!ext.compare(".CFG")) || (!ext.compare(".INI")))
+        else if (
+            // Binary/Executable formats - default to hex mode
+            (!ext.compare(".BIN")) || (!ext.compare(".DAT")) || (!ext.compare(".ROM")) ||
+            // Nintendo Switch executables
+            (!ext.compare(".NRO")) || (!ext.compare(".NSO")) || (!ext.compare(".NCA")) || 
+            (!ext.compare(".NSP")) || (!ext.compare(".XCI")) ||
+            // Windows executables
+            (!ext.compare(".EXE")) || (!ext.compare(".DLL")) || (!ext.compare(".SYS")) ||
+            // Other binary formats
+            (!ext.compare(".SO")) || (!ext.compare(".DYLIB")) || (!ext.compare(".A")) || (!ext.compare(".O")) ||
+            (!ext.compare(".ELF")) || (!ext.compare(".AXF")) ||
+            // Firmware/BIOS
+            (!ext.compare(".FW")) || (!ext.compare(".BIOS")) ||
+            false)
+            return FileTypeBinary;
+        else if (
+            // Common text formats
+            (!ext.compare(".TXT")) || (!ext.compare(".LOG")) || (!ext.compare(".MD")) || (!ext.compare(".MARKDOWN")) ||
+            // Configuration files
+            (!ext.compare(".JSON")) || (!ext.compare(".XML")) || (!ext.compare(".YAML")) || (!ext.compare(".YML")) ||
+            (!ext.compare(".CFG")) || (!ext.compare(".INI")) || (!ext.compare(".CONF")) || (!ext.compare(".CONFIG")) ||
+            (!ext.compare(".TOML")) || (!ext.compare(".ENV")) || (!ext.compare(".PROPERTIES")) ||
+            // Source code files
+            (!ext.compare(".C")) || (!ext.compare(".CPP")) || (!ext.compare(".CC")) || (!ext.compare(".CXX")) ||
+            (!ext.compare(".H")) || (!ext.compare(".HPP")) || (!ext.compare(".HH")) || (!ext.compare(".HXX")) ||
+            (!ext.compare(".CS")) || (!ext.compare(".JAVA")) || (!ext.compare(".KT")) || (!ext.compare(".SCALA")) ||
+            (!ext.compare(".PY")) || (!ext.compare(".PYW")) || (!ext.compare(".PYX")) ||
+            (!ext.compare(".JS")) || (!ext.compare(".JSX")) || (!ext.compare(".TS")) || (!ext.compare(".TSX")) ||
+            (!ext.compare(".HTML")) || (!ext.compare(".HTM")) || (!ext.compare(".CSS")) || (!ext.compare(".SCSS")) || (!ext.compare(".SASS")) || (!ext.compare(".LESS")) ||
+            (!ext.compare(".PHP")) || (!ext.compare(".RB")) || (!ext.compare(".RUBY")) ||
+            (!ext.compare(".GO")) || (!ext.compare(".RS")) || (!ext.compare(".RUST")) ||
+            (!ext.compare(".SWIFT")) || (!ext.compare(".M")) || (!ext.compare(".MM")) ||
+            (!ext.compare(".LUA")) || (!ext.compare(".PL")) || (!ext.compare(".PM")) || (!ext.compare(".PERL")) ||
+            (!ext.compare(".SH")) || (!ext.compare(".BASH")) || (!ext.compare(".ZSH")) || (!ext.compare(".FISH")) ||
+            (!ext.compare(".BAT")) || (!ext.compare(".CMD")) || (!ext.compare(".PS1")) ||
+            (!ext.compare(".SQL")) || (!ext.compare(".R")) || (!ext.compare(".MATLAB")) || (!ext.compare(".OCTAVE")) ||
+            (!ext.compare(".ASM")) || (!ext.compare(".S")) ||
+            // Script and data files
+            (!ext.compare(".CSV")) || (!ext.compare(".TSV")) ||
+            // Documentation and misc text
+            (!ext.compare(".RST")) || (!ext.compare(".TEX")) || (!ext.compare(".LATEX")) ||
+            (!ext.compare(".NFO")) || (!ext.compare(".DIZ")) ||
+            // Build and project files
+            (!ext.compare(".CMAKE")) || (!ext.compare(".MAKEFILE")) || (!ext.compare(".MAKE")) ||
+            (!ext.compare(".GRADLE")) || (!ext.compare(".MAVEN")) || (!ext.compare(".SBT")) ||
+            (!ext.compare(".GITIGNORE")) || (!ext.compare(".GITATTRIBUTES")) || (!ext.compare(".GITMODULES")) ||
+            (!ext.compare(".DOCKERIGNORE")) || (!ext.compare(".EDITORCONFIG")) ||
+            // Nintendo Switch specific
+            (!ext.compare(".PCHTXT")) || (!ext.compare(".IPS")) ||
+            // License and readme without extension are handled below
+            false)
+            return FileTypeText;
+        
+        // Check for common extensionless text files (case-insensitive filename match)
+        std::string basename = std::filesystem::path(filename).filename().string();
+        std::transform(basename.begin(), basename.end(), basename.begin(), ::toupper);
+        if ((!basename.compare("README")) || (!basename.compare("LICENSE")) || (!basename.compare("LICENCE")) ||
+            (!basename.compare("CHANGELOG")) || (!basename.compare("AUTHORS")) || (!basename.compare("CONTRIBUTORS")) ||
+            (!basename.compare("MAKEFILE")) || (!basename.compare("DOCKERFILE")) || (!basename.compare("CMAKELISTS.TXT")) ||
+            (!basename.compare("GEMFILE")) || (!basename.compare("RAKEFILE")) || (!basename.compare("VAGRANTFILE")))
             return FileTypeText;
             
         return FileTypeNone;
@@ -356,6 +545,60 @@ namespace FS {
         }
         
         return 0;
+    }
+    
+    bool HasArchiveBit(const std::string &path) {
+        // On Nintendo Switch, the archive bit is the concatenation file attribute
+        // A directory with this attribute set is treated as a single large file
+        // We check this by querying if the path is a valid concatenation file
+        char fs_path[FS_MAX_PATH];
+        std::snprintf(fs_path, FS_MAX_PATH, "%s", path.c_str());
+        
+        // Determine which filesystem to use based on path prefix
+        FsFileSystem *target_fs = nullptr;
+        const char *rel_path = fs_path;
+        
+        if (std::strncmp(fs_path, "sdmc:", 5) == 0) {
+            target_fs = std::addressof(devices[FileSystemSDMC]);
+            rel_path = fs_path + 5;
+        }
+        else if (std::strncmp(fs_path, "safe:", 5) == 0) {
+            target_fs = std::addressof(devices[FileSystemSafe]);
+            rel_path = fs_path + 5;
+        }
+        else if (std::strncmp(fs_path, "user:", 5) == 0) {
+            target_fs = std::addressof(devices[FileSystemUser]);
+            rel_path = fs_path + 5;
+        }
+        else if (std::strncmp(fs_path, "system:", 7) == 0) {
+            target_fs = std::addressof(devices[FileSystemSystem]);
+            rel_path = fs_path + 7;
+        }
+        else {
+            // Unknown device prefix, use current fs as fallback
+            target_fs = fs;
+        }
+        
+        // Safety check - filesystem must be valid
+        if (target_fs == nullptr) {
+            return false;
+        }
+        
+        FsDirEntryType entry_type;
+        Result ret = fsFsGetEntryType(target_fs, rel_path, &entry_type);
+        if (R_FAILED(ret))
+            return false;
+        
+        // Check if it's a directory first (archive bit is only meaningful for directories)
+        struct stat file_stat = { 0 };
+        if (stat(path.c_str(), &file_stat) != 0)
+            return false;
+        
+        // If stat says it's a directory but the FS says it's a file, it has the archive bit set
+        if (S_ISDIR(file_stat.st_mode) && entry_type == FsDirEntryType_File)
+            return true;
+        
+        return false;
     }
     
     Result GetFreeStorageSpace(s64 &size) {
@@ -418,5 +661,123 @@ namespace FS {
         path_next.append((cwd.compare("/") == 0)? "" : "/");
         path_next.append(path);
         return path_next;
+    }
+    
+    bool IsAtPartitionRoot(void) {
+        // Empty device string indicates we're at the partition root
+        return device.empty();
+    }
+    
+    void GetPartitionList(std::vector<FsDirectoryEntry> &entries) {
+        entries.clear();
+        
+        std::scoped_lock lock(::devices_list_mutex);
+        for (const auto &dev : ::devices_list) {
+            FsDirectoryEntry entry;
+            std::memset(&entry, 0, sizeof(FsDirectoryEntry));
+            std::snprintf(entry.name, FS_MAX_PATH, "%s", dev.c_str());
+            entry.type = FsDirEntryType_Dir;  // Treat partitions as directories
+            entries.push_back(entry);
+        }
+    }
+    
+    void GoToPartitionRoot(std::vector<FsDirectoryEntry> &entries) {
+        device = "";  // Empty device indicates partition root
+        cwd = "/";
+        GetPartitionList(entries);
+        SaveCurrentPath();
+    }
+    
+    bool SelectPartition(const std::string &partition_name, std::vector<FsDirectoryEntry> &entries) {
+        std::scoped_lock lock(::devices_list_mutex);
+        
+        // Find the partition in the device list
+        for (std::size_t i = 0; i < ::devices_list.size(); i++) {
+            if (::devices_list[i] == partition_name) {
+                device = partition_name;
+                fs = std::addressof(devices[i]);
+                cwd = "/";
+                
+                entries.clear();
+                bool ret = FS::GetDirList(device, cwd, entries);
+                if (ret) {
+                    SaveCurrentPath();
+                }
+                return ret;
+            }
+        }
+        
+        return false;
+    }
+    
+    std::string GetDisplayPath(void) {
+        if (IsAtPartitionRoot()) {
+            return "";  // Empty string at partition root
+        }
+        
+        // Return device + cwd, e.g., "sdmc:/folder/subfolder"
+        std::string path = device;
+        path.append(cwd);
+        return path;
+    }
+    
+    void SaveCurrentPath(void) {
+        cfg.last_device = device;
+        cfg.last_cwd = cwd;
+        Config::Save(cfg);
+    }
+    
+    bool RestoreSavedPath(std::vector<FsDirectoryEntry> &entries) {
+        // If saved device is empty, user was at partition root
+        if (cfg.last_device.empty()) {
+            GoToPartitionRoot(entries);
+            return true;
+        }
+        
+        // Find the device in the device list and set up fs pointer
+        std::scoped_lock lock(::devices_list_mutex);
+        bool device_found = false;
+        for (std::size_t i = 0; i < ::devices_list.size(); i++) {
+            if (::devices_list[i] == cfg.last_device) {
+                device = cfg.last_device;
+                fs = std::addressof(devices[i]);
+                device_found = true;
+                break;
+            }
+        }
+        
+        if (!device_found) {
+            // Device no longer exists (e.g., USB was removed) - go to partition root
+            Log::Debug("FS::RestoreSavedPath - device %s not found, going to partition root\n", cfg.last_device.c_str());
+            GoToPartitionRoot(entries);
+            return false;
+        }
+        
+        // Try to open the saved path
+        cwd = cfg.last_cwd;
+        if (!GetDirList(device, cwd, entries)) {
+            // Path doesn't exist - try going up until we find a valid directory
+            Log::Debug("FS::RestoreSavedPath - path %s%s not found, searching for valid parent\n", device.c_str(), cwd.c_str());
+            
+            while (cwd != "/") {
+                std::filesystem::path path = cwd;
+                cwd = path.parent_path().string();
+                if (cwd.empty()) cwd = "/";
+                
+                if (GetDirList(device, cwd, entries)) {
+                    Log::Debug("FS::RestoreSavedPath - found valid path at %s%s\n", device.c_str(), cwd.c_str());
+                    // Save the corrected path
+                    SaveCurrentPath();
+                    return true;
+                }
+            }
+            
+            // Even root failed - device might be inaccessible, go to partition root
+            Log::Debug("FS::RestoreSavedPath - device %s inaccessible, going to partition root\n", device.c_str());
+            GoToPartitionRoot(entries);
+            return false;
+        }
+        
+        return true;
     }
 }

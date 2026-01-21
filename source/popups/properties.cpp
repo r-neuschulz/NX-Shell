@@ -14,7 +14,7 @@ namespace Popups {
         return string;
     }
 
-    void FilePropertiesPopup(WindowData &data, bool &file_stat) {
+    void FilePropertiesPopup(WindowData &data, bool &file_stat, bool *properties) {
         const int lang = Config::GetLang();
         Popups::SetupPopup(strings[lang][Lang::OptionsProperties]);
         
@@ -58,8 +58,15 @@ namespace Popups {
             
             if (ImGui::Button(strings[lang][Lang::ButtonOK], ImVec2(120, 0))) {
                 file_stat = false;
+                // Reset the properties flag when called from text/image viewer
+                if (properties)
+                    *properties = false;
                 ImGui::CloseCurrentPopup();
-                data.state = WINDOW_STATE_OPTIONS;
+                // Only return to OPTIONS if called from file browser properties context
+                // When called from image/text viewer, state should remain unchanged
+                if (data.state == WINDOW_STATE_PROPERTIES) {
+                    data.state = WINDOW_STATE_OPTIONS;
+                }
             }
         }
         

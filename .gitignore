@@ -30,6 +30,7 @@
 *.exe
 *.out
 *.app
+*.ps1
 
 # NX-Shell
 *.nro

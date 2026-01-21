@@ -2,86 +2,161 @@
 
 #include "language.hpp"
 
-// TODO: Japanese
+// Japanese (need to check and verify)
 static const char *strings_jp[] {
     "OK",
-    "Cancel",
+    "キャンセル",
 
-    "Options",
-    "Select All",
-    "Clear All",
-    "Properties",
-    "Rename",
-    "New Folder",
-    "New File",
-    "Copy",
-    "Move",
-    "Paste",
-    "Delete",
-    "Set Archive Bit",
-    "Enter name",
-    "Enter folder name",
-    "Enter file name",
-    "Copying:",
+    "オプション",
+    "すべて選択",
+    "すべてクリア",
+    "プロパティ",
+    "名前変更",
+    "新規フォルダ",
+    "新規ファイル",
+    "コピー",
+    "フォルダをそれ自体にコピーすることはできません。",
+    "移動",
+    "貼り付け",
+    "削除",
+    "アーカイブビットを設定",
+    "名前を入力",
+    "フォルダ名を入力",
+    "ファイル名を入力",
+    "コピー中:",
 
-    "Name: ",
-    "Size: ",
-    "Created: ",
-    "Modified: ",
-    "Accessed: ",
-    "Width: ",
-    "Height: ",
+    "名前: ",
+    "サイズ: ",
+    "作成日時: ",
+    "更新日時: ",
+    "アクセス日時: ",
+    "幅: ",
+    "高さ: ",
 
-    "This action cannot be undone.",
-    "Do you wish to delete the following:",
-    "Do you wish to delete ",
+    "この操作は元に戻せません。",
+    "以下を削除しますか:",
+    "削除しますか ",
 
-    "Extract archive",
-    "This action may take a while.",
-    "Do you wish to extract ",
-    "Extracting:",
+    "アーカイブを展開",
+    "この操作には時間がかかる場合があります。",
+    "展開しますか ",
+    "展開中:",
 
-    "Settings",
-    "Sort Settings",
-    "Language",
+    "設定",
+    "並べ替え設定",
+    "言語",
     "USB",
-    "Unmount USB devices",
-    "Image Viewer",
-    "Developer Options",
-    "Multiple Character Set (Improves boot speed when disabled)",
-    "Display Resolution",
-    " Auto",
+    "USBデバイスを取り外す",
+    "画像ビューア",
+    "開発者オプション",
+    "複数文字セット（無効にすると起動速度が向上します）",
+    "表示解像度",
+    " 自動",
     " 1080p",
     " 720p",
-    "About",
-    "Check for Updates",
-    " Display filename",
-    " Enable logs",
-    " Enable support for special symbols/characters",
-    "version",
-    "Author",
-    "Banner",
+    "このアプリについて",
+    "アップデートを確認",
+    " ファイル名を表示",
+    " 全画面で画像を開く",
+    " ログを有効にする",
+    " 特殊記号/文字のサポートを有効にする",
+    "バージョン",
+    "作者",
+    "バナー",
+    "ライセンス",
 
-    "Update",
-    "Could not connect to network.",
-    "An update is available.",
-    "Do you wish to download and install NX-Shell version ",
-    "Update was successful.",
-    "Please exit and rerun the application.",
-    "You are on the latest version.",
+    "詳細統計",
+    " パフォーマンスオーバーレイを表示",
 
-    "Do you wish to unmount all the connected USB devices?",
-    "The USB device can now be safely removed.",
+    // Stats overlay strings
+    "解像度: %dx%d",
+    "FPS: %.1f (%.2fms)",
+    "CPU: %u MHz",
+    "GPU: %u MHz",
+    "RAM: %.1f/%.1f MB",
+    "SOC温度: %.1f°C",
+    "外装温度: %.1f°C",
+    "N/A",
 
-    "The name cannot be empty.",
+    "アクセントカラー",
+    "リセット",
 
-    "Open",
-    "Back",
-    "Select",
-    "Options",
-    "Drive",
+    "テーマ",
+    "自動",
+    "ダーク",
+    "ライト",
 
-    "Filename"
+    "アップデート",
+    "ネットワークに接続できませんでした。",
+    "アップデートが利用可能です。",
+    "NX-Shell バージョン をダウンロードしてインストールしますか ",
+    "アップデートが成功しました。",
+    "アプリケーションを終了して再起動してください。",
+    "最新バージョンです。",
+
+    "接続されているすべてのUSBデバイスを取り外しますか？",
+    "USBデバイスを安全に取り外すことができます。",
+
+    "名前を空にすることはできません。",
+
+    "開く",
+    "戻る",
+    "選択",
+    "オプション",
+    "ドライブ",
+    "終了",
+
+    "ファイル名",
+    "デバイス",
+    "サイズ",
+    "更新日",
+    "アーカイブ済み",
+    "デバイスを選択",
+
+    "詳細",
+    "確認",
+    "キャンセル",
+
+    "ファイル",
+    "設定",
+    "このアプリについて",
+
+    // Image/Text Viewer Hints
+    "前へ",
+    "次へ",
+    "拡大",
+    "縮小",
+    "プロパティ",
+    "全画面",
+    "ZRを押して全画面を終了",
+
+    // Reset Settings
+    "設定をリセット",
+    "すべての設定をデフォルトにリセットしますか？",
+    "デフォルトに戻す",
+
+    // Replace Confirmation
+    "ファイルが既に存在します",
+    "同じ名前のファイルが既に存在します。置き換えますか？",
+    "置き換え",
+
+    // Multi-file Replace Confirmation
+    "%zu / %zu 件のファイルが既に存在します。",
+    "すべて置き換え",
+    "既存をスキップ",
+
+    // Hex Mode
+    "Hex",
+    "ファイルを開く",
+    "このファイルにはバイナリデータが含まれている可能性があります。どのモードで開きますか？",
+    "テキストとして開く",
+    "16進数で開く",
+
+    // Button Style
+    "ボタンスタイル",
+    " カラー",
+    " モノクロ",
+    " アクセント"
 };
 
 static const char *strings_en[] {
@@ -96,6 +171,7 @@ static const char *strings_en[] {
     "New Folder",
     "New File",
     "Copy",
+    "Cannot copy a folder into itself.",
     "Move",
     "Paste",
     "Delete",
@@ -137,11 +213,34 @@ static const char *strings_en[] {
     "About",
     "Check for Updates",
     " Display filename",
+    " Enter images in fullscreen",
     " Enable logs",
     " Enable support for special symbols/characters",
     "version",
     "Author",
     "Banner",
+    "License",
+
+    "Stats for nerds",
+    " Show performance overlay",
+
+    // Stats overlay strings
+    "Resolution: %dx%d",
+    "FPS: %.1f (%.2fms)",
+    "CPU: %u MHz",
+    "GPU: %u MHz",
+    "RAM: %.1f/%.1f MB",
+    "SOC Temp: %.1f°C",
+    "Skin Temp: %.1f°C",
+    "N/A",
+
+    "Accent Color",
+    "Reset",
+
+    "Theme",
+    "Auto",
+    "Dark",
+    "Light",
 
     "Update",
     "Could not connect to network.",
@@ -161,90 +260,216 @@ static const char *strings_en[] {
     "Select",
     "Options",
     "Drive",
+    "Quit",
 
-    "Filename"
-};
+    "Filename",
+    "Device",
+    "Size",
+    "Modified",
+    "Archived",
+    "Select Device",
 
-// TODO: French
-static const char *strings_fr[] {
-    "OK",
+    "Details",
+    "Confirm",
     "Cancel",
 
-    "Options",
-    "Select All",
-    "Clear All",
-    "Properties",
-    "Rename",
-    "New Folder",
-    "New File",
-    "Copy",
-    "Move",
-    "Paste",
-    "Delete",
-    "Set Archive Bit",
-    "Enter name",
-    "Enter folder name",
-    "Enter file name",
-    "Copying:",
-
-    "Name: ",
-    "Size: ",
-    "Created: ",
-    "Modified: ",
-    "Accessed: ",
-    "Width: ",
-    "Height: ",
-
-    "This action cannot be undone.",
-    "Do you wish to delete the following:",
-    "Do you wish to delete ",
-
-    "Extract archive",
-    "This action may take a while.",
-    "Do you wish to extract ",
-    "Extracting:",
-
+    "Files",
     "Settings",
-    "Sort Settings",
-    "Language",
+    "About",
+
+    // Image/Text Viewer Hints
+    "Prev",
+    "Next",
+    "Zoom In",
+    "Zoom Out",
+    "Properties",
+    "Fullscreen",
+    "Press ZR to exit fullscreen",
+
+    // Reset Settings
+    "Reset Settings",
+    "This will reset all settings to their defaults. Are you sure?",
+    "Reset Defaults",
+
+    // Replace Confirmation
+    "File Already Exists",
+    "A file with this name already exists. Do you want to replace it?",
+    "Replace",
+
+    // Multi-file Replace Confirmation
+    "%zu of %zu files already exist at the destination.",
+    "Replace All",
+    "Skip Existing",
+
+    // Hex Mode
+    "Hex",
+    "Open File",
+    "This file may contain binary data. How would you like to open it?",
+    "Open as Text",
+    "Open as Hex",
+
+    // Button Style
+    "Button Style",
+    " Colored",
+    " Mono",
+    " Accent"
+};
+
+// French (need to check and verify)
+static const char *strings_fr[] {
+    "OK",
+    "Annuler",
+
+    "Options",
+    "Tout sélectionner",
+    "Tout effacer",
+    "Propriétés",
+    "Renommer",
+    "Nouveau dossier",
+    "Nouveau fichier",
+    "Copier",
+    "Impossible de copier un dossier dans lui-même.",
+    "Déplacer",
+    "Coller",
+    "Supprimer",
+    "Définir le bit d'archive",
+    "Entrez le nom",
+    "Entrez le nom du dossier",
+    "Entrez le nom du fichier",
+    "Copie en cours:",
+
+    "Nom: ",
+    "Taille: ",
+    "Créé: ",
+    "Modifié: ",
+    "Accédé: ",
+    "Largeur: ",
+    "Hauteur: ",
+
+    "Cette action est irréversible.",
+    "Voulez-vous supprimer les éléments suivants:",
+    "Voulez-vous supprimer ",
+
+    "Extraire l'archive",
+    "Cette action peut prendre un certain temps.",
+    "Voulez-vous extraire ",
+    "Extraction en cours:",
+
+    "Paramètres",
+    "Paramètres de tri",
+    "Langue",
     "USB",
-    "Unmount USB devices",
-    "Image Viewer",
-    "Developer Options",
-    "Multiple Character Set (Improves boot speed when disabled)",
-    "Display Resolution",
+    "Démonter les périphériques USB",
+    "Visionneuse d'images",
+    "Options développeur",
+    "Jeu de caractères multiples (Améliore la vitesse de démarrage si désactivé)",
+    "Résolution d'affichage",
     " Auto",
     " 1080p",
     " 720p",
-    "About",
-    "Check for Updates",
-    " Display filename",
-    " Enable logs",
-    " Enable support for special symbols/characters",
+    "À propos",
+    "Vérifier les mises à jour",
+    " Afficher le nom du fichier",
+    " Ouvrir les images en plein écran",
+    " Activer les journaux",
+    " Activer le support des symboles/caractères spéciaux",
     "version",
-    "Author",
-    "Banner",
+    "Auteur",
+    "Bannière",
+    "Licence",
 
-    "Update",
-    "Could not connect to network.",
-    "An update is available.",
-    "Do you wish to download and install NX-Shell version ",
-    "Update was successful.",
-    "Please exit and rerun the application.",
-    "You are on the latest version.",
+    "Statistiques pour les nerds",
+    " Afficher la superposition de performance",
 
-    "Do you wish to unmount all the connected USB devices?",
-    "The USB device can now be safely removed.",
+    // Stats overlay strings
+    "Résolution : %dx%d",
+    "IPS : %.1f (%.2fms)",
+    "CPU : %u MHz",
+    "GPU : %u MHz",
+    "RAM : %.1f/%.1f Mo (%.0f%%)",
+    "Temp. SOC : %.1f°C",
+    "Temp. boîtier : %.1f°C",
+    "N/A",
 
-    "The name cannot be empty.",
+    "Couleur d'accentuation",
+    "Réinitialiser",
 
-    "Open",
-    "Back",
-    "Select",
+    "Thème",
+    "Auto",
+    "Sombre",
+    "Clair",
+
+    "Mise à jour",
+    "Impossible de se connecter au réseau.",
+    "Une mise à jour est disponible.",
+    "Voulez-vous télécharger et installer NX-Shell version ",
+    "Mise à jour réussie.",
+    "Veuillez quitter et relancer l'application.",
+    "Vous êtes sur la dernière version.",
+
+    "Voulez-vous démonter tous les périphériques USB connectés?",
+    "Le périphérique USB peut maintenant être retiré en toute sécurité.",
+
+    "Le nom ne peut pas être vide.",
+
+    "Ouvrir",
+    "Retour",
+    "Sélectionner",
     "Options",
-    "Drive",
+    "Lecteur",
+    "Quitter",
 
-    "Filename"
+    "Nom de fichier",
+    "Périphérique",
+    "Taille",
+    "Modifié",
+    "Archivé",
+    "Sélectionner le périphérique",
+
+    "Détails",
+    "Confirmer",
+    "Annuler",
+
+    "Fichiers",
+    "Paramètres",
+    "À propos",
+
+    // Image/Text Viewer Hints
+    "Préc.",
+    "Suiv.",
+    "Zoom +",
+    "Zoom -",
+    "Propriétés",
+    "Plein écran",
+    "Appuyez sur ZR pour quitter le plein écran",
+
+    // Reset Settings
+    "Réinitialiser les paramètres",
+    "Cela réinitialisera tous les paramètres par défaut. Êtes-vous sûr ?",
+    "Restaurer les valeurs par défaut",
+
+    // Replace Confirmation
+    "Le fichier existe déjà",
+    "Un fichier avec ce nom existe déjà. Voulez-vous le remplacer ?",
+    "Remplacer",
+
+    // Multi-file Replace Confirmation
+    "%zu sur %zu fichiers existent déjà à la destination.",
+    "Tout remplacer",
+    "Ignorer existants",
+
+    // Hex Mode
+    "Hex",
+    "Ouvrir le fichier",
+    "Ce fichier peut contenir des données binaires. Comment voulez-vous l'ouvrir ?",
+    "Ouvrir comme texte",
+    "Ouvrir comme hex",
+
+    // Button Style
+    "Style des boutons",
+    " Couleur",
+    " Mono",
+    " Accent"
 };
 
 static const char *strings_de[] {
@@ -259,6 +484,7 @@ static const char *strings_de[] {
     "Neuer Ordner",
     "Neue Datei",
     "Kopieren",
+    "Ein Ordner kann nicht in sich selbst kopiert werden.",
     "Verschieben",
     "Einfügen",
     "Löschen",
@@ -300,11 +526,34 @@ static const char *strings_de[] {
     "Über",
     "Nach Updates suchen",
     " Dateiname anzeigen",
+    " Bilder im Vollbildmodus öffnen",
     " Log aktivieren",
     " Unterstützung für Sonderzeichen aktivieren",
     "Version",
     "Autor",
     "Banner",
+    "Lizenz",
+
+    "Statistik für Nerds",
+    " Leistungsanzeige einblenden",
+
+    // Stats overlay strings
+    "Auflösung: %dx%d",
+    "FPS: %.1f (%.2fms)",
+    "CPU: %u MHz",
+    "GPU: %u MHz",
+    "RAM: %.1f/%.1f MB",
+    "SOC-Temp.: %.1f°C",
+    "Gehäuse-Temp.: %.1f°C",
+    "N/A",
+
+    "Akzentfarbe",
+    "Zurücksetzen",
+
+    "Thema",
+    "Auto",
+    "Dunkel",
+    "Hell",
 
     "Update",
     "Es konnte keine Verbindung zum Netzwerk herstellt werden.",
@@ -324,90 +573,216 @@ static const char *strings_de[] {
     "Auswählen",
     "Optionen",
     "Laufwerk",
+    "Beenden",
 
-    "Dateiname"
+    "Dateiname",
+    "Gerät",
+    "Größe",
+    "Geändert",
+    "Archiviert",
+    "Gerät auswählen",
+
+    "Details",
+    "Bestätigen",
+    "Abbrechen",
+
+    "Dateien",
+    "Einstellungen",
+    "Über",
+
+    // Image/Text Viewer Hints
+    "Zurück",
+    "Weiter",
+    "Vergrößern",
+    "Verkleinern",
+    "Eigenschaften",
+    "Vollbild",
+    "ZR drücken um Vollbild zu beenden",
+
+    // Reset Settings
+    "Einstellungen zurücksetzen",
+    "Alle Einstellungen werden auf die Standardwerte zurückgesetzt. Sind Sie sicher?",
+    "Standardwerte wiederherstellen",
+
+    // Replace Confirmation
+    "Datei existiert bereits",
+    "Eine Datei mit diesem Namen existiert bereits. Möchten Sie sie ersetzen?",
+    "Ersetzen",
+
+    // Multi-file Replace Confirmation
+    "%zu von %zu Dateien existieren bereits am Zielort.",
+    "Alle ersetzen",
+    "Vorhandene überspringen",
+
+    // Hex Mode
+    "Hex",
+    "Datei öffnen",
+    "Diese Datei enthält möglicherweise Binärdaten. Wie möchten Sie sie öffnen?",
+    "Als Text öffnen",
+    "Als Hex öffnen",
+
+    // Button Style
+    "Tastenstil",
+    " Farbig",
+    " Mono",
+    " Akzent"
 };
 
-// TODO: Italian
+// Italian (need to check and verify)
 static const char *strings_it[] {
     "OK",
-    "Cancel",
+    "Annulla",
 
-    "Options",
-    "Select All",
-    "Clear All",
-    "Properties",
-    "Rename",
-    "New Folder",
-    "New File",
-    "Copy",
-    "Move",
-    "Paste",
-    "Delete",
-    "Set Archive Bit",
-    "Enter name",
-    "Enter folder name",
-    "Enter file name",
-    "Copying:",
+    "Opzioni",
+    "Seleziona tutto",
+    "Cancella tutto",
+    "Proprietà",
+    "Rinomina",
+    "Nuova cartella",
+    "Nuovo file",
+    "Copia",
+    "Impossibile copiare una cartella dentro sé stessa.",
+    "Sposta",
+    "Incolla",
+    "Elimina",
+    "Imposta bit di archiviazione",
+    "Inserisci nome",
+    "Inserisci nome cartella",
+    "Inserisci nome file",
+    "Copia in corso:",
 
-    "Name: ",
-    "Size: ",
-    "Created: ",
-    "Modified: ",
-    "Accessed: ",
-    "Width: ",
-    "Height: ",
+    "Nome: ",
+    "Dimensione: ",
+    "Creato: ",
+    "Modificato: ",
+    "Accesso: ",
+    "Larghezza: ",
+    "Altezza: ",
 
-    "This action cannot be undone.",
-    "Do you wish to delete the following:",
-    "Do you wish to delete ",
+    "Questa azione non può essere annullata.",
+    "Vuoi eliminare quanto segue:",
+    "Vuoi eliminare ",
 
-    "Extract archive",
-    "This action may take a while.",
-    "Do you wish to extract ",
-    "Extracting:",
+    "Estrai archivio",
+    "Questa azione potrebbe richiedere del tempo.",
+    "Vuoi estrarre ",
+    "Estrazione in corso:",
 
-    "Settings",
-    "Sort Settings",
-    "Language",
+    "Impostazioni",
+    "Impostazioni di ordinamento",
+    "Lingua",
     "USB",
-    "Unmount USB devices",
-    "Image Viewer",
-    "Developer Options",
-    "Multiple Character Set (Improves boot speed when disabled)",
-    "Display Resolution",
+    "Smonta dispositivi USB",
+    "Visualizzatore immagini",
+    "Opzioni sviluppatore",
+    "Set di caratteri multipli (Migliora la velocità di avvio se disabilitato)",
+    "Risoluzione display",
     " Auto",
     " 1080p",
     " 720p",
-    "About",
-    "Check for Updates",
-    " Display filename",
-    " Enable logs",
-    " Enable support for special symbols/characters",
-    "version",
-    "Author",
+    "Informazioni",
+    "Verifica aggiornamenti",
+    " Mostra nome file",
+    " Apri immagini a schermo intero",
+    " Abilita log",
+    " Abilita supporto per simboli/caratteri speciali",
+    "versione",
+    "Autore",
     "Banner",
+    "Licenza",
 
-    "Update",
-    "Could not connect to network.",
-    "An update is available.",
-    "Do you wish to download and install NX-Shell version ",
-    "Update was successful.",
-    "Please exit and rerun the application.",
-    "You are on the latest version.",
+    "Statistiche per nerd",
+    " Mostra overlay prestazioni",
 
-    "Do you wish to unmount all the connected USB devices?",
-    "The USB device can now be safely removed.",
+    // Stats overlay strings
+    "Risoluzione: %dx%d",
+    "FPS: %.1f (%.2fms)",
+    "CPU: %u MHz",
+    "GPU: %u MHz",
+    "RAM: %.1f/%.1f MB",
+    "Temp. SOC: %.1f°C",
+    "Temp. scocca: %.1f°C",
+    "N/D",
 
-    "The name cannot be empty.",
+    "Colore di accentuazione",
+    "Ripristina",
 
-    "Open",
-    "Back",
-    "Select",
-    "Options",
-    "Drive",
+    "Tema",
+    "Auto",
+    "Scuro",
+    "Chiaro",
 
-    "Filename"
+    "Aggiornamento",
+    "Impossibile connettersi alla rete.",
+    "È disponibile un aggiornamento.",
+    "Vuoi scaricare e installare NX-Shell versione ",
+    "Aggiornamento riuscito.",
+    "Esci e riavvia l'applicazione.",
+    "Stai utilizzando l'ultima versione.",
+
+    "Vuoi smontare tutti i dispositivi USB collegati?",
+    "Il dispositivo USB può ora essere rimosso in sicurezza.",
+
+    "Il nome non può essere vuoto.",
+
+    "Apri",
+    "Indietro",
+    "Seleziona",
+    "Opzioni",
+    "Unità",
+    "Esci",
+
+    "Nome file",
+    "Dispositivo",
+    "Dimensione",
+    "Modificato",
+    "Archiviato",
+    "Seleziona dispositivo",
+
+    "Dettagli",
+    "Conferma",
+    "Annulla",
+
+    "File",
+    "Impostazioni",
+    "Informazioni",
+
+    // Image/Text Viewer Hints
+    "Prec.",
+    "Succ.",
+    "Zoom +",
+    "Zoom -",
+    "Proprietà",
+    "Schermo intero",
+    "Premi ZR per uscire dalla modalità schermo intero",
+
+    // Reset Settings
+    "Ripristina impostazioni",
+    "Tutte le impostazioni verranno ripristinate ai valori predefiniti. Sei sicuro?",
+    "Ripristina predefiniti",
+
+    // Replace Confirmation
+    "Il file esiste già",
+    "Un file con questo nome esiste già. Vuoi sostituirlo?",
+    "Sostituisci",
+
+    // Multi-file Replace Confirmation
+    "%zu di %zu file esistono già nella destinazione.",
+    "Sostituisci tutto",
+    "Salta esistenti",
+
+    // Hex Mode
+    "Hex",
+    "Apri file",
+    "Questo file potrebbe contenere dati binari. Come vuoi aprirlo?",
+    "Apri come testo",
+    "Apri come hex",
+
+    // Button Style
+    "Stile pulsanti",
+    " Colorato",
+    " Mono",
+    " Accento"
 };
 
 //  Spanish
@@ -423,6 +798,7 @@ static const char *strings_es[] {
     "Nueva Carpeta",
     "Nuevo Archivo",
     "Copiar",
+    "No se puede copiar una carpeta dentro de sí misma.",
     "Mover",
     "Pegar",
     "Eliminar",
@@ -464,11 +840,34 @@ static const char *strings_es[] {
     "Acerca de",
     "Buscar Actualizaciones",
     " Mostrar nombre de archivo",
+    " Abrir imágenes en pantalla completa",
     " Habilitar logs",
     " Enable support for special symbols/characters",
     "versión",
     "Autor",
     "Banner",
+    "Licencia",
+
+    "Estadísticas para nerds",
+    " Mostrar superposición de rendimiento",
+
+    // Stats overlay strings
+    "Resolución: %dx%d",
+    "FPS: %.1f (%.2fms)",
+    "CPU: %u MHz",
+    "GPU: %u MHz",
+    "RAM: %.1f/%.1f MB",
+    "Temp. SOC: %.1f°C",
+    "Temp. carcasa: %.1f°C",
+    "N/D",
+
+    "Color de acento",
+    "Restablecer",
+
+    "Tema",
+    "Auto",
+    "Oscuro",
+    "Claro",
 
     "Actualizar",
     "No se puede conectar a la red.",
@@ -488,8 +887,59 @@ static const char *strings_es[] {
     "Seleccionar",
     "Opciones",
     "Unidad",
+    "Salir",
 
-    "Nombre"
+    "Nombre",
+    "Dispositivo",
+    "Tamaño",
+    "Modificado",
+    "Archivado",
+    "Seleccionar Dispositivo",
+
+    "Detalles",
+    "Confirmar",
+    "Cancelar",
+
+    "Archivos",
+    "Ajustes",
+    "Acerca de",
+
+    // Image/Text Viewer Hints
+    "Ant.",
+    "Sig.",
+    "Zoom +",
+    "Zoom -",
+    "Propiedades",
+    "Pantalla completa",
+    "Pulsa ZR para salir de pantalla completa",
+
+    // Reset Settings
+    "Restablecer ajustes",
+    "Esto restablecerá todos los ajustes a sus valores predeterminados. ¿Estás seguro?",
+    "Restaurar valores predeterminados",
+
+    // Replace Confirmation
+    "El archivo ya existe",
+    "Ya existe un archivo con este nombre. ¿Desea reemplazarlo?",
+    "Reemplazar",
+
+    // Multi-file Replace Confirmation
+    "%zu de %zu archivos ya existen en el destino.",
+    "Reemplazar todo",
+    "Omitir existentes",
+
+    // Hex Mode
+    "Hex",
+    "Abrir archivo",
+    "Este archivo puede contener datos binarios. ¿Cómo desea abrirlo?",
+    "Abrir como texto",
+    "Abrir como hex",
+
+    // Button Style
+    "Estilo de botones",
+    " Color",
+    " Mono",
+    " Acento"
 };
 
 // Simplified Chinese ("Chinese")
@@ -505,6 +955,7 @@ static const char *strings_sc[] {
     "新建文件夹",
     "新建文件",
     "复制",
+    "无法将文件夹复制到其自身中。",
     "移动",
     "粘贴",
     "删除",
@@ -546,11 +997,34 @@ static const char *strings_sc[] {
     "关于",
     "检查更新",
     " 显示文件名",
+    " 以全屏模式打开图片",
     " 打开日志",
     " 启用对特殊符号/字符的支持",
     "版本",
     "作者",
     "横幅",
+    "许可证",
+
+    "极客统计",
+    " 显示性能叠加层",
+
+    // Stats overlay strings
+    "分辨率: %dx%d",
+    "帧率: %.1f (%.2fms)",
+    "CPU: %u MHz",
+    "GPU: %u MHz",
+    "RAM: %.1f/%.1f MB",
+    "SOC温度: %.1f°C",
+    "外壳温度: %.1f°C",
+    "不可用",
+
+    "主题色",
+    "重置",
+
+    "主题",
+    "自动",
+    "深色",
+    "浅色",
 
     "更新",
     "连接网络失败.",
@@ -570,11 +1044,62 @@ static const char *strings_sc[] {
     "选择",
     "选项",
     "驱动器",
+    "退出",
 
-    "文件名"
+    "文件名",
+    "设备",
+    "大小",
+    "修改日期",
+    "已归档",
+    "选择设备",
+
+    "详细信息",
+    "确认",
+    "取消",
+
+    "文件",
+    "设置",
+    "关于",
+
+    // Image/Text Viewer Hints
+    "上一张",
+    "下一张",
+    "放大",
+    "缩小",
+    "属性",
+    "全屏",
+    "按ZR退出全屏",
+
+    // Reset Settings
+    "重置设置",
+    "这将把所有设置重置为默认值。确定吗？",
+    "恢复默认设置",
+
+    // Replace Confirmation
+    "文件已存在",
+    "同名文件已存在。是否要替换？",
+    "替换",
+
+    // Multi-file Replace Confirmation
+    "%zu / %zu 个文件在目标位置已存在。",
+    "全部替换",
+    "跳过已存在",
+
+    // Hex Mode
+    "十六进制",
+    "打开文件",
+    "此文件可能包含二进制数据。您想如何打开它？",
+    "作为文本打开",
+    "作为十六进制打开",
+
+    // Button Style
+    "按钮样式",
+    " 彩色",
+    " 单色",
+    " 主题色"
 };
 
-// TODO: Korean
+// Korean (need to check and verify)
 static const char *strings_ko[] {
     "확인",
     "취소",
@@ -587,6 +1112,7 @@ static const char *strings_ko[] {
     "새 폴더",
     "새 파일",
     "복사",
+    "폴더를 자기 자신 안에 복사할 수 없습니다.",
     "이동",
     "붙여넣기",
     "삭제",
@@ -598,20 +1124,20 @@ static const char *strings_ko[] {
 
     "이름: ",
     "크기: ",
-    "제작: ",
-    "수정: ",
-    "접속: ",
+    "생성일: ",
+    "수정일: ",
+    "접근일: ",
     "너비: ",
     "높이: ",
 
     "이 작업은 취소할 수 없습니다.",
-    "다음을 삭제하겠습니까:",
-    "삭제하겠습니까 ",
+    "다음을 삭제하시겠습니까:",
+    "삭제하시겠습니까 ",
 
-    "파일 해제",
+    "아카이브 추출",
     "이 작업은 시간이 걸릴 수 있습니다.",
-    "해제하겠습니까? ",
-    "해제 중:",
+    "추출하시겠습니까 ",
+    "추출 중:",
 
     "설정",
     "정렬 설정",
@@ -628,114 +1154,263 @@ static const char *strings_ko[] {
     "정보",
     "업데이트 확인",
     " 파일 이름 표시",
+    " 전체 화면으로 이미지 열기",
     " 로그 활성화",
     " 특수 기호/문자 지원 활성화",
     "버전",
     "제작자",
     "배너",
+    "라이선스",
+
+    "고급 통계",
+    " 성능 오버레이 표시",
+
+    // Stats overlay strings
+    "해상도: %dx%d",
+    "FPS: %.1f (%.2fms)",
+    "CPU: %u MHz",
+    "GPU: %u MHz",
+    "메모리: %.1f/%.1f MB (%.0f%%)",
+    "SOC 온도: %.1f°C",
+    "외부 온도: %.1f°C",
+    "N/A",
+
+    "강조 색상",
+    "초기화",
+
+    "테마",
+    "자동",
+    "다크",
+    "라이트",
 
     "업데이트",
     "네트워크에 연결할 수 없습니다.",
     "업데이트가 가능합니다.",
-    "NX-Shell 버전을 다운로드하여 설치하겠습니까? ",
+    "NX-Shell 버전을 다운로드하여 설치하시겠습니까 ",
     "업데이트에 성공했습니다.",
-    "응용 프로그램을 종료하고 다시 실행하십시오.",
+    "애플리케이션을 종료하고 다시 실행해 주세요.",
     "최신 버전을 사용 중입니다.",
 
-    "연결된 모든 USB 장치를 마운트 해제하겠습니까?",
+    "연결된 모든 USB 장치를 마운트 해제하시겠습니까?",
     "이제 USB 장치를 안전하게 제거할 수 있습니다.",
 
-    "이름은 공백이 될 수 없습니다.",
+    "이름은 비워둘 수 없습니다.",
 
     "열기",
     "뒤로",
     "선택",
     "옵션",
     "드라이브",
+    "종료",
 
-    "파일명"
+    "파일명",
+    "장치",
+    "크기",
+    "수정됨",
+    "보관됨",
+    "장치 선택",
+
+    "상세정보",
+    "확인",
+    "취소",
+
+    "파일",
+    "설정",
+    "정보",
+
+    // Image/Text Viewer Hints
+    "이전",
+    "다음",
+    "확대",
+    "축소",
+    "속성",
+    "전체화면",
+    "ZR을 눌러 전체화면 종료",
+
+    // Reset Settings
+    "설정 초기화",
+    "모든 설정이 기본값으로 초기화됩니다. 계속하시겠습니까?",
+    "기본값으로 재설정",
+
+    // Replace Confirmation
+    "파일이 이미 존재합니다",
+    "같은 이름의 파일이 이미 존재합니다. 교체하시겠습니까?",
+    "교체",
+
+    // Multi-file Replace Confirmation
+    "%zu / %zu 개의 파일이 대상 위치에 이미 존재합니다.",
+    "모두 교체",
+    "기존 파일 건너뛰기",
+
+    // Hex Mode
+    "Hex",
+    "파일 열기",
+    "이 파일에는 바이너리 데이터가 포함될 수 있습니다. 어떻게 열겠습니까?",
+    "텍스트로 열기",
+    "16진수로 열기",
+
+    // Button Style
+    "버튼 스타일",
+    " 컬러",
+    " 모노",
+    " 강조색"
 };
 
-// TODO: Dutch
+// Dutch (need to check and verify)
 static const char *strings_nl[] {
     "OK",
-    "Cancel",
+    "Annuleren",
 
-    "Options",
-    "Select All",
-    "Clear All",
-    "Properties",
-    "Rename",
-    "New Folder",
-    "New File",
-    "Copy",
-    "Move",
-    "Paste",
-    "Delete",
-    "Set Archive Bit",
-    "Enter name",
-    "Enter folder name",
-    "Enter file name",
-    "Copying:",
+    "Opties",
+    "Alles selecteren",
+    "Alles wissen",
+    "Eigenschappen",
+    "Hernoemen",
+    "Nieuwe map",
+    "Nieuw bestand",
+    "Kopiëren",
+    "Kan een map niet naar zichzelf kopiëren.",
+    "Verplaatsen",
+    "Plakken",
+    "Verwijderen",
+    "Archiefbit instellen",
+    "Voer naam in",
+    "Voer mapnaam in",
+    "Voer bestandsnaam in",
+    "Kopiëren:",
 
-    "Name: ",
-    "Size: ",
-    "Created: ",
-    "Modified: ",
-    "Accessed: ",
-    "Width: ",
-    "Height: ",
+    "Naam: ",
+    "Grootte: ",
+    "Aangemaakt: ",
+    "Gewijzigd: ",
+    "Geopend: ",
+    "Breedte: ",
+    "Hoogte: ",
 
-    "This action cannot be undone.",
-    "Do you wish to delete the following:",
-    "Do you wish to delete ",
+    "Deze actie kan niet ongedaan worden gemaakt.",
+    "Wilt u het volgende verwijderen:",
+    "Wilt u verwijderen ",
 
-    "Extract archive",
-    "This action may take a while.",
-    "Do you wish to extract ",
-    "Extracting:",
+    "Archief uitpakken",
+    "Deze actie kan even duren.",
+    "Wilt u uitpakken ",
+    "Uitpakken:",
 
-    "Settings",
-    "Sort Settings",
-    "Language",
+    "Instellingen",
+    "Sorteerinstellingen",
+    "Taal",
     "USB",
-    "Unmount USB devices",
-    "Image Viewer",
-    "Developer Options",
-    "Multiple Character Set (Improves boot speed when disabled)",
-    "Display Resolution",
-    " Auto",
+    "USB-apparaten ontkoppelen",
+    "Afbeeldingsviewer",
+    "Ontwikkelaarsopties",
+    "Meerdere tekensets (Verbetert opstartsnelheid indien uitgeschakeld)",
+    "Schermresolutie",
+    " Automatisch",
     " 1080p",
     " 720p",
-    "About",
-    "Check for Updates",
-    " Display filename",
-    " Enable logs",
-    " Enable support for special symbols/characters",
-    "version",
-    "Author",
+    "Over",
+    "Controleren op updates",
+    " Bestandsnaam weergeven",
+    " Afbeeldingen openen in volledig scherm",
+    " Logboeken inschakelen",
+    " Ondersteuning voor speciale symbolen/tekens inschakelen",
+    "versie",
+    "Auteur",
     "Banner",
+    "Licentie",
+
+    "Statistieken voor nerds",
+    " Prestatie-overlay weergeven",
+
+    // Stats overlay strings
+    "Resolutie: %dx%d",
+    "FPS: %.1f (%.2fms)",
+    "CPU: %u MHz",
+    "GPU: %u MHz",
+    "Geheugen: %.1f/%.1f MB",
+    "SOC-temp.: %.1f°C",
+    "Behuizing-temp.: %.1f°C",
+    "N.v.t.",
+
+    "Accentkleur",
+    "Herstellen",
+
+    "Thema",
+    "Auto",
+    "Donker",
+    "Licht",
 
     "Update",
-    "Could not connect to network.",
-    "An update is available.",
-    "Do you wish to download and install NX-Shell version ",
-    "Update was successful.",
-    "Please exit and rerun the application.",
-    "You are on the latest version.",
+    "Kan geen verbinding maken met het netwerk.",
+    "Er is een update beschikbaar.",
+    "Wilt u NX-Shell versie downloaden en installeren ",
+    "Update is geslaagd.",
+    "Sluit de applicatie af en start deze opnieuw.",
+    "U gebruikt de nieuwste versie.",
 
-    "Do you wish to unmount all the connected USB devices?",
-    "The USB device can now be safely removed.",
+    "Wilt u alle aangesloten USB-apparaten ontkoppelen?",
+    "Het USB-apparaat kan nu veilig worden verwijderd.",
 
-    "The name cannot be empty.",
+    "De naam mag niet leeg zijn.",
 
-    "Open",
-    "Back",
-    "Select",
-    "Options",
-    "Drive",
+    "Openen",
+    "Terug",
+    "Selecteren",
+    "Opties",
+    "Station",
+    "Afsluiten",
 
-    "Filename"
+    "Bestandsnaam",
+    "Apparaat",
+    "Grootte",
+    "Gewijzigd",
+    "Gearchiveerd",
+    "Apparaat selecteren",
+
+    "Details",
+    "Bevestigen",
+    "Annuleren",
+
+    "Bestanden",
+    "Instellingen",
+    "Over",
+
+    // Image/Text Viewer Hints
+    "Vorige",
+    "Volgende",
+    "Zoom +",
+    "Zoom -",
+    "Eigenschappen",
+    "Volledig scherm",
+    "Druk op ZR om volledig scherm te verlaten",
+
+    // Reset Settings
+    "Instellingen herstellen",
+    "Alle instellingen worden teruggezet naar de standaardwaarden. Weet u het zeker?",
+    "Standaardwaarden herstellen",
+
+    // Replace Confirmation
+    "Bestand bestaat al",
+    "Er bestaat al een bestand met deze naam. Wilt u het vervangen?",
+    "Vervangen",
+
+    // Multi-file Replace Confirmation
+    "%zu van %zu bestanden bestaan al op de bestemming.",
+    "Alles vervangen",
+    "Bestaande overslaan",
+
+    // Hex Mode
+    "Hex",
+    "Bestand openen",
+    "Dit bestand kan binaire gegevens bevatten. Hoe wilt u het openen?",
+    "Openen als tekst",
+    "Openen als hex",
+
+    // Button Style
+    "Knopstijl",
+    " Gekleurd",
+    " Mono",
+    " Accent"
 };
 
 // Portuguese
@@ -751,6 +1426,7 @@ static const char *strings_pt[] {
     "Nova Pasta",
     "Novo Arquivo",
     "Copiar",
+    "Não é possível copiar uma pasta para dentro dela mesma.",
     "Mover",
     "Colar",
     "Deletar",
@@ -792,11 +1468,34 @@ static const char *strings_pt[] {
     "Sobre",
     "Verificar se há Atualizações",
     " Exibir nome de arquivo",
+    " Abrir imagens em tela cheia",
     " Habilitar logs",
     " Habilitar suporte para símbolos/caracteres especiais",
     "versão",
     "Autor",
     "Banner",
+    "Licença",
+
+    "Estatísticas para nerds",
+    " Mostrar sobreposição de desempenho",
+
+    // Stats overlay strings
+    "Resolução: %dx%d",
+    "FPS: %.1f (%.2fms)",
+    "CPU: %u MHz",
+    "GPU: %u MHz",
+    "RAM: %.1f/%.1f MB",
+    "Temp. SOC: %.1f°C",
+    "Temp. externa: %.1f°C",
+    "N/D",
+
+    "Cor de destaque",
+    "Redefinir",
+
+    "Tema",
+    "Auto",
+    "Escuro",
+    "Claro",
 
     "Atualizar",
     "Não foi possível se conectar à internet.",
@@ -816,90 +1515,216 @@ static const char *strings_pt[] {
     "Selecionar",
     "Opções",
     "Unidade",
+    "Sair",
 
-    "Nome do arquivo"
+    "Nome do arquivo",
+    "Dispositivo",
+    "Tamanho",
+    "Modificado",
+    "Arquivado",
+    "Selecionar Dispositivo",
+
+    "Detalhes",
+    "Confirmar",
+    "Cancelar",
+
+    "Arquivos",
+    "Configurações",
+    "Sobre",
+
+    // Image/Text Viewer Hints
+    "Ant.",
+    "Próx.",
+    "Zoom +",
+    "Zoom -",
+    "Propriedades",
+    "Tela cheia",
+    "Pressione ZR para sair da tela cheia",
+
+    // Reset Settings
+    "Redefinir configurações",
+    "Isso redefinirá todas as configurações para os padrões. Tem certeza?",
+    "Restaurar padrões",
+
+    // Replace Confirmation
+    "O arquivo já existe",
+    "Um arquivo com este nome já existe. Deseja substituí-lo?",
+    "Substituir",
+
+    // Multi-file Replace Confirmation
+    "%zu de %zu arquivos já existem no destino.",
+    "Substituir tudo",
+    "Ignorar existentes",
+
+    // Hex Mode
+    "Hex",
+    "Abrir arquivo",
+    "Este arquivo pode conter dados binários. Como você gostaria de abri-lo?",
+    "Abrir como texto",
+    "Abrir como hex",
+
+    // Button Style
+    "Estilo dos botões",
+    " Colorido",
+    " Mono",
+    " Destaque"
 };
 
-// TODO: Russian
+// Russian (need to check and verify)
 static const char *strings_ru[] {
-    "OK",
-    "Cancel",
+    "ОК",
+    "Отмена",
 
-    "Options",
-    "Select All",
-    "Clear All",
-    "Properties",
-    "Rename",
-    "New Folder",
-    "New File",
-    "Copy",
-    "Move",
-    "Paste",
-    "Delete",
-    "Set Archive Bit",
-    "Enter name",
-    "Enter folder name",
-    "Enter file name",
-    "Copying:",
+    "Параметры",
+    "Выбрать все",
+    "Очистить все",
+    "Свойства",
+    "Переименовать",
+    "Новая папка",
+    "Новый файл",
+    "Копировать",
+    "Невозможно скопировать папку в саму себя.",
+    "Переместить",
+    "Вставить",
+    "Удалить",
+    "Установить архивный бит",
+    "Введите имя",
+    "Введите имя папки",
+    "Введите имя файла",
+    "Копирование:",
 
-    "Name: ",
-    "Size: ",
-    "Created: ",
-    "Modified: ",
-    "Accessed: ",
-    "Width: ",
-    "Height: ",
+    "Имя: ",
+    "Размер: ",
+    "Создан: ",
+    "Изменён: ",
+    "Доступ: ",
+    "Ширина: ",
+    "Высота: ",
 
-    "This action cannot be undone.",
-    "Do you wish to delete the following:",
-    "Do you wish to delete ",
+    "Это действие нельзя отменить.",
+    "Вы хотите удалить следующее:",
+    "Вы хотите удалить ",
 
-    "Extract archive",
-    "This action may take a while.",
-    "Do you wish to extract ",
-    "Extracting:",
+    "Извлечь архив",
+    "Это действие может занять некоторое время.",
+    "Вы хотите извлечь ",
+    "Извлечение:",
 
-    "Settings",
-    "Sort Settings",
-    "Language",
+    "Настройки",
+    "Настройки сортировки",
+    "Язык",
     "USB",
-    "Unmount USB devices",
-    "Image Viewer",
-    "Developer Options",
-    "Multiple Character Set (Improves boot speed when disabled)",
-    "Display Resolution",
-    " Auto",
+    "Отключить USB-устройства",
+    "Просмотр изображений",
+    "Параметры разработчика",
+    "Несколько наборов символов (Отключение ускоряет загрузку)",
+    "Разрешение экрана",
+    " Авто",
     " 1080p",
     " 720p",
-    "About",
-    "Check for Updates",
-    " Display filename",
-    " Enable logs",
-    " Enable support for special symbols/characters",
-    "version",
-    "Author",
-    "Banner",
+    "О программе",
+    "Проверить обновления",
+    " Показывать имя файла",
+    " Открывать изображения в полноэкранном режиме",
+    " Включить журналы",
+    " Включить поддержку специальных символов",
+    "версия",
+    "Автор",
+    "Баннер",
+    "Лицензия",
 
-    "Update",
-    "Could not connect to network.",
-    "An update is available.",
-    "Do you wish to download and install NX-Shell version ",
-    "Update was successful.",
-    "Please exit and rerun the application.",
-    "You are on the latest version.",
+    "Статистика для гиков",
+    " Показывать оверлей производительности",
 
-    "Do you wish to unmount all the connected USB devices?",
-    "The USB device can now be safely removed.",
+    // Stats overlay strings
+    "Разрешение: %dx%d",
+    "FPS: %.1f (%.2fms)",
+    "CPU: %u МГц",
+    "GPU: %u МГц",
+    "RAM: %.1f/%.1f МБ (%.0f%%)",
+    "Темп. SOC: %.1f°C",
+    "Темп. корпуса: %.1f°C",
+    "Н/Д",
 
-    "The name cannot be empty.",
+    "Цвет акцента",
+    "Сбросить",
 
-    "Open",
-    "Back",
-    "Select",
-    "Options",
-    "Drive",
+    "Тема",
+    "Авто",
+    "Тёмная",
+    "Светлая",
 
-    "Filename"
+    "Обновление",
+    "Не удалось подключиться к сети.",
+    "Доступно обновление.",
+    "Вы хотите загрузить и установить NX-Shell версии ",
+    "Обновление выполнено успешно.",
+    "Пожалуйста, выйдите и перезапустите приложение.",
+    "У вас установлена последняя версия.",
+
+    "Вы хотите отключить все подключённые USB-устройства?",
+    "USB-устройство теперь можно безопасно извлечь.",
+
+    "Имя не может быть пустым.",
+
+    "Открыть",
+    "Назад",
+    "Выбрать",
+    "Параметры",
+    "Диск",
+    "Выход",
+
+    "Имя файла",
+    "Устройство",
+    "Размер",
+    "Изменён",
+    "Архивирован",
+    "Выбрать устройство",
+
+    "Подробности",
+    "Подтвердить",
+    "Отмена",
+
+    "Файлы",
+    "Настройки",
+    "О программе",
+
+    // Image/Text Viewer Hints
+    "Пред.",
+    "След.",
+    "Увеличить",
+    "Уменьшить",
+    "Свойства",
+    "Полный экран",
+    "Нажмите ZR для выхода из полноэкранного режима",
+
+    // Reset Settings
+    "Сбросить настройки",
+    "Все настройки будут сброшены до значений по умолчанию. Вы уверены?",
+    "Восстановить по умолчанию",
+
+    // Replace Confirmation
+    "Файл уже существует",
+    "Файл с таким именем уже существует. Заменить его?",
+    "Заменить",
+
+    // Multi-file Replace Confirmation
+    "%zu из %zu файлов уже существуют в месте назначения.",
+    "Заменить все",
+    "Пропустить существующие",
+
+    // Hex Mode
+    "Hex",
+    "Открыть файл",
+    "Этот файл может содержать двоичные данные. Как вы хотите его открыть?",
+    "Открыть как текст",
+    "Открыть как hex",
+
+    // Button Style
+    "Стиль кнопок",
+    " Цветной",
+    " Моно",
+    " Акцент"
 };
 
 // Traditional Chinese ("Taiwanese")
@@ -915,6 +1740,7 @@ static const char *strings_tw[] {
     "新建文件夾",
     "新建文件",
     "復制",
+    "無法將文件夾複製到其自身中。",
     "移動",
     "粘貼",
     "刪除",
@@ -956,11 +1782,34 @@ static const char *strings_tw[] {
     "關於",
     "檢查更新",
     " 顯示文件名",
+    " 以全螢幕模式開啟圖片",
     " 打開日誌",
     " 啟用對特殊符號/字符的支持",
     "版本",
     "作者",
     "橫幅",
+    "授權條款",
+
+    "極客統計",
+    " 顯示效能疊加層",
+
+    // Stats overlay strings
+    "解析度: %dx%d",
+    "幀率: %.1f (%.2fms)",
+    "CPU: %u MHz",
+    "GPU: %u MHz",
+    "RAM: %.1f/%.1f MB",
+    "SOC溫度: %.1f°C",
+    "外殼溫度: %.1f°C",
+    "不適用",
+
+    "主題色",
+    "重置",
+
+    "主題",
+    "自動",
+    "深色",
+    "淺色",
 
     "更新",
     "連接網絡失敗.",
@@ -980,8 +1829,59 @@ static const char *strings_tw[] {
     "選擇",
     "選項",
     "磁碟機",
+    "退出",
 
-    "檔案名稱"
+    "檔案名稱",
+    "裝置",
+    "大小",
+    "修改日期",
+    "已歸檔",
+    "選擇設備",
+
+    "詳細資訊",
+    "確認",
+    "取消",
+
+    "檔案",
+    "設置",
+    "關於",
+
+    // Image/Text Viewer Hints
+    "上一張",
+    "下一張",
+    "放大",
+    "縮小",
+    "屬性",
+    "全螢幕",
+    "按ZR退出全螢幕",
+
+    // Reset Settings
+    "重置設定",
+    "這將把所有設定重置為預設值。確定嗎？",
+    "恢復預設設定",
+
+    // Replace Confirmation
+    "檔案已存在",
+    "同名檔案已存在。是否要取代？",
+    "取代",
+
+    // Multi-file Replace Confirmation
+    "%zu / %zu 個檔案在目標位置已存在。",
+    "全部取代",
+    "跳過已存在",
+
+    // Hex Mode
+    "十六進制",
+    "開啟檔案",
+    "此檔案可能包含二進制資料。您想如何開啟它？",
+    "作為文字開啟",
+    "作為十六進制開啟",
+
+    // Button Style
+    "按鈕樣式",
+    " 彩色",
+    " 單色",
+    " 主題色"
 };
 
 const char **strings[Lang::Max] = {

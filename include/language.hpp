@@ -15,6 +15,7 @@ namespace Lang {
         OptionsNewFolder,
         OptionsNewFile,
         OptionsCopy,
+        OptionsRecursiveCopyError,
         OptionsMove,
         OptionsPaste,
         OptionsDelete,
@@ -60,11 +61,37 @@ namespace Lang {
         SettingsAboutTitle,
         SettingsCheckForUpdates,
         SettingsImageViewFilenameToggle,
+        SettingsImageViewFullscreenToggle,
         SettingsDevOptsLogsToggle,
         SettingsMultiLangLogsToggle,
         SettingsAboutVersion,
         SettingsAboutAuthor,
         SettingsAboutBanner,
+        SettingsAboutLicense,
+
+        // Stats for nerds
+        SettingsStatsTitle,
+        SettingsStatsToggle,
+        
+        // Stats overlay strings
+        StatsResolution,
+        StatsFPS,
+        StatsCPU,
+        StatsGPU,
+        StatsMemory,
+        StatsSOCTemp,
+        StatsSkinTemp,
+        StatsNA,
+
+        // Accent Color
+        SettingsAccentColorTitle,
+        SettingsAccentColorReset,
+
+        // Theme
+        SettingsThemeTitle,
+        SettingsThemeAuto,
+        SettingsThemeDark,
+        SettingsThemeLight,
 
         // Updates Dialog
         UpdateTitle,
@@ -88,12 +115,65 @@ namespace Lang {
         HintSelect,
         HintOptions,
         HintDrive,
+        HintExit,
 
         // File Browser
         FileBrowserFilename,
+        FileBrowserDevice,
+        FileBrowserSize,
+        FileBrowserModified,
+        FileBrowserArchive,
+        FileBrowserSelectDevice,
 
-        // Max
-        Max
+        // Button Hints (continued)
+        HintDetails,
+        HintConfirm,
+        HintCancel,
+
+    // Tabs
+    TabFiles,
+    TabSettings,
+    TabAbout,
+
+    // Image/Text Viewer Hints
+    HintPrev,
+    HintNext,
+    HintZoomIn,
+    HintZoomOut,
+    HintProperties,
+    HintFullscreen,
+    HintExitFullscreen,
+
+    // Reset Settings
+    SettingsResetTitle,
+    SettingsResetMessage,
+    SettingsResetButton,
+
+    // Replace Confirmation
+    ReplaceTitle,
+    ReplaceMessage,
+    ReplaceButton,
+
+    // Multi-file Replace Confirmation
+    MultiReplaceMessage,
+    MultiReplaceAll,
+    MultiReplaceSkip,
+
+    // Hex Mode
+    HintHexMode,
+    HexModeOpenTitle,
+    HexModeOpenMessage,
+    HexModeOpenAsText,
+    HexModeOpenAsHex,
+
+    // Button Style
+    SettingsButtonStyleTitle,
+    SettingsButtonStyleColored,
+    SettingsButtonStyleMono,
+    SettingsButtonStyleAccent,
+
+    // Max
+    Max
     } StringID;
 }
 

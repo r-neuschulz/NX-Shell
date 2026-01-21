@@ -3,6 +3,7 @@
 #include "imgui.h"
 #include "language.hpp"
 #include "popups.hpp"
+#include "selection.hpp"
 #include "usb.hpp"
 #include "windows.hpp"
 
@@ -32,8 +33,9 @@ namespace Popups {
                     cwd = "/";
                     data.entries.clear();
                     FS::GetDirList(device, cwd, data.entries);
+                    FS::PopulateMetadataCache(data.entries, data.metadata_cache);
                     
-                    data.checkbox_data.checked.resize(data.entries.size());
+                    g_selection.Clear();  // Clear any selections when unmounting USB
                     FS::GetUsedStorageSpace(data.used_storage);
                     FS::GetTotalStorageSpace(data.total_storage);
                     sort = -1;

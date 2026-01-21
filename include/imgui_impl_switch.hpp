@@ -34,6 +34,14 @@ IMGUI_IMPL_API void ImGui_ImplSwitch_DestroyFontsTexture(void);
 IMGUI_IMPL_API bool ImGui_ImplSwitch_CreateDeviceObjects(void);
 IMGUI_IMPL_API void ImGui_ImplSwitch_DestroyDeviceObjects(void);
 
+// Touch input state query - returns true if touch is active
+// out_delta_x/y: movement since last frame, out_pos_x/y: current touch position
+IMGUI_IMPL_API bool ImGui_ImplSwitch_GetTouchState(float *out_delta_x, float *out_delta_y, float *out_pos_x, float *out_pos_y);
+
+// Right stick scroll query - returns scroll delta in pixels per frame
+// Positive = scroll down, Negative = scroll up, Zero = no input
+IMGUI_IMPL_API float ImGui_ImplSwitch_GetRightStickScrollY(void);
+
 // Specific OpenGL ES versions
 //#define IMGUI_IMPL_OPENGL_ES2     // Auto-detected on Emscripten
 //#define IMGUI_IMPL_OPENGL_ES3     // Auto-detected on iOS/Android

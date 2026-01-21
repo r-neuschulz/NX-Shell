@@ -1,3 +1,5 @@
+#include <cfloat>
+#include <cmath>
 #include <cstdio>
 #include <cstring>
 
@@ -55,6 +57,31 @@ struct ImGui_ImplSwitch_Data {
     PadState pad;
     u64 start_time = 0;
     float prev_time = 0.f;
+    
+    // Touch input state
+    bool touch_was_down = false;
+    float last_touch_x = 0.f;
+    float last_touch_y = 0.f;
+    
+    // Touch drag scrolling state
+    float touch_scroll_accumulated_y = 0.f;  // Accumulated scroll delta
+    static constexpr float TOUCH_SCROLL_THRESHOLD = 8.0f;  // Pixels before scrolling starts
+    static constexpr float TOUCH_SCROLL_SPEED = 0.008f;  // Scroll multiplier (reduced - 100px drag = 0.8 wheel units)
+    
+    // Right stick scroll state - accumulated for application to apply to focused window
+    float right_stick_scroll_y = 0.f;
+    
+    // Scroll acceleration state - tracks how long scroll input has been held
+    float scroll_hold_time = 0.f;  // Time in seconds the scroll direction has been held
+    int scroll_direction = 0;      // -1 = up, 0 = none, +1 = down
+    static constexpr float SCROLL_BASE_SPEED = 8.0f;      // Base scroll speed in pixels/frame
+    static constexpr float SCROLL_MAX_SPEED = 60.0f;      // Maximum scroll speed in pixels/frame
+    static constexpr float SCROLL_ACCEL_TIME = 1.5f;      // Time to reach max speed (seconds)
+    
+    // Touch delta for external consumers (e.g., image viewer zoom)
+    float touch_delta_x = 0.f;
+    float touch_delta_y = 0.f;
+    bool touch_active = false;
 
     ImGui_ImplSwitch_Data() { std::memset((void*)this, 0, sizeof(*this)); }
 };
@@ -167,6 +194,9 @@ bool ImGui_ImplSwitch_Init(const char *glsl_version) {
     // Initialize the default gamepad (which reads handheld mode inputs as well as the first connected controller)
     padInitializeDefault(&bd->pad);
 
+    // Initialize touch screen input
+    hidInitializeTouchScreen();
+
     // Initialize start_time
     bd->start_time = armGetSystemTick();
 
@@ -182,6 +212,82 @@ void ImGui_ImplSwitch_Shutdown(void) {
     io.BackendRendererName = nullptr;
     io.BackendRendererUserData = nullptr;
     IM_DELETE(bd);
+}
+
+static void ImGui_ImplSwitch_UpdateTouch(void) {
+    ImGui_ImplSwitch_Data *bd = ImGui_ImplSwitch_GetBackendData();
+    ImGuiIO &io = ImGui::GetIO();
+    
+    // Reset per-frame touch deltas
+    bd->touch_delta_x = 0.f;
+    bd->touch_delta_y = 0.f;
+    
+    // Get touch screen state
+    HidTouchScreenState touch_state = {0};
+    if (hidGetTouchScreenStates(&touch_state, 1)) {
+        // The touch screen is always 1280x720, but we may be rendering at a different resolution
+        // Scale touch coordinates to match the current display size
+        float scale_x = io.DisplaySize.x / 1280.0f;
+        float scale_y = io.DisplaySize.y / 720.0f;
+        
+        if (touch_state.count > 0) {
+            // Touch is active - get the first touch point
+            s32 touch_x = touch_state.touches[0].x;
+            s32 touch_y = touch_state.touches[0].y;
+            
+            float mouse_x = touch_x * scale_x;
+            float mouse_y = touch_y * scale_y;
+            
+            // Indicate touch input source to ImGui
+            io.AddMouseSourceEvent(ImGuiMouseSource_TouchScreen);
+            
+            // Calculate touch delta for scroll handling (only after first frame)
+            if (bd->touch_was_down) {
+                float delta_x = mouse_x - bd->last_touch_x;
+                float delta_y = mouse_y - bd->last_touch_y;
+                
+                // Store deltas for external use (e.g., image viewer zoom)
+                bd->touch_delta_x = delta_x;
+                bd->touch_delta_y = delta_y;
+                
+                // Accumulate delta for smoother scrolling
+                bd->touch_scroll_accumulated_y += delta_y;
+                
+                // Generate scroll events when accumulated delta exceeds threshold
+                // Dragging up (negative delta) should scroll content UP (positive wheel) - standard touch behavior
+                if (std::abs(bd->touch_scroll_accumulated_y) > bd->TOUCH_SCROLL_THRESHOLD) {
+                    float scroll_amount = bd->touch_scroll_accumulated_y * bd->TOUCH_SCROLL_SPEED;
+                    io.AddMouseWheelEvent(0.0f, scroll_amount);
+                    bd->touch_scroll_accumulated_y = 0.0f;
+                }
+            }
+            
+            // Store last touch position for release event and delta calculation
+            bd->last_touch_x = mouse_x;
+            bd->last_touch_y = mouse_y;
+            
+            // Send mouse position and button state to ImGui
+            io.AddMousePosEvent(mouse_x, mouse_y);
+            
+            // Only send button down on first touch frame
+            if (!bd->touch_was_down) {
+                io.AddMouseButtonEvent(ImGuiMouseButton_Left, true);
+                bd->touch_was_down = true;
+                bd->touch_active = true;
+                bd->touch_scroll_accumulated_y = 0.0f;  // Reset scroll accumulator on new touch
+            }
+        } else if (bd->touch_was_down) {
+            // Touch was released - send final position then button up
+            io.AddMousePosEvent(bd->last_touch_x, bd->last_touch_y);
+            io.AddMouseButtonEvent(ImGuiMouseButton_Left, false);
+            bd->touch_was_down = false;
+            bd->touch_active = false;
+            bd->touch_scroll_accumulated_y = 0.0f;  // Reset scroll accumulator
+            
+            // Move mouse off-screen to prevent unwanted hover states
+            io.AddMousePosEvent(-FLT_MAX, -FLT_MAX);
+        }
+    }
 }
 
 static u64 ImGui_ImplSwitch_UpdateGamepads(void) {
@@ -202,31 +308,35 @@ static u64 ImGui_ImplSwitch_UpdateGamepads(void) {
     // Update gamepad inputs
     #define MAP_BUTTON(KEY_NO, BUTTON_NO)       { io.AddKeyEvent(KEY_NO, (padGetButtons(&bd->pad) & BUTTON_NO) != 0); }
     
-    // Combine both sticks for navigation - use whichever has larger deflection
-    auto abs32 = [](s32 v) { return v < 0 ? -v : v; };
-    s32 nav_x = abs32(l_stick.x) > abs32(r_stick.x) ? l_stick.x : r_stick.x;
-    s32 nav_y = abs32(l_stick.y) > abs32(r_stick.y) ? l_stick.y : r_stick.y;
-    
+    // Right stick is dedicated to scrolling - use left stick only for navigation
     const s32 thumb_dead_zone = 16000;  // Dead zone threshold for stick navigation
+    const s32 scroll_dead_zone = 8000;  // Dead zone for scroll (more sensitive)
     
-    // Map stick movement to navigation keys (same as D-pad for reliable navigation)
-    bool stick_left  = nav_x < -thumb_dead_zone;
-    bool stick_right = nav_x > +thumb_dead_zone;
-    bool stick_up    = nav_y > +thumb_dead_zone;
-    bool stick_down  = nav_y < -thumb_dead_zone;
+    // Map LEFT stick movement to navigation keys (same as D-pad for reliable navigation)
+    bool stick_left  = l_stick.x < -thumb_dead_zone;
+    bool stick_right = l_stick.x > +thumb_dead_zone;
+    bool stick_up    = l_stick.y > +thumb_dead_zone;
+    bool stick_down  = l_stick.y < -thumb_dead_zone;
     
-    // Combine D-pad buttons with stick input for navigation
+    // Get buttons down this frame (for one-shot navigation)
+    u64 buttons_down = padGetButtonsDown(&bd->pad);
+    
+    // D-pad vertical: Only send navigation on first press, holding is used for scroll
+    // D-pad horizontal: Send continuously for navigation
     bool nav_left  = (padGetButtons(&bd->pad) & HidNpadButton_Left)  || stick_left;
     bool nav_right = (padGetButtons(&bd->pad) & HidNpadButton_Right) || stick_right;
-    bool nav_up    = (padGetButtons(&bd->pad) & HidNpadButton_Up)    || stick_up;
-    bool nav_down  = (padGetButtons(&bd->pad) & HidNpadButton_Down)  || stick_down;
+    // For up/down: only trigger nav on first press (down event), not while held
+    bool nav_up    = (buttons_down & HidNpadButton_Up)    || stick_up;
+    bool nav_down  = (buttons_down & HidNpadButton_Down)  || stick_down;
     
     MAP_BUTTON(ImGuiKey_GamepadStart,           HidNpadButton_A);
-    MAP_BUTTON(ImGuiKey_GamepadBack,            HidNpadButton_B);
     MAP_BUTTON(ImGuiKey_GamepadFaceDown,        HidNpadButton_A);
-    MAP_BUTTON(ImGuiKey_GamepadFaceRight,       HidNpadButton_B);
+    // Note: B button is NOT mapped to GamepadBack/GamepadFaceRight to prevent
+    // ImGui from intercepting it - we handle B exclusively for tab navigation
     // MAP_BUTTON(ImGuiKey_GamepadFaceLeft,        HidNpadButton_Y);
-    MAP_BUTTON(ImGuiKey_GamepadFaceUp,          HidNpadButton_X);
+    // Note: X button is NOT mapped to prevent ImGui from intercepting it -
+    // we handle X exclusively in window.cpp to open the options menu
+    // MAP_BUTTON(ImGuiKey_GamepadFaceUp,          HidNpadButton_X);
     MAP_BUTTON(ImGuiKey_GamepadL1,              HidNpadButton_L);
     MAP_BUTTON(ImGuiKey_GamepadR1,              HidNpadButton_R);
     
@@ -235,6 +345,50 @@ static u64 ImGui_ImplSwitch_UpdateGamepads(void) {
     io.AddKeyEvent(ImGuiKey_GamepadDpadRight, nav_right);
     io.AddKeyEvent(ImGuiKey_GamepadDpadUp,    nav_up);
     io.AddKeyEvent(ImGuiKey_GamepadDpadDown,  nav_down);
+    
+    // Scroll input detection - combine D-pad and right stick
+    // D-pad up/down held = scroll, Right stick Y = scroll
+    bool dpad_up   = (padGetButtons(&bd->pad) & HidNpadButton_Up) != 0;
+    bool dpad_down = (padGetButtons(&bd->pad) & HidNpadButton_Down) != 0;
+    bool rstick_up   = r_stick.y > scroll_dead_zone;
+    bool rstick_down = r_stick.y < -scroll_dead_zone;
+    
+    // Determine current scroll direction (-1 = up, +1 = down, 0 = none)
+    int new_scroll_dir = 0;
+    if (dpad_down || rstick_down) new_scroll_dir = 1;
+    else if (dpad_up || rstick_up) new_scroll_dir = -1;
+    
+    // Update scroll hold time and acceleration
+    if (new_scroll_dir != 0) {
+        if (new_scroll_dir == bd->scroll_direction) {
+            // Same direction - increase hold time
+            bd->scroll_hold_time += io.DeltaTime;
+        } else {
+            // Direction changed - reset
+            bd->scroll_hold_time = 0.0f;
+            bd->scroll_direction = new_scroll_dir;
+        }
+        
+        // Calculate acceleration factor (0.0 to 1.0 over SCROLL_ACCEL_TIME seconds)
+        float accel_factor = bd->scroll_hold_time / bd->SCROLL_ACCEL_TIME;
+        if (accel_factor > 1.0f) accel_factor = 1.0f;
+        
+        // Interpolate between base and max speed based on acceleration
+        float scroll_speed = bd->SCROLL_BASE_SPEED + (bd->SCROLL_MAX_SPEED - bd->SCROLL_BASE_SPEED) * accel_factor;
+        
+        // Apply right stick magnitude for proportional control (if using stick)
+        if (rstick_up || rstick_down) {
+            float stick_magnitude = std::abs(static_cast<float>(r_stick.y)) / 32767.0f;
+            scroll_speed *= stick_magnitude;
+        }
+        
+        bd->right_stick_scroll_y = scroll_speed * new_scroll_dir;
+    } else {
+        // No scroll input - reset state
+        bd->right_stick_scroll_y = 0.0f;
+        bd->scroll_hold_time = 0.0f;
+        bd->scroll_direction = 0;
+    }
     
     #undef MAP_BUTTON
 
@@ -269,6 +423,9 @@ u64 ImGui_ImplSwitch_NewFrame(void) {
     float curr_time = (elapsed_time * 625 / 12) / 1000000000.0;
     io.DeltaTime = curr_time - bd->prev_time;
     bd->prev_time = curr_time;
+
+    // Update touch input (mapped to mouse for UI interaction)
+    ImGui_ImplSwitch_UpdateTouch();
 
     return ImGui_ImplSwitch_UpdateGamepads();
 }
@@ -874,4 +1031,27 @@ void ImGui_ImplSwitch_DestroyDeviceObjects(void) {
     }
     
     ImGui_ImplSwitch_DestroyFontsTexture();
+}
+
+// Get touch input state for external use (e.g., image viewer zoom)
+bool ImGui_ImplSwitch_GetTouchState(float *out_delta_x, float *out_delta_y, float *out_pos_x, float *out_pos_y) {
+    ImGui_ImplSwitch_Data *bd = ImGui_ImplSwitch_GetBackendData();
+    if (!bd || !bd->touch_active)
+        return false;
+    
+    if (out_delta_x) *out_delta_x = bd->touch_delta_x;
+    if (out_delta_y) *out_delta_y = bd->touch_delta_y;
+    if (out_pos_x) *out_pos_x = bd->last_touch_x;
+    if (out_pos_y) *out_pos_y = bd->last_touch_y;
+    
+    return true;
+}
+
+// Get right stick scroll delta for application to apply to focused window
+// Returns scroll delta in pixels per frame (positive = scroll down, negative = scroll up)
+float ImGui_ImplSwitch_GetRightStickScrollY(void) {
+    ImGui_ImplSwitch_Data *bd = ImGui_ImplSwitch_GetBackendData();
+    if (!bd)
+        return 0.0f;
+    return bd->right_stick_scroll_y;
 }

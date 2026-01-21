@@ -5,12 +5,49 @@
 #include <jansson.h>
 #include <switch.h>
 
+#include "config.hpp"
 #include "fs.hpp"
 #include "log.hpp"
 #include "net.hpp"
 
 namespace Net {
     static s64 offset = 0;
+    
+    // Socket initialization state (lazy init for faster startup)
+    static bool s_socket_initialized = false;
+    
+    // Initialize socket with nxlink stdio (for dev_options mode)
+    void InitSocketWithNxlink(void) {
+        if (s_socket_initialized)
+            return;
+        
+        socketInitializeDefault();
+        nxlinkStdio();
+        s_socket_initialized = true;
+    }
+    
+    // Ensure socket is ready before network operations (lazy init if needed)
+    void EnsureSocketReady(void) {
+        if (s_socket_initialized)
+            return;
+        
+        // Lazy init without nxlink (for normal users checking updates)
+        socketInitializeDefault();
+        s_socket_initialized = true;
+    }
+    
+    // Check if socket was initialized (for cleanup)
+    bool IsSocketInitialized(void) {
+        return s_socket_initialized;
+    }
+    
+    // Cleanup socket on exit
+    void ExitSocket(void) {
+        if (s_socket_initialized) {
+            socketExit();
+            s_socket_initialized = false;
+        }
+    }
 
     bool GetNetworkStatus(void) {
         Result ret = 0;
@@ -42,6 +79,9 @@ namespace Net {
     }
 
     std::string GetLatestReleaseJSON(void) {
+        // Ensure socket is ready before network operations (lazy init if needed)
+        EnsureSocketReady();
+        
         std::string json = std::string();
         CURL *handle = curl_easy_init();
         
@@ -82,6 +122,9 @@ namespace Net {
     }
     
     void GetLatestReleaseNRO(const std::string &tag) {
+        // Ensure socket is ready before network operations (lazy init if needed)
+        EnsureSocketReady();
+        
         Result ret = 0;
         FsFile file;
         const char path[FS_MAX_PATH] = "/switch/NX-Shell/NX-Shell_UPDATE.nro";

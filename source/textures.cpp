@@ -44,7 +44,7 @@
 #define MAX_IMAGE_BYTES (48 * 1024 * 1024)
 
 std::vector<Tex> file_icons;
-Tex folder_icon, check_icon, uncheck_icon;
+Tex folder_icon, check_icon, uncheck_icon, partcheck_icon, drive_icon, settings_icon;
 
 namespace BMP {
     static void *bitmap_create(int width, int height, [[maybe_unused]] unsigned int state) {
@@ -376,13 +376,14 @@ namespace Textures {
     }
     
     void Init(void) {
-        const int num_icons = 4;
+        const int num_icons = 5;
 
         const std::string paths[num_icons] {
             "romfs:/file.png",
             "romfs:/archive.png",
             "romfs:/image.png",
-            "romfs:/text.png"
+            "romfs:/text.png",
+            "romfs:/file0x.png"  // Binary/Hex icon
         };
 
         bool image_ret = Textures::LoadImagePNG("romfs:/folder.png", folder_icon);
@@ -392,6 +393,17 @@ namespace Textures {
         IM_ASSERT(image_ret);
 
         image_ret = Textures::LoadImagePNG("romfs:/uncheck.png", uncheck_icon);
+        IM_ASSERT(image_ret);
+
+        image_ret = Textures::LoadImagePNG("romfs:/partcheck.png", partcheck_icon);
+        IM_ASSERT(image_ret);
+        
+        // Try to load drive icon, fall back to folder icon if not available
+        if (!Textures::LoadImagePNG("romfs:/drive.png", drive_icon)) {
+            drive_icon = folder_icon;  // Use folder icon as fallback
+        }
+        
+        image_ret = Textures::LoadImagePNG("romfs:/settings.png", settings_icon);
         IM_ASSERT(image_ret);
         
         file_icons.resize(num_icons);
@@ -407,14 +419,28 @@ namespace Textures {
     }
     
     void Exit(void) {
+        // Clean up any deferred texture deletions first
+        ImageViewer::CleanupDeferredDeletions();
+        
         for (unsigned int i = 0; i < file_icons.size(); i++)
             Textures::Free(file_icons[i]);
 
         Textures::Free(uncheck_icon);
         Textures::Free(check_icon);
+        Textures::Free(partcheck_icon);
         Textures::Free(folder_icon);
+        Textures::Free(settings_icon);
+        // Only free drive_icon if it's not the same as folder_icon (i.e., was loaded separately)
+        if (drive_icon.id != folder_icon.id)
+            Textures::Free(drive_icon);
 
         for (unsigned int i = 0; i < data.textures.size(); i++)
             Textures::Free(data.textures[i]);
+        
+        // Free pre-loaded image textures
+        for (unsigned int i = 0; i < data.textures_prev.size(); i++)
+            Textures::Free(data.textures_prev[i]);
+        for (unsigned int i = 0; i < data.textures_next.size(); i++)
+            Textures::Free(data.textures_next[i]);
     }
 }

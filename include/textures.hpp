@@ -12,7 +12,7 @@ typedef struct {
 } Tex;
 
 extern std::vector<Tex> file_icons;
-extern Tex folder_icon, check_icon, uncheck_icon;
+extern Tex folder_icon, check_icon, uncheck_icon, partcheck_icon, drive_icon, settings_icon;
 
 namespace Textures {
     bool LoadImageFile(const std::string &path, std::vector<Tex> &textures);

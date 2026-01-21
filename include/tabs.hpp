@@ -23,4 +23,10 @@ namespace Tabs {
     
     // Request to navigate to parent directory (..)
     void RequestParentDirectory(void);
+    
+    // Toggle details view (size, date modified columns)
+    void ToggleDetails(void);
+    
+    // Check if details are currently shown
+    bool IsShowingDetails(void);
 }

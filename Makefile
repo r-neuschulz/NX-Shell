@@ -39,7 +39,8 @@ include $(DEVKITPRO)/libnx/switch_rules
 #---------------------------------------------------------------------------------
 TARGET		:=	$(notdir $(CURDIR))
 BUILD		:=	build
-SOURCES		:=	libs/imgui libs/imgui/misc/freetype libs/libnsbmp source source/imgui_nx source/popups source/tabs
+SOURCES		:=	libs/imgui libs/imgui/misc/freetype libs/libnsbmp \
+			source source/imgui_nx source/popups source/tabs
 DATA		:=	data
 INCLUDES	:=	include include/imgui_nx libs/imgui libs/imgui/misc/freetype libs/libnsbmp libs/
 ROMFS		:=	res
@@ -79,7 +80,7 @@ ASFLAGS	:=	-g $(ARCH)
 LDFLAGS	=	-specs=$(DEVKITPRO)/libnx/switch.specs -g $(ARCH) -Wl,-Map,$(notdir $*.map)
 
 LIBS	:=	$(shell curl-config --libs) $(shell $(DEVKITPRO)/portlibs/switch/bin/aarch64-none-elf-pkg-config --libs freetype2) -lgif -lturbojpeg -ljpeg -lpng -lwebp -ljansson \
-		-lglad -lEGL -lglapi -ldrm_nouveau -lusbhsfs -llwext4 -lntfs-3g -lnx -lm -lz
+		-lglad -lEGL -lglapi -ldrm_nouveau -lusbhsfs -llwext4 -lntfs-3g -lminizip -lnx -lm -lz
 
 #---------------------------------------------------------------------------------
 # list of directories containing libraries, this must be the top level containing
