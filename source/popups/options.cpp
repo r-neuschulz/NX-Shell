@@ -6,6 +6,7 @@
 #include "imgui_internal.h"
 #include "keyboard.hpp"
 #include "language.hpp"
+#include "log.hpp"
 #include "popups.hpp"
 #include "selection.hpp"
 
@@ -15,7 +16,10 @@ namespace Options {
     static bool pending_multi_move = false;
     
     static void RefreshEntries(bool clear_selection) {
-        FS::RefreshDirectory(data.entries, data.metadata_cache, clear_selection);
+        if (!FS::RefreshDirectory(data.entries, data.metadata_cache, clear_selection)) {
+            // Log but continue - stale data is better than nothing in popup context
+            Log::Error("Options::RefreshEntries() failed to refresh directory\n");
+        }
     }
 
     static void HandleMultipleCopy(WindowData &data, bool (*func)(), bool is_move) {
@@ -40,7 +44,10 @@ namespace Options {
             }
             else if (conflict_mode == ConflictHandling_ReplaceAll) {
                 // Delete existing destination first if it exists
-                FS::DeletePath(dest_path);
+                if (!FS::DeletePath(dest_path)) {
+                    Log::Error("HandleMultipleCopy: Failed to delete existing destination: %s\n", dest_path.c_str());
+                    // Continue anyway - the copy/move might still succeed if the delete was just for a non-existent file
+                }
             }
             
             // Extract parent directory path
@@ -169,7 +176,8 @@ namespace Popups {
                 std::string path = FS::BuildPath(name, true);
                 
                 FILE *file = fopen(path.c_str(), "w");
-                fclose(file);
+                if (file)
+                    fclose(file);
                 
                 if (FS::FileExists(path)) {
                     Options::RefreshEntries(true);

@@ -4,6 +4,7 @@
 #include "fs.hpp"
 #include "imgui.h"
 #include "language.hpp"
+#include "log.hpp"
 #include "popups.hpp"
 #include "selection.hpp"
 
@@ -25,7 +26,10 @@ namespace Popups {
             if (ImGui::Button(strings[lang][Lang::ReplaceButton], ImVec2(120, 0))) {
                 // Build destination path and delete existing file/directory first
                 std::string dest_path = FS::BuildPath(FS::GetCopyEntryFilename(), true);
-                FS::DeletePath(dest_path);
+                if (!FS::DeletePath(dest_path)) {
+                    Log::Error("ReplacePopup: Failed to delete existing destination: %s\n", dest_path.c_str());
+                    // Continue anyway - the copy/move might still succeed
+                }
                 
                 bool ret = false;
                 if (is_move) {
@@ -40,7 +44,9 @@ namespace Popups {
                     copy = false;
                     
                     if (ret) {
-                        FS::RefreshDirectory(data.entries, data.metadata_cache, true);
+                        if (!FS::RefreshDirectory(data.entries, data.metadata_cache, true)) {
+                            Log::Error("ReplacePopup: Failed to refresh directory after paste\n");
+                        }
                         sort = -1;
                     }
                     
@@ -49,7 +55,9 @@ namespace Popups {
                 }
                 
                 if (ret) {
-                    FS::RefreshDirectory(data.entries, data.metadata_cache, true);
+                    if (!FS::RefreshDirectory(data.entries, data.metadata_cache, true)) {
+                        Log::Error("ReplacePopup: Failed to refresh directory after move\n");
+                    }
                     sort = -1;
                 }
                 

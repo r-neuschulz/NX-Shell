@@ -78,7 +78,8 @@ namespace FS {
     
     // Refresh current directory listing and optionally clear selection
     // Consolidates the common pattern: GetDirList + PopulateMetadataCache + Clear
-    void RefreshDirectory(std::vector<FsDirectoryEntry> &entries, std::vector<FileMetadataCache> &cache, bool clear_selection);
+    // Returns false if directory listing fails
+    bool RefreshDirectory(std::vector<FsDirectoryEntry> &entries, std::vector<FileMetadataCache> &cache, bool clear_selection);
     
     // Partition root support (virtual root showing all available partitions)
     bool IsAtPartitionRoot(void);

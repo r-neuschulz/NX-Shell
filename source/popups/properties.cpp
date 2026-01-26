@@ -3,6 +3,7 @@
 #include "gui.hpp"
 #include "imgui.h"
 #include "language.hpp"
+#include "log.hpp"
 #include "popups.hpp"
 #include "utils.hpp"
 
@@ -24,7 +25,10 @@ namespace Popups {
             
             if (data.entries[data.selected].type == FsDirEntryType_File) {
                 if (!file_stat) {
-                    FS::GetFileSize(data.entries[data.selected].name, size);
+                    if (!FS::GetFileSize(data.entries[data.selected].name, size)) {
+                        Log::Error("FilePropertiesPopup: Failed to get file size for %s\n", data.entries[data.selected].name);
+                        size = 0;  // Default to 0 on failure
+                    }
                     file_stat = true;
                 }
 
@@ -92,7 +96,10 @@ namespace Popups {
             ImGui::Dummy(ImVec2(0.0f, 5.0f)); // Spacing
             
             if (!file_stat) {
-                FS::GetFileSize(data.entries[data.selected].name, size);
+                if (!FS::GetFileSize(data.entries[data.selected].name, size)) {
+                    Log::Error("ImageProperties: Failed to get file size for %s\n", data.entries[data.selected].name);
+                    size = 0;  // Default to 0 on failure
+                }
                 file_stat = true;
             }
 

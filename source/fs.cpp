@@ -226,11 +226,15 @@ namespace FS {
         }
     }
     
-    void RefreshDirectory(std::vector<FsDirectoryEntry> &entries, std::vector<FileMetadataCache> &cache, bool clear_selection) {
-        FS::GetDirList(device, cwd, entries);
+    bool RefreshDirectory(std::vector<FsDirectoryEntry> &entries, std::vector<FileMetadataCache> &cache, bool clear_selection) {
+        if (!FS::GetDirList(device, cwd, entries)) {
+            Log::Error("FS::RefreshDirectory() failed to get directory list.\n");
+            return false;
+        }
         FS::PopulateMetadataCache(entries, cache);
         if (clear_selection)
             g_selection.Clear();
+        return true;
     }
 
     bool Rename(FsDirectoryEntry &entry, const std::string &dest_path) {
@@ -382,7 +386,6 @@ namespace FS {
         fclose(src);
         fclose(dest);
         return true;
-        return 0;
     }
 
     static bool CopyDir(const std::string &src_path, const std::string &dest_path) {
@@ -407,10 +410,16 @@ namespace FS {
                 dest.append("/");
                 dest.append(filename);
 
+                bool copy_result = false;
                 if (entry->d_type & DT_DIR)
-                    FS::CopyDir(src.c_str(), dest.c_str()); // Copy Folder (via recursion)
+                    copy_result = FS::CopyDir(src.c_str(), dest.c_str()); // Copy Folder (via recursion)
                 else
-                    FS::CopyFile(src.c_str(), dest.c_str()); // Copy File
+                    copy_result = FS::CopyFile(src.c_str(), dest.c_str()); // Copy File
+                
+                if (!copy_result) {
+                    closedir(dir);
+                    return false;
+                }
             }
 
             closedir(dir);

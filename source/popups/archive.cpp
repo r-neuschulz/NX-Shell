@@ -195,7 +195,9 @@ namespace Popups {
                 }
                 
                 // Refresh directory listing
-                FS::RefreshDirectory(data.entries, data.metadata_cache, true);
+                if (!FS::RefreshDirectory(data.entries, data.metadata_cache, true)) {
+                    Log::Error("ArchivePopup: Failed to refresh directory after extraction\n");
+                }
                 sort = -1;
                 
                 data.state = WINDOW_STATE_FILEBROWSER;

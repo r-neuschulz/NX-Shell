@@ -2,6 +2,7 @@
 #include "fs.hpp"
 #include "imgui.h"
 #include "language.hpp"
+#include "log.hpp"
 #include "popups.hpp"
 #include "selection.hpp"
 #include "usb.hpp"
@@ -32,7 +33,9 @@ namespace Popups {
                     
                     cwd = "/";
                     data.entries.clear();
-                    FS::RefreshDirectory(data.entries, data.metadata_cache, true);
+                    if (!FS::RefreshDirectory(data.entries, data.metadata_cache, true)) {
+                        Log::Error("USBPopup: Failed to refresh directory after USB unmount\n");
+                    }
                     FS::GetUsedStorageSpace(data.used_storage);
                     FS::GetTotalStorageSpace(data.total_storage);
                     sort = -1;

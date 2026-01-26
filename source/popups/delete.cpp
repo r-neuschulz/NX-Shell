@@ -49,7 +49,9 @@ namespace Popups {
                         ret = FS::DeletePath(full_path);
                         
                         if (!ret) {
-                            FS::RefreshDirectory(data.entries, data.metadata_cache, true);
+                            if (!FS::RefreshDirectory(data.entries, data.metadata_cache, true)) {
+                                Log::Error("DeletePopup: Failed to refresh directory after partial multi-delete\n");
+                            }
                             break;
                         }
                     }
@@ -62,7 +64,9 @@ namespace Popups {
                 }
                 
                 if (ret) {
-                    FS::RefreshDirectory(data.entries, data.metadata_cache, true);
+                    if (!FS::RefreshDirectory(data.entries, data.metadata_cache, true)) {
+                        Log::Error("DeletePopup: Failed to refresh directory after delete\n");
+                    }
                 }
 
                 sort = -1;
