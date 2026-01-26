@@ -88,8 +88,8 @@ namespace Options {
 }
 
 namespace Popups {
-    bool copy = false, move = false;
-    bool pending_replace_is_move = false;
+    static bool copy = false, move = false;
+    static bool pending_replace_is_move = false;
     static bool show_recursive_error = false;
     
     // Multi-file conflict tracking
@@ -373,5 +373,21 @@ namespace Popups {
         Options::pending_multi_copy = false;
         Options::pending_multi_move = false;
         FS::ClearConflictHandling(fs_svc);
+    }
+    
+    bool IsCopyMode(void) {
+        return copy;
+    }
+    
+    void SetCopyMode(bool value) {
+        copy = value;
+    }
+    
+    bool IsMoveMode(void) {
+        return move;
+    }
+    
+    void SetMoveMode(bool value) {
+        move = value;
     }
 }

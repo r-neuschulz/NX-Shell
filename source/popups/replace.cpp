@@ -9,11 +9,6 @@
 #include "selection.hpp"
 
 namespace Popups {
-    // External state from options.cpp
-    extern bool copy;
-    extern bool move;
-    extern bool pending_replace_is_move;
-
     void ReplacePopup(App &app, bool is_move) {
         WindowData &data = app.window;
         const int lang = app.config.Lang();
@@ -35,14 +30,14 @@ namespace Popups {
                 bool ret = false;
                 if (is_move) {
                     ret = FS::Move(app);
-                    move = false;
+                    SetMoveMode(false);
                 } else {
                     ImGui::EndPopup();
                     ImGui::PopStyleVar();
                     ImGui::Render();
                     
                     ret = FS::Paste(app);
-                    copy = false;
+                    SetCopyMode(false);
                     
                     if (ret) {
                         if (!FS::RefreshDirectory(app.fs, app.selection, data.entries, data.metadata_cache, true)) {
@@ -112,8 +107,8 @@ namespace Popups {
             // Cancel button
             if (ImGui::Button(strings[lang][Lang::ButtonCancel], ImVec2(120, 0))) {
                 Popups::ClearPendingMultiOperation(app.fs);
-                copy = false;
-                move = false;
+                SetCopyMode(false);
+                SetMoveMode(false);
                 ImGui::CloseCurrentPopup();
                 data.state = WINDOW_STATE_OPTIONS;
             }

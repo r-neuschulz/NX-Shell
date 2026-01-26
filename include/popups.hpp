@@ -30,6 +30,12 @@ namespace Popups {
     size_t GetMultiConflictCount(void);
     size_t GetMultiTotalCount(void);
     void ClearPendingMultiOperation(FileSystemService &fs_svc);
+    
+    // Copy/Move mode accessors
+    bool IsCopyMode(void);
+    void SetCopyMode(bool value);
+    bool IsMoveMode(void);
+    void SetMoveMode(bool value);
     void UpdatePopup(App &app, bool &state, bool &connection_status, bool &available, const std::string &tag);
     void ProgressBar(App &app, float offset, float size, const std::string &title, const std::string &text);
     void USBPopup(App &app, bool &state);
