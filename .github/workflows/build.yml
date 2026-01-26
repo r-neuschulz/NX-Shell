@@ -85,10 +85,10 @@ jobs:
           path: build/NX-Shell.nro
           if-no-files-found: error
 
-      # === Release steps (only on tags or manual release) ===
+      # === Release steps (only on tags or manual release, skip for local act runs) ===
 
       - name: Generate changelog
-        if: startsWith(github.ref, 'refs/tags/v') || github.event.inputs.release == 'true'
+        if: ${{ !env.ACT && (startsWith(github.ref, 'refs/tags/v') || github.event.inputs.release == 'true') }}
         run: |
           echo "## What's New in v${{ steps.version.outputs.version }}" > RELEASE_NOTES.md
           echo "" >> RELEASE_NOTES.md
