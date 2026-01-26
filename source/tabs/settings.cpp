@@ -4,6 +4,8 @@
 #include "imgui.h"
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui_internal.h"
+#include "imgui_impl_switch.hpp"
+#include "keyboard.hpp"
 #include "language.hpp"
 #include "log.hpp"
 #include "net.hpp"
@@ -423,12 +425,235 @@ namespace Tabs {
                     GUI::GetAccentColorU32()  // Tint with accent color like other icons
                 );
                 
-                // Color picker popup
+                // Track popup state for initialization
+                static bool picker_was_open = false;
+                static float picker_h = 0.0f, picker_s = 1.0f, picker_v = 1.0f;
+                
+                // Reset HSV state when popup opens
+                bool picker_is_open = ImGui::IsPopupOpen("##accent_picker");
+                if (picker_is_open && !picker_was_open) {
+                    // Popup just opened - initialize HSV from current RGB
+                    ImGui::ColorConvertRGBtoHSV(cfg.accent_color[0], cfg.accent_color[1], cfg.accent_color[2],
+                                               picker_h, picker_s, picker_v);
+                }
+                picker_was_open = picker_is_open;
+                
+                // Suppress right stick scroll when color picker is open (we use it for hue control)
+                GUI::SetRightStickScrollSuppressed(picker_is_open);
+                
+                // Color picker popup with gamepad controls
                 if (ImGui::BeginPopup("##accent_picker")) {
-                    if (ImGui::ColorPicker3("##picker", cfg.accent_color, ImGuiColorEditFlags_NoSidePreview | ImGuiColorEditFlags_NoSmallPreview)) {
+                    
+                    // Get analog stick input
+                    float l_stick_x = 0.0f, l_stick_y = 0.0f;
+                    float r_stick_x = 0.0f, r_stick_y = 0.0f;
+                    ImGui_ImplSwitch_GetLeftStickPos(&l_stick_x, &l_stick_y);
+                    ImGui_ImplSwitch_GetRightStickPos(&r_stick_x, &r_stick_y);
+                    
+                    // Dead zone for sticks
+                    const float dead_zone = 0.15f;
+                    const float stick_speed = 0.015f;
+                    
+                    bool color_changed = false;
+                    
+                    // L stick controls Saturation (X) and Value (Y)
+                    if (std::abs(l_stick_x) > dead_zone) {
+                        picker_s += l_stick_x * stick_speed;
+                        picker_s = ImClamp(picker_s, 0.0f, 1.0f);
+                        color_changed = true;
+                    }
+                    if (std::abs(l_stick_y) > dead_zone) {
+                        picker_v += l_stick_y * stick_speed;
+                        picker_v = ImClamp(picker_v, 0.0f, 1.0f);
+                        color_changed = true;
+                    }
+                    
+                    // R stick Y controls Hue (up/down)
+                    if (std::abs(r_stick_y) > dead_zone) {
+                        picker_h -= r_stick_y * stick_speed;
+                        if (picker_h < 0.0f) picker_h += 1.0f;
+                        if (picker_h > 1.0f) picker_h -= 1.0f;
+                        color_changed = true;
+                    }
+                    
+                    // Update RGB from HSV if changed via sticks
+                    if (color_changed) {
+                        ImGui::ColorConvertHSVtoRGB(picker_h, picker_s, picker_v,
+                                                   cfg.accent_color[0], cfg.accent_color[1], cfg.accent_color[2]);
                         Config::Save(cfg);
                         GUI::UpdateAccentColors();
                     }
+                    
+                    // Draw the color picker (hide inputs/options)
+                    ImGuiColorEditFlags picker_flags = 
+                        ImGuiColorEditFlags_NoSidePreview | 
+                        ImGuiColorEditFlags_NoSmallPreview |
+                        ImGuiColorEditFlags_NoInputs |
+                        ImGuiColorEditFlags_NoOptions |
+                        ImGuiColorEditFlags_PickerHueBar;
+                    
+                    // Draw the picker itself
+                    if (ImGui::ColorPicker3("##picker", cfg.accent_color, picker_flags)) {
+                        // Update HSV state when user clicks/touches
+                        ImGui::ColorConvertRGBtoHSV(cfg.accent_color[0], cfg.accent_color[1], cfg.accent_color[2],
+                                                   picker_h, picker_s, picker_v);
+                        Config::Save(cfg);
+                        GUI::UpdateAccentColors();
+                    }
+                    
+                    // Get the picker's position to overlay our stick icons
+                    // ImGui's color picker with PickerHueBar: SV square on left, hue bar on right
+                    ImVec2 picker_pos = ImGui::GetItemRectMin();
+                    ImVec2 picker_size = ImGui::GetItemRectSize();
+                    ImDrawList* draw_list = ImGui::GetWindowDrawList();
+                    
+                    // Calculate positions for the SV square and hue bar
+                    // Default picker is ~256px wide with ~20px hue bar on right
+                    const float sv_size = picker_size.y;  // SV square is same height as picker
+                    const float hue_bar_width = 20.0f;
+                    
+                    // Draw L stick icon in the SV field (bottom-left corner of SV area)
+                    {
+                        const float stick_radius = 10.0f;
+                        const bool is_dark = GUI::IsCurrentThemeDark();
+                        const ImU32 color_stick = is_dark ? IM_COL32(255, 255, 255, 200) : IM_COL32(40, 40, 40, 200);
+                        const ImU32 color_bg = is_dark ? IM_COL32(45, 45, 45, 180) : IM_COL32(233, 233, 233, 180);
+                        
+                        ImVec2 stick_center(picker_pos.x + stick_radius + 8.0f,
+                                           picker_pos.y + sv_size - stick_radius - 8.0f);
+                        
+                        // Draw background circle
+                        draw_list->AddCircleFilled(stick_center, stick_radius + 2.0f, color_bg, 24);
+                        draw_list->AddCircle(stick_center, stick_radius, color_stick, 24, 2.0f);
+                        
+                        // Draw X-shaped gaps
+                        const float gap_width = 3.0f;
+                        const float gap_length = stick_radius + 2.0f;
+                        draw_list->AddRectFilled(
+                            ImVec2(stick_center.x - gap_length, stick_center.y - gap_width * 0.5f),
+                            ImVec2(stick_center.x + gap_length, stick_center.y + gap_width * 0.5f),
+                            color_bg);
+                        draw_list->AddRectFilled(
+                            ImVec2(stick_center.x - gap_width * 0.5f, stick_center.y - gap_length),
+                            ImVec2(stick_center.x + gap_width * 0.5f, stick_center.y + gap_length),
+                            color_bg);
+                        
+                        // Redraw inner circle
+                        draw_list->AddCircleFilled(stick_center, stick_radius - 3.0f, color_bg, 24);
+                        draw_list->AddCircle(stick_center, stick_radius - 3.0f, color_stick, 24, 1.5f);
+                        
+                        // Draw "L" letter
+                        const char* letter = "L";
+                        const float font_size = ImGui::GetFontSize() * 0.65f;
+                        ImVec2 text_size = ImGui::GetFont()->CalcTextSizeA(font_size, FLT_MAX, 0.0f, letter);
+                        ImVec2 text_pos(stick_center.x - text_size.x * 0.5f, stick_center.y - text_size.y * 0.5f);
+                        draw_list->AddText(ImGui::GetFont(), font_size, text_pos, color_stick, letter);
+                    }
+                    
+                    // Draw R stick icon on the hue bar (centered vertically)
+                    {
+                        const float stick_radius = 10.0f;
+                        const bool is_dark = GUI::IsCurrentThemeDark();
+                        const ImU32 color_stick = is_dark ? IM_COL32(255, 255, 255, 200) : IM_COL32(40, 40, 40, 200);
+                        const ImU32 color_bg = is_dark ? IM_COL32(45, 45, 45, 180) : IM_COL32(233, 233, 233, 180);
+                        
+                        // Position on the hue bar - right side of picker
+                        ImVec2 stick_center(picker_pos.x + picker_size.x - hue_bar_width * 0.5f,
+                                           picker_pos.y + sv_size * 0.5f);
+                        
+                        // Draw background circle
+                        draw_list->AddCircleFilled(stick_center, stick_radius + 2.0f, color_bg, 24);
+                        draw_list->AddCircle(stick_center, stick_radius, color_stick, 24, 2.0f);
+                        
+                        // Draw X-shaped gaps
+                        const float gap_width = 3.0f;
+                        const float gap_length = stick_radius + 2.0f;
+                        draw_list->AddRectFilled(
+                            ImVec2(stick_center.x - gap_length, stick_center.y - gap_width * 0.5f),
+                            ImVec2(stick_center.x + gap_length, stick_center.y + gap_width * 0.5f),
+                            color_bg);
+                        draw_list->AddRectFilled(
+                            ImVec2(stick_center.x - gap_width * 0.5f, stick_center.y - gap_length),
+                            ImVec2(stick_center.x + gap_width * 0.5f, stick_center.y + gap_length),
+                            color_bg);
+                        
+                        // Redraw inner circle
+                        draw_list->AddCircleFilled(stick_center, stick_radius - 3.0f, color_bg, 24);
+                        draw_list->AddCircle(stick_center, stick_radius - 3.0f, color_stick, 24, 1.5f);
+                        
+                        // Draw "R" letter
+                        const char* letter = "R";
+                        const float font_size = ImGui::GetFontSize() * 0.65f;
+                        ImVec2 text_size = ImGui::GetFont()->CalcTextSizeA(font_size, FLT_MAX, 0.0f, letter);
+                        ImVec2 text_pos(stick_center.x - text_size.x * 0.5f, stick_center.y - text_size.y * 0.5f);
+                        draw_list->AddText(ImGui::GetFont(), font_size, text_pos, color_stick, letter);
+                    }
+                    
+                    ImGui::Spacing();
+                    
+                    // Hex input field with (X) button indicator
+                    {
+                        // Convert current color to hex string
+                        char hex_buf[8];
+                        int r = static_cast<int>(cfg.accent_color[0] * 255.0f + 0.5f);
+                        int g = static_cast<int>(cfg.accent_color[1] * 255.0f + 0.5f);
+                        int b = static_cast<int>(cfg.accent_color[2] * 255.0f + 0.5f);
+                        std::snprintf(hex_buf, sizeof(hex_buf), "#%02X%02X%02X", r, g, b);
+                        
+                        // Color preview square
+                        ImVec4 preview_col(cfg.accent_color[0], cfg.accent_color[1], cfg.accent_color[2], 1.0f);
+                        ImGui::ColorButton("##preview", preview_col, ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoBorder, ImVec2(24, 24));
+                        ImGui::SameLine();
+                        
+                        // Hex text display
+                        ImGui::AlignTextToFramePadding();
+                        ImGui::Text("%s", hex_buf);
+                        ImGui::SameLine();
+                        
+                        // Draw (X) button indicator for keyboard input
+                        {
+                            const float btn_radius = 10.0f;
+                            ImU32 x_color = GUI::GetButtonColorX();
+                            ImU32 text_color = GUI::GetButtonTextColor();
+                            
+                            ImVec2 btn_pos = ImGui::GetCursorScreenPos();
+                            btn_pos.y += (ImGui::GetFrameHeight() - btn_radius * 2) * 0.5f;
+                            ImVec2 btn_center(btn_pos.x + btn_radius, btn_pos.y + btn_radius);
+                            
+                            draw_list->AddCircleFilled(btn_center, btn_radius, x_color, 24);
+                            
+                            const char* letter = "X";
+                            const float font_size = ImGui::GetFontSize() * 0.8f;
+                            ImVec2 text_size = ImGui::GetFont()->CalcTextSizeA(font_size, FLT_MAX, 0.0f, letter);
+                            ImVec2 text_pos(btn_center.x - text_size.x * 0.5f + 0.5f, btn_center.y - text_size.y * 0.5f);
+                            draw_list->AddText(ImGui::GetFont(), font_size, text_pos, text_color, letter);
+                            
+                            // Reserve space for the button
+                            ImGui::Dummy(ImVec2(btn_radius * 2 + 4, btn_radius * 2));
+                        }
+                        
+                        // Handle X button press to open keyboard
+                        if (ImGui_ImplSwitch_GetButtonsDown() & HidNpadButton_X) {
+                            std::string result = Keyboard::GetText("Enter hex color (e.g. #00FF00)", hex_buf);
+                            if (!result.empty()) {
+                                // Parse hex color
+                                unsigned int hex_val = 0;
+                                const char* parse_str = result.c_str();
+                                if (parse_str[0] == '#') parse_str++;
+                                if (std::sscanf(parse_str, "%06X", &hex_val) == 1) {
+                                    cfg.accent_color[0] = ((hex_val >> 16) & 0xFF) / 255.0f;
+                                    cfg.accent_color[1] = ((hex_val >> 8) & 0xFF) / 255.0f;
+                                    cfg.accent_color[2] = (hex_val & 0xFF) / 255.0f;
+                                    // Update HSV state
+                                    ImGui::ColorConvertRGBtoHSV(cfg.accent_color[0], cfg.accent_color[1], cfg.accent_color[2],
+                                                               picker_h, picker_s, picker_v);
+                                    Config::Save(cfg);
+                                    GUI::UpdateAccentColors();
+                                }
+                            }
+                        }
+                    }
+                    
                     ImGui::EndPopup();
                 }
             }

@@ -44,8 +44,10 @@ namespace Tabs {
     }
     
     void ToggleDetails(void) {
-        cfg.show_details = !cfg.show_details;
-        Config::Save(cfg);
+        if (!GUI::IsAppletMode()) {  // No-op in applet mode
+            cfg.show_details = !cfg.show_details;
+            Config::Save(cfg);
+        }
         // Preserve current focus when toggling details (table ID changes)
         if (!current_focused_name.empty()) {
             pending_focus_name = current_focused_name;
@@ -53,7 +55,7 @@ namespace Tabs {
     }
     
     bool IsShowingDetails(void) {
-        return cfg.show_details;
+        return eff.show_details;
     }
 }
 
@@ -209,8 +211,9 @@ namespace Tabs {
             
             // Column setup depends on whether we're at partition root or in a directory
             bool at_partition_root_for_columns = FS::IsAtPartitionRoot();
-            bool show_details_columns = cfg.show_details && !at_partition_root_for_columns;
-            bool show_usage_column = cfg.show_details && at_partition_root_for_columns;
+            bool show_details = eff.show_details;
+            bool show_details_columns = show_details && !at_partition_root_for_columns;
+            bool show_usage_column = show_details && at_partition_root_for_columns;
             // At partition root: 2 or 3 columns depending on details (checkbox + device [+ usage bar])
             // Normal view: 2 or 5 columns depending on details setting (checkbox + name [+ size + modified + archive])
             const int column_count = at_partition_root_for_columns ? (show_usage_column ? 3 : 2) : (show_details_columns ? 5 : 2);
@@ -222,7 +225,7 @@ namespace Tabs {
                 pending_focus_name = current_focused_name;
             }
             prev_at_partition_root = at_partition_root_for_columns;
-            prev_show_details = cfg.show_details;
+            prev_show_details = show_details;
             
             ImGuiContext& g = *GImGui;
             
@@ -602,7 +605,7 @@ namespace Tabs {
                                 case FileTypeImage:
                                     if (Textures::LoadImageFile(path, data.textures)) {
                                         data.selected = i;  // Set selected to the actual image being opened
-                                        data.image_fullscreen = cfg.enter_images_fullscreen;
+                                        data.image_fullscreen = eff.enter_images_fullscreen;
                                         data.state = WINDOW_STATE_IMAGEVIEWER;
                                     }
                                     break;
@@ -667,7 +670,7 @@ namespace Tabs {
                             if (meta.valid) {
                                 char date_str[20];
                                 time_t mod_time = static_cast<time_t>(meta.modified_time);
-                                strftime(date_str, sizeof(date_str), "%Y/%m/%d %H:%M", localtime(&mod_time));
+                                strftime(date_str, sizeof(date_str), "%Y-%m-%d %H:%M", localtime(&mod_time));
                                 ImGui::TextUnformatted(date_str);
                             }
                         }
@@ -788,7 +791,7 @@ namespace Tabs {
                 is_at_partition_root});  // active = true triggers refresh animation at partition root
             
             // ZR button for details toggle
-            right_items.push_back({BottomBar::ButtonType::ShoulderZR, strings[lang][Lang::HintDetails], cfg.show_details});
+            right_items.push_back({BottomBar::ButtonType::ShoulderZR, strings[lang][Lang::HintDetails], eff.show_details});
             
             BottomBar::Config config;
             config.use_foreground_draw_list = false;  // Within window

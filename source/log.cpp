@@ -33,14 +33,14 @@ namespace Log {
     }
     
     void Init(void) {
-        if (!Config::IsLoggingEnabled())
+        if (!eff.dev_options)
             return;
         
         EnsureFileOpen();
     }
     
     void Error(const char *data, ...) {
-        if (!Config::IsLoggingEnabled())
+        if (!eff.dev_options)
             return;
          
         char buf[256 + FS_MAX_PATH];
@@ -67,7 +67,7 @@ namespace Log {
     }
     
     void Debug(const char *data, ...) {
-        if (!Config::IsLoggingEnabled())
+        if (!eff.dev_options)
             return;
          
         char buf[256 + FS_MAX_PATH];
@@ -94,7 +94,7 @@ namespace Log {
     }
     
     void Flush(void) {
-        if (!Config::IsLoggingEnabled() || !file_is_open)
+        if (!eff.dev_options || !file_is_open)
             return;
         
         std::fflush(stdout);  // Flush nxlink

@@ -796,7 +796,7 @@ namespace FS {
     
     bool RestoreSavedPath(std::vector<FsDirectoryEntry> &entries) {
         // If saved device is empty, user was at partition root
-        if (Config::GetLastDevice().empty()) {
+        if (eff.last_device.empty()) {
             GoToPartitionRoot(entries);
             return true;
         }
@@ -805,8 +805,8 @@ namespace FS {
         std::scoped_lock lock(::devices_list_mutex);
         bool device_found = false;
         for (std::size_t i = 0; i < ::devices_list.size(); i++) {
-            if (::devices_list[i] == Config::GetLastDevice()) {
-                device = Config::GetLastDevice();
+            if (::devices_list[i] == eff.last_device) {
+                device = eff.last_device;
                 fs = std::addressof(devices[i]);
                 device_found = true;
                 break;
@@ -815,13 +815,13 @@ namespace FS {
         
         if (!device_found) {
             // Device no longer exists (e.g., USB was removed) - go to partition root
-            Log::Debug("FS::RestoreSavedPath - device %s not found, going to partition root\n", Config::GetLastDevice().c_str());
+            Log::Debug("FS::RestoreSavedPath - device %s not found, going to partition root\n", eff.last_device.c_str());
             GoToPartitionRoot(entries);
             return false;
         }
         
         // Try to open the saved path
-        cwd = Config::GetLastCwd();
+        cwd = eff.last_cwd;
         if (!GetDirList(device, cwd, entries)) {
             // Path doesn't exist - try going up until we find a valid directory
             Log::Debug("FS::RestoreSavedPath - path %s%s not found, searching for valid parent\n", device.c_str(), cwd.c_str());

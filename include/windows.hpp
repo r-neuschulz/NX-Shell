@@ -40,6 +40,8 @@ typedef struct {
     std::vector<Tex> textures;
     long unsigned int frame_count = 0;
     float zoom_factor = 1.0f;
+    float pan_offset_x = 0.0f;           // R stick panning X offset
+    float pan_offset_y = 0.0f;           // R stick panning Y offset
     // Image viewer pre-loading
     std::vector<Tex> textures_prev;      // Pre-loaded previous image
     std::vector<Tex> textures_next;      // Pre-loaded next image

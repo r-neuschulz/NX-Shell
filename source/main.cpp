@@ -103,7 +103,7 @@ namespace Services {
         
         // Socket/nxlink only if logging enabled (for console output via nxlink)
         // Normal users skip this entirely - saves ~60-70ms
-        if (Config::IsLoggingEnabled()) {
+        if (eff.dev_options) {
             Net::InitSocketWithNxlink();
         }
         LogTiming("Config/Log/Socket init", phase_tick);

@@ -229,23 +229,51 @@ namespace BottomBar {
         return ZR_WIDTH + 6.0f + ImGui::CalcTextSize(label).x;
     }
 
-    // Draw DPad Up arrow
-    static float DrawDPadUp(ImDrawList* draw_list, float x, float center_y,
-                            const char* label, ImU32 label_color) {
+    // Draw Left Stick style button (circle with X-cross gaps and "l" letter)
+    static float DrawLeftStick(ImDrawList* draw_list, float x, float center_y,
+                               const char* label, ImU32 label_color) {
         const bool is_dark = GUI::IsCurrentThemeDark();
-        const ImU32 color_dpad = is_dark ? IM_COL32(80, 80, 80, 255) : IM_COL32(140, 140, 145, 255);
+        const ImU32 color_stick = is_dark ? IM_COL32(80, 80, 80, 255) : IM_COL32(140, 140, 145, 255);
+        const ImU32 color_bg = is_dark ? IM_COL32(45, 45, 45, 255) : IM_COL32(233, 233, 233, 255);
         
-        float arrow_x = x + DPAD_SIZE;
-        ImVec2 p1(arrow_x, center_y - DPAD_SIZE);
-        ImVec2 p2(arrow_x - DPAD_SIZE, center_y + DPAD_SIZE * 0.5f);
-        ImVec2 p3(arrow_x + DPAD_SIZE, center_y + DPAD_SIZE * 0.5f);
-        draw_list->AddTriangleFilled(p1, p2, p3, color_dpad);
+        ImVec2 stick_center(x + STICK_RADIUS, center_y);
+        
+        // Draw stick circle outline
+        draw_list->AddCircle(stick_center, STICK_RADIUS, color_stick, 24, 2.0f);
+        
+        // Draw X-shaped background gaps (perpendicular bars) to look like Switch analog sticks
+        const float gap_width = 3.0f;
+        const float gap_length = STICK_RADIUS + 2.0f;
+        
+        // Horizontal bar (background color to "interrupt" the circle)
+        draw_list->AddRectFilled(
+            ImVec2(stick_center.x - gap_length, stick_center.y - gap_width * 0.5f),
+            ImVec2(stick_center.x + gap_length, stick_center.y + gap_width * 0.5f),
+            color_bg
+        );
+        // Vertical bar
+        draw_list->AddRectFilled(
+            ImVec2(stick_center.x - gap_width * 0.5f, stick_center.y - gap_length),
+            ImVec2(stick_center.x + gap_width * 0.5f, stick_center.y + gap_length),
+            color_bg
+        );
+        
+        // Redraw the inner part of the circle (the stick nub area)
+        draw_list->AddCircleFilled(stick_center, STICK_RADIUS - 3.0f, color_bg, 24);
+        draw_list->AddCircle(stick_center, STICK_RADIUS - 3.0f, color_stick, 24, 1.5f);
+        
+        // Draw "L" letter centered (small white text)
+        const char* letter = "L";
+        const float letter_font_size = ImGui::GetFontSize() * 0.65f;
+        ImVec2 text_size = ImGui::GetFont()->CalcTextSizeA(letter_font_size, FLT_MAX, 0.0f, letter);
+        ImVec2 text_pos(stick_center.x - text_size.x * 0.5f, stick_center.y - text_size.y * 0.5f);
+        draw_list->AddText(ImGui::GetFont(), letter_font_size, text_pos, IM_COL32(255, 255, 255, 255), letter);
         
         // Draw label
-        float label_x = x + DPAD_SIZE * 2 + 6.0f;
+        float label_x = x + STICK_RADIUS * 2 + 6.0f;
         draw_list->AddText(ImVec2(label_x, center_y - ImGui::GetTextLineHeight() * 0.5f), label_color, label);
         
-        return DPAD_SIZE * 2 + 6.0f + ImGui::CalcTextSize(label).x;
+        return STICK_RADIUS * 2 + 6.0f + ImGui::CalcTextSize(label).x;
     }
 
     // Draw DPad Down arrow
@@ -267,33 +295,45 @@ namespace BottomBar {
         return DPAD_SIZE * 2 + 6.0f + ImGui::CalcTextSize(label).x;
     }
 
-    // Draw Right Stick with up/down arrows inside
+    // Draw Right Stick style button (circle with X-cross gaps and "r" letter)
     static float DrawRightStick(ImDrawList* draw_list, float x, float center_y,
                                 const char* label, ImU32 label_color) {
         const bool is_dark = GUI::IsCurrentThemeDark();
         const ImU32 color_stick = is_dark ? IM_COL32(80, 80, 80, 255) : IM_COL32(140, 140, 145, 255);
+        const ImU32 color_bg = is_dark ? IM_COL32(45, 45, 45, 255) : IM_COL32(233, 233, 233, 255);
         
         ImVec2 stick_center(x + STICK_RADIUS, center_y);
         
         // Draw stick circle outline
-        draw_list->AddCircle(stick_center, STICK_RADIUS, color_stick, 16, 2.0f);
+        draw_list->AddCircle(stick_center, STICK_RADIUS, color_stick, 24, 2.0f);
         
-        // Draw small up/down arrows inside
-        const float arrow_size = 4.0f;
-        // Up arrow
-        draw_list->AddTriangleFilled(
-            ImVec2(stick_center.x, stick_center.y - arrow_size - 1.0f),
-            ImVec2(stick_center.x - arrow_size * 0.6f, stick_center.y - 1.0f),
-            ImVec2(stick_center.x + arrow_size * 0.6f, stick_center.y - 1.0f),
-            color_stick
+        // Draw X-shaped background gaps (perpendicular bars) to look like Switch analog sticks
+        const float gap_width = 3.0f;
+        const float gap_length = STICK_RADIUS + 2.0f;
+        
+        // Horizontal bar (background color to "interrupt" the circle)
+        draw_list->AddRectFilled(
+            ImVec2(stick_center.x - gap_length, stick_center.y - gap_width * 0.5f),
+            ImVec2(stick_center.x + gap_length, stick_center.y + gap_width * 0.5f),
+            color_bg
         );
-        // Down arrow
-        draw_list->AddTriangleFilled(
-            ImVec2(stick_center.x, stick_center.y + arrow_size + 1.0f),
-            ImVec2(stick_center.x - arrow_size * 0.6f, stick_center.y + 1.0f),
-            ImVec2(stick_center.x + arrow_size * 0.6f, stick_center.y + 1.0f),
-            color_stick
+        // Vertical bar
+        draw_list->AddRectFilled(
+            ImVec2(stick_center.x - gap_width * 0.5f, stick_center.y - gap_length),
+            ImVec2(stick_center.x + gap_width * 0.5f, stick_center.y + gap_length),
+            color_bg
         );
+        
+        // Redraw the inner part of the circle (the stick nub area)
+        draw_list->AddCircleFilled(stick_center, STICK_RADIUS - 3.0f, color_bg, 24);
+        draw_list->AddCircle(stick_center, STICK_RADIUS - 3.0f, color_stick, 24, 1.5f);
+        
+        // Draw "R" letter centered (small white text)
+        const char* letter = "R";
+        const float letter_font_size = ImGui::GetFontSize() * 0.65f;
+        ImVec2 text_size = ImGui::GetFont()->CalcTextSizeA(letter_font_size, FLT_MAX, 0.0f, letter);
+        ImVec2 text_pos(stick_center.x - text_size.x * 0.5f, stick_center.y - text_size.y * 0.5f);
+        draw_list->AddText(ImGui::GetFont(), letter_font_size, text_pos, IM_COL32(255, 255, 255, 255), letter);
         
         // Draw label
         float label_x = x + STICK_RADIUS * 2 + 6.0f;
@@ -323,6 +363,8 @@ namespace BottomBar {
                 base_width = ZR_WIDTH + 6.0f + ImGui::CalcTextSize(item.label).x;
                 break;
             case ButtonType::DPadUp:
+                base_width = STICK_RADIUS * 2 + 6.0f + ImGui::CalcTextSize(item.label).x;
+                break;
             case ButtonType::DPadDown:
                 base_width = DPAD_SIZE * 2 + 6.0f + ImGui::CalcTextSize(item.label).x;
                 break;
@@ -390,7 +432,7 @@ namespace BottomBar {
                 return DrawZRButton(draw_list, x, center_y, item.label, label_color, item.active);
                 
             case ButtonType::DPadUp:
-                return DrawDPadUp(draw_list, x, center_y, item.label, label_color);
+                return DrawLeftStick(draw_list, x, center_y, item.label, label_color);
                 
             case ButtonType::DPadDown:
                 return DrawDPadDown(draw_list, x, center_y, item.label, label_color);

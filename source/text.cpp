@@ -407,7 +407,7 @@ namespace Windows {
         Windows::DrawTextReaderBottomBar();
         
         // Draw filename toast overlay (when enabled in settings)
-        if (cfg.image_filename) {
+        if (eff.image_filename) {
             Toast::DrawFilename(data.entries[data.selected].name);
         }
         

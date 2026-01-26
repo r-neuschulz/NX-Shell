@@ -195,6 +195,8 @@ namespace ImageViewer {
             
             data.selected = target_idx;
             data.frame_count = 0;
+            data.pan_offset_x = 0.0f;
+            data.pan_offset_y = 0.0f;
             return true;
         }
         
@@ -217,6 +219,8 @@ namespace ImageViewer {
                 
                 data.selected = target_idx;
                 data.frame_count = 0;
+                data.pan_offset_x = 0.0f;
+                data.pan_offset_y = 0.0f;
                 return true;
             }
         }
@@ -261,6 +265,17 @@ namespace ImageViewer {
                 data.zoom_factor = 5.0f;
         }
         
+        // R stick panning - navigate around the zoomed image
+        const float pan_speed = 500.0f * ImGui::GetIO().DeltaTime;
+        if (ImGui::IsKeyDown(ImGuiKey_GamepadRStickUp))
+            data.pan_offset_y -= pan_speed;
+        if (ImGui::IsKeyDown(ImGuiKey_GamepadRStickDown))
+            data.pan_offset_y += pan_speed;
+        if (ImGui::IsKeyDown(ImGuiKey_GamepadRStickLeft))
+            data.pan_offset_x -= pan_speed;
+        if (ImGui::IsKeyDown(ImGuiKey_GamepadRStickRight))
+            data.pan_offset_x += pan_speed;
+        
         // ZR toggles fullscreen mode
         if (key & HidNpadButton_ZR) {
             data.image_fullscreen = !data.image_fullscreen;
@@ -277,6 +292,8 @@ namespace ImageViewer {
                 // still reference the textures. They'll be freed at the start of
                 // the next frame by CleanupDeferredDeletions() in MainWindow.
                 data.zoom_factor = 1.0f;
+                data.pan_offset_x = 0.0f;
+                data.pan_offset_y = 0.0f;
                 data.image_fullscreen = false;
                 s_frames_since_navigation = 0;
                 data.state = WINDOW_STATE_FILEBROWSER;
@@ -368,8 +385,22 @@ namespace Windows {
                 float img_w = data.textures[0].width * effective_zoom;
                 float img_h = data.textures[0].height * effective_zoom;
                 
-                if ((img_w <= display_w) && (img_h <= window_h))
-                    ImGui::SetCursorPos((ImGui::GetWindowSize() - ImVec2(img_w, img_h)) * 0.5f);
+                // Calculate base cursor position (centered)
+                ImVec2 cursor_pos = (ImGui::GetWindowSize() - ImVec2(img_w, img_h)) * 0.5f;
+                
+                // Apply R stick pan offset
+                cursor_pos.x += data.pan_offset_x;
+                cursor_pos.y += data.pan_offset_y;
+                
+                // Clamp pan offset so image doesn't go completely off screen
+                float max_pan_x = img_w * 0.9f;
+                float max_pan_y = img_h * 0.9f;
+                if (data.pan_offset_x > max_pan_x) data.pan_offset_x = max_pan_x;
+                if (data.pan_offset_x < -max_pan_x) data.pan_offset_x = -max_pan_x;
+                if (data.pan_offset_y > max_pan_y) data.pan_offset_y = max_pan_y;
+                if (data.pan_offset_y < -max_pan_y) data.pan_offset_y = -max_pan_y;
+                
+                ImGui::SetCursorPos(cursor_pos);
                     
                 if (data.textures.size() > 1) {
                     svcSleepThread(data.textures[data.frame_count].delay);
@@ -391,7 +422,7 @@ namespace Windows {
         }
         
         // Draw filename toast overlay (when enabled in settings)
-        if (cfg.image_filename) {
+        if (eff.image_filename) {
             Toast::DrawFilename(data.entries[data.selected].name);
         }
         

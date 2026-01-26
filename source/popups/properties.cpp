@@ -10,7 +10,7 @@ namespace Popups {
     static std::size_t size = 0;
 
     static char *FormatDate(char *string, time_t timestamp) {
-        strftime(string, 36, "%Y/%m/%d %H:%M:%S", localtime(std::addressof(timestamp)));
+        strftime(string, 36, "%Y-%m-%d %H:%M:%S", localtime(std::addressof(timestamp)));
         return string;
     }
 

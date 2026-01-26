@@ -66,6 +66,9 @@ namespace GUI {
     ImU32 GetButtonColorPlus(void);   // Gray (same for both styles)
     ImU32 GetButtonColorMinus(void);  // Gray (same for both styles)
     ImU32 GetButtonTextColor(void);   // White (colored) or contrasting color (mono)
+    
+    // Right stick scroll suppression - use when a custom control needs R stick input
+    void SetRightStickScrollSuppressed(bool suppress);
 }
 
 // Toast overlay drawing utilities

@@ -385,11 +385,10 @@ namespace Windows {
         bool is_docked = GUI::IsDocked();
         bool auto_would_be_1080p = is_docked;
         bool is_resolution_forced = false;
-        
-        if (cfg.resolution_mode == ResolutionMode_1080p && !auto_would_be_1080p) {
+        if (eff.resolution_mode == ResolutionMode_1080p && !auto_would_be_1080p) {
             // User forced 1080p while handheld (auto would be 720p)
             is_resolution_forced = true;
-        } else if (cfg.resolution_mode == ResolutionMode_720p && auto_would_be_1080p) {
+        } else if (eff.resolution_mode == ResolutionMode_720p && auto_would_be_1080p) {
             // User forced 720p while docked (auto would be 1080p)
             is_resolution_forced = true;
         }

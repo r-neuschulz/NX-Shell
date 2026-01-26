@@ -42,6 +42,14 @@ IMGUI_IMPL_API bool ImGui_ImplSwitch_GetTouchState(float *out_delta_x, float *ou
 // Positive = scroll down, Negative = scroll up, Zero = no input
 IMGUI_IMPL_API float ImGui_ImplSwitch_GetRightStickScrollY(void);
 
+// Analog stick position queries - returns normalized -1.0 to 1.0 values
+// For use in custom UI controls like color pickers
+IMGUI_IMPL_API void ImGui_ImplSwitch_GetLeftStickPos(float *out_x, float *out_y);
+IMGUI_IMPL_API void ImGui_ImplSwitch_GetRightStickPos(float *out_x, float *out_y);
+
+// Get buttons pressed this frame (bitmask of HidNpadButton_*)
+IMGUI_IMPL_API u64 ImGui_ImplSwitch_GetButtonsDown(void);
+
 // Specific OpenGL ES versions
 //#define IMGUI_IMPL_OPENGL_ES2     // Auto-detected on Emscripten
 //#define IMGUI_IMPL_OPENGL_ES3     // Auto-detected on iOS/Android

@@ -32,6 +32,9 @@ namespace GUI {
     static bool s_minus_is_held = false;
     static constexpr float HOLD_TO_CLOSE_SECONDS = 0.8f;
     
+    // Right stick scroll suppression (for color picker etc. that use R stick for custom control)
+    static bool s_right_stick_scroll_suppressed = false;
+    
     // Refresh animation state (full circle animation for visual feedback)
     static u64 s_refresh_anim_start = 0;
     static bool s_refresh_anim_active = false;
@@ -109,7 +112,7 @@ namespace GUI {
         int target_width = 1280;
         int target_height = 720;
         
-        switch (Config::GetEffectiveResolutionMode()) {
+        switch (eff.resolution_mode) {
             case ResolutionMode_Auto:
                 // Auto-detect based on dock state
                 if (IsDocked()) {
@@ -260,7 +263,7 @@ namespace GUI {
     }
 
     bool IsCurrentThemeDark(void) {
-        switch (Config::GetEffectiveThemeMode()) {
+        switch (eff.theme_mode) {
             case ThemeMode_Auto:
                 return IsSystemThemeDark();
             case ThemeMode_Dark:
@@ -387,7 +390,7 @@ namespace GUI {
     }
     
     void UpdateAccentColors(void) {
-        ImVec4 accent = ImVec4(cfg.accent_color[0], cfg.accent_color[1], cfg.accent_color[2], 1.0f);
+        ImVec4 accent = ImVec4(eff.accent_color[0], eff.accent_color[1], eff.accent_color[2], 1.0f);
         ImVec4 *colors = ImGui::GetStyle().Colors;
         
         colors[ImGuiCol_CheckMark] = accent;
@@ -404,18 +407,18 @@ namespace GUI {
     
     ImU32 GetAccentColorU32(void) {
         return IM_COL32(
-            static_cast<int>(cfg.accent_color[0] * 255),
-            static_cast<int>(cfg.accent_color[1] * 255),
-            static_cast<int>(cfg.accent_color[2] * 255),
+            static_cast<int>(eff.accent_color[0] * 255),
+            static_cast<int>(eff.accent_color[1] * 255),
+            static_cast<int>(eff.accent_color[2] * 255),
             255
         );
     }
     
     ImU32 GetAccentColorU32WithAlpha(int alpha) {
         return IM_COL32(
-            static_cast<int>(cfg.accent_color[0] * 255),
-            static_cast<int>(cfg.accent_color[1] * 255),
-            static_cast<int>(cfg.accent_color[2] * 255),
+            static_cast<int>(eff.accent_color[0] * 255),
+            static_cast<int>(eff.accent_color[1] * 255),
+            static_cast<int>(eff.accent_color[2] * 255),
             alpha
         );
     }
@@ -429,9 +432,9 @@ namespace GUI {
         return true;
     }
     
-    // Button color functions - returns colors based on effective button style (respects applet mode)
+    // Button color functions - returns colors based on effective button style
     ImU32 GetButtonColorA(void) {
-        int style = Config::GetEffectiveButtonStyle();
+        int style = eff.button_style;
         if (style == ButtonStyle_Accent) {
             return GetAccentColorU32();
         }
@@ -444,7 +447,7 @@ namespace GUI {
     }
     
     ImU32 GetButtonColorB(void) {
-        int style = Config::GetEffectiveButtonStyle();
+        int style = eff.button_style;
         if (style == ButtonStyle_Accent) {
             return GetAccentColorU32();
         }
@@ -457,7 +460,7 @@ namespace GUI {
     }
     
     ImU32 GetButtonColorX(void) {
-        int style = Config::GetEffectiveButtonStyle();
+        int style = eff.button_style;
         if (style == ButtonStyle_Accent) {
             return GetAccentColorU32();
         }
@@ -470,7 +473,7 @@ namespace GUI {
     }
     
     ImU32 GetButtonColorY(void) {
-        int style = Config::GetEffectiveButtonStyle();
+        int style = eff.button_style;
         if (style == ButtonStyle_Accent) {
             return GetAccentColorU32();
         }
@@ -497,7 +500,7 @@ namespace GUI {
     }
     
     ImU32 GetButtonTextColor(void) {
-        int style = Config::GetEffectiveButtonStyle();
+        int style = eff.button_style;
         // Text on buttons - white for colored/accent style, contrasting for mono
         if (style == ButtonStyle_Mono) {
             return IsCurrentThemeDark() 
@@ -506,7 +509,7 @@ namespace GUI {
         }
         if (style == ButtonStyle_Accent) {
             // Calculate luminance of accent color to determine text color
-            float luminance = 0.299f * cfg.accent_color[0] + 0.587f * cfg.accent_color[1] + 0.114f * cfg.accent_color[2];
+            float luminance = 0.299f * eff.accent_color[0] + 0.587f * eff.accent_color[1] + 0.114f * eff.accent_color[2];
             return luminance > 0.5f 
                 ? IM_COL32(30, 30, 30, 255)      // Dark text on light accent
                 : IM_COL32(255, 255, 255, 255);  // White text on dark accent
@@ -683,8 +686,9 @@ namespace GUI {
         
         // Apply gamepad scrolling (D-pad up/down held or right stick) to the focused nav window
         // Scroll accelerates the longer the input is held
+        // Skip if suppressed (e.g., color picker uses R stick for hue control)
         float right_stick_scroll = ImGui_ImplSwitch_GetRightStickScrollY();
-        if (right_stick_scroll != 0.0f) {
+        if (right_stick_scroll != 0.0f && !s_right_stick_scroll_suppressed) {
             ImGuiContext& g = *GImGui;
             // Find the best window to scroll - prefer the nav window or hovered window
             ImGuiWindow* scroll_window = g.NavWindow;
@@ -809,6 +813,10 @@ namespace GUI {
         Log::Debug("ResetUIState called - cfg.show_stats=%d, cfg.lang=%d\n", cfg.show_stats, cfg.lang);
     }
     
+    void SetRightStickScrollSuppressed(bool suppress) {
+        s_right_stick_scroll_suppressed = suppress;
+    }
+    
     void ResetImGuiSettings(void) {
         // Clear in-memory ImGui settings (table column widths, window positions, etc.)
         ImGui::ClearIniSettings();
@@ -841,7 +849,7 @@ namespace GUI {
     }
 
     void RenderStatsOverlay(void) {
-        if (!Config::IsStatsEnabled()) {
+        if (!eff.show_stats) {
             return;
         }
         

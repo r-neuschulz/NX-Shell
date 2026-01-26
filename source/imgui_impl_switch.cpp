@@ -82,6 +82,15 @@ struct ImGui_ImplSwitch_Data {
     float touch_delta_x = 0.f;
     float touch_delta_y = 0.f;
     bool touch_active = false;
+    
+    // Analog stick positions (normalized -1.0 to 1.0)
+    float left_stick_x = 0.f;
+    float left_stick_y = 0.f;
+    float right_stick_x = 0.f;
+    float right_stick_y = 0.f;
+    
+    // Buttons pressed this frame
+    u64 buttons_down = 0;
 
     ImGui_ImplSwitch_Data() { std::memset((void*)this, 0, sizeof(*this)); }
 };
@@ -302,6 +311,12 @@ static u64 ImGui_ImplSwitch_UpdateGamepads(void) {
     padUpdate(&bd->pad);
     HidAnalogStickState l_stick = padGetStickPos(&bd->pad, 0);  // Left stick
     HidAnalogStickState r_stick = padGetStickPos(&bd->pad, 1);  // Right stick
+    
+    // Store normalized stick positions for external consumers
+    bd->left_stick_x = static_cast<float>(l_stick.x) / 32767.0f;
+    bd->left_stick_y = static_cast<float>(l_stick.y) / 32767.0f;
+    bd->right_stick_x = static_cast<float>(r_stick.x) / 32767.0f;
+    bd->right_stick_y = static_cast<float>(r_stick.y) / 32767.0f;
 
     io.BackendFlags |= ImGuiBackendFlags_HasGamepad;
     
@@ -320,6 +335,7 @@ static u64 ImGui_ImplSwitch_UpdateGamepads(void) {
     
     // Get buttons down this frame (for one-shot navigation)
     u64 buttons_down = padGetButtonsDown(&bd->pad);
+    bd->buttons_down = buttons_down;  // Store for external consumers
     
     // D-pad vertical: Only send navigation on first press, holding is used for scroll
     // D-pad horizontal: Send continuously for navigation
@@ -1054,4 +1070,36 @@ float ImGui_ImplSwitch_GetRightStickScrollY(void) {
     if (!bd)
         return 0.0f;
     return bd->right_stick_scroll_y;
+}
+
+// Get left stick position (normalized -1.0 to 1.0)
+void ImGui_ImplSwitch_GetLeftStickPos(float *out_x, float *out_y) {
+    ImGui_ImplSwitch_Data *bd = ImGui_ImplSwitch_GetBackendData();
+    if (!bd) {
+        if (out_x) *out_x = 0.0f;
+        if (out_y) *out_y = 0.0f;
+        return;
+    }
+    if (out_x) *out_x = bd->left_stick_x;
+    if (out_y) *out_y = bd->left_stick_y;
+}
+
+// Get right stick position (normalized -1.0 to 1.0)
+void ImGui_ImplSwitch_GetRightStickPos(float *out_x, float *out_y) {
+    ImGui_ImplSwitch_Data *bd = ImGui_ImplSwitch_GetBackendData();
+    if (!bd) {
+        if (out_x) *out_x = 0.0f;
+        if (out_y) *out_y = 0.0f;
+        return;
+    }
+    if (out_x) *out_x = bd->right_stick_x;
+    if (out_y) *out_y = bd->right_stick_y;
+}
+
+// Get buttons pressed this frame (bitmask of HidNpadButton_*)
+u64 ImGui_ImplSwitch_GetButtonsDown(void) {
+    ImGui_ImplSwitch_Data *bd = ImGui_ImplSwitch_GetBackendData();
+    if (!bd)
+        return 0;
+    return bd->buttons_down;
 }

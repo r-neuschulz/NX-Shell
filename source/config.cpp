@@ -10,12 +10,13 @@
 #define CONFIG_VERSION 16
 
 config_t cfg;
+config_t eff;  // Effective config - read from this!
 
 namespace Config {
     static const char *config_path = "/switch/NX-Shell/config.json";
     static int config_version_holder = 0;
     
-    // JSON helper functions to reduce repetition
+    // JSON helpers
     static inline void SetInt(json_t *obj, const char *key, int val) {
         json_object_set_new(obj, key, json_integer(val));
     }
@@ -38,10 +39,48 @@ namespace Config {
             fsFsCreateDirectory(std::addressof(devices[FileSystemSDMC]), path);
     }
     
-    int Save(config_t &config) {
-        Result ret = 0;
+    // Resolve LANG_AUTO to actual language index
+    static int ResolveLang(int lang_setting) {
+        if (lang_setting != LANG_AUTO)
+            return lang_setting;
         
-        // Build JSON using jansson for proper string escaping
+        u64 lang_code = 0;
+        SetLanguage lang = SetLanguage_ENUS;
+        if (R_SUCCEEDED(setGetSystemLanguage(&lang_code)) &&
+            R_SUCCEEDED(setMakeLanguage(lang_code, &lang))) {
+            int idx = static_cast<int>(lang);
+            if (idx >= 0 && idx <= 11) return idx;
+        }
+        return 1;  // English fallback
+    }
+    
+    void UpdateEffective(void) {
+        if (GUI::IsAppletMode()) {
+            // Applet mode: forced defaults, only logging and navigation from cfg
+            eff.lang = 1;  // English
+            eff.dev_options = cfg.applet_dev_options;
+            eff.image_filename = false;
+            eff.enter_images_fullscreen = false;
+            eff.resolution_mode = ResolutionMode_720p;
+            eff.theme_mode = ThemeMode_Dark;
+            eff.show_details = false;
+            eff.show_stats = false;
+            eff.last_device = cfg.applet_last_device;
+            eff.last_cwd = cfg.applet_last_cwd;
+            eff.accent_color[0] = 0.0f;
+            eff.accent_color[1] = 0.50f;
+            eff.accent_color[2] = 0.50f;
+            eff.button_style = ButtonStyle_Mono;
+        } else {
+            // Title mode: use saved config (resolve LANG_AUTO)
+            eff = cfg;
+            eff.lang = ResolveLang(cfg.lang);
+            eff.last_device = cfg.last_device;
+            eff.last_cwd = cfg.last_cwd;
+        }
+    }
+    
+    int Save(config_t &config) {
         json_t *root = json_object();
         SetInt(root, "config_version", CONFIG_VERSION);
         SetInt(root, "language", config.lang);
@@ -55,15 +94,12 @@ namespace Config {
         SetString(root, "last_device", config.last_device);
         SetString(root, "last_cwd", config.last_cwd);
         
-        // Save accent color as array of 3 floats
         json_t *accent_array = json_array();
         for (int i = 0; i < 3; i++)
             json_array_append_new(accent_array, json_real(config.accent_color[i]));
         json_object_set_new(root, "accent_color", accent_array);
         
         SetInt(root, "button_style", config.button_style);
-        
-        // Applet mode settings (separate from title mode)
         SetInt(root, "applet_dev_options", config.applet_dev_options);
         SetString(root, "applet_last_device", config.applet_last_device);
         SetString(root, "applet_last_cwd", config.applet_last_cwd);
@@ -71,29 +107,20 @@ namespace Config {
         char *buf = json_dumps(root, JSON_INDENT(1));
         json_decref(root);
         
-        if (!buf) {
-            Log::Error("Config::Save json_dumps failed\n");
-            return -1;
-        }
+        if (!buf) return -1;
         
         u64 len = std::strlen(buf);
-        
-        Log::Debug("Config::Save - lang=%d, dev_options=%d, show_stats=%d, last_device=%s, last_cwd=%s, len=%llu\n", 
-                   config.lang, config.dev_options, config.show_stats, config.last_device.c_str(), config.last_cwd.c_str(), len);
-        
-        // Delete and re-create the file, we don't care about the return value here.
         fsFsDeleteFile(std::addressof(devices[FileSystemSDMC]), config_path);
         fsFsCreateFile(std::addressof(devices[FileSystemSDMC]), config_path, len, 0);
         
         FsFile file;
+        Result ret;
         if (R_FAILED(ret = fsFsOpenFile(std::addressof(devices[FileSystemSDMC]), config_path, FsOpenMode_Write, std::addressof(file)))) {
-            Log::Error("Config::Save fsFsOpenFile(%s) failed: 0x%x\n", config_path, ret);
             free(buf);
             return ret;
         }
         
         if (R_FAILED(ret = fsFileWrite(std::addressof(file), 0, buf, len, FsWriteOption_Flush))) {
-            Log::Error("Config::Save fsFileWrite(%s) failed: 0x%x\n", config_path, ret);
             free(buf);
             fsFileClose(std::addressof(file));
             return ret;
@@ -101,21 +128,23 @@ namespace Config {
         
         fsFileClose(std::addressof(file));
         free(buf);
+        
+        UpdateEffective();  // Keep eff in sync
         return 0;
     }
     
     int Load(void) {
-        Result ret = 0;
-        
         EnsureDirExists("/switch/");
         EnsureDirExists("/switch/NX-Shell/");
             
         if (!FS::FileExists(config_path)) {
             cfg = {};
+            UpdateEffective();
             return Config::Save(cfg);
         }
         
         FsFile file;
+        Result ret;
         if (R_FAILED(ret = fsFsOpenFile(std::addressof(devices[FileSystemSDMC]), config_path, FsOpenMode_Read, std::addressof(file))))
             return ret;
         
@@ -139,22 +168,17 @@ namespace Config {
         root = json_loads(buf, 0, std::addressof(error));
         delete[] buf;
         
-        if (!root) {
-            std::printf("error: on line %d: %s\n", error.line, error.text);
-            return -1;
-        }
+        if (!root) return -1;
         
         config_version_holder = GetInt(root, "config_version");
-
-        // Delete config file if config file is updated. This will rarely happen.
         if (config_version_holder < CONFIG_VERSION) {
             json_decref(root);
             fsFsDeleteFile(std::addressof(devices[FileSystemSDMC]), config_path);
             cfg = {};
+            UpdateEffective();
             return Config::Save(cfg);
         }
 
-        // Load integer/boolean fields
         cfg.lang = GetInt(root, "language");
         cfg.dev_options = GetInt(root, "dev_options");
         cfg.image_filename = GetInt(root, "image_filename");
@@ -164,203 +188,45 @@ namespace Config {
         cfg.show_details = GetInt(root, "show_details");
         cfg.show_stats = GetInt(root, "show_stats");
         cfg.button_style = GetInt(root, "button_style");
-
-        // Load string fields with defaults
         cfg.last_device = GetString(root, "last_device", "sdmc:");
         cfg.last_cwd = GetString(root, "last_cwd", "/");
 
-        // Load accent color array
         json_t *accent_color = json_object_get(root, "accent_color");
         if (accent_color && json_is_array(accent_color) && json_array_size(accent_color) == 3) {
             for (int i = 0; i < 3; i++)
                 cfg.accent_color[i] = static_cast<float>(json_real_value(json_array_get(accent_color, i)));
         }
 
-        // Load applet mode settings (separate from title mode)
         cfg.applet_dev_options = GetInt(root, "applet_dev_options");
         cfg.applet_last_device = GetString(root, "applet_last_device", "sdmc:");
         cfg.applet_last_cwd = GetString(root, "applet_last_cwd", "/");
 
         json_decref(root);
+        UpdateEffective();
         return 0;
     }
-
-    // Check if a language index is supported (has proper translations)
-    static bool IsLanguageSupported(int lang_index) {
-        // All languages 0-11 are supported
-        switch (lang_index) {
-            case 0:  // Japanese
-            case 1:  // English
-            case 2:  // French
-            case 3:  // German
-            case 4:  // Italian
-            case 5:  // Spanish
-            case 6:  // Simplified Chinese
-            case 7:  // Korean
-            case 8:  // Dutch
-            case 9:  // Portuguese
-            case 10: // Russian
-            case 11: // Traditional Chinese
-                return true;
-            default:
-                return false;
-        }
-    }
-
+    
     int GetLang(void) {
-        // Force English in applet mode
-        if (GUI::IsAppletMode()) {
-            return 1; // English
-        }
-        
-        if (cfg.lang == LANG_AUTO) {
-            u64 lang_code = 0;
-            SetLanguage lang = SetLanguage_ENUS;
-            
-            if (R_SUCCEEDED(setGetSystemLanguage(&lang_code))) {
-                if (R_SUCCEEDED(setMakeLanguage(lang_code, &lang))) {
-                    int lang_index = static_cast<int>(lang);
-                    // Only return if it's a supported language
-                    if (IsLanguageSupported(lang_index)) {
-                        return lang_index;
-                    }
-                }
-            }
-            // Default to English if detection fails or language unsupported
-            return 1; // English
-        }
-        
-        // For manual selection, verify it's supported (shouldn't happen with UI, but safety check)
-        if (IsLanguageSupported(cfg.lang)) {
-            return cfg.lang;
-        }
-        return 1; // English fallback
-    }
-    
-    int GetEffectiveThemeMode(void) {
-        // Force Dark theme in applet mode
-        if (GUI::IsAppletMode()) {
-            return ThemeMode_Dark;
-        }
-        return cfg.theme_mode;
-    }
-    
-    int GetEffectiveButtonStyle(void) {
-        // Force Mono buttons in applet mode
-        if (GUI::IsAppletMode()) {
-            return ButtonStyle_Mono;
-        }
-        return cfg.button_style;
-    }
-    
-    bool IsLoggingEnabled(void) {
-        // Use separate setting for applet mode
-        if (GUI::IsAppletMode()) {
-            return cfg.applet_dev_options;
-        }
-        return cfg.dev_options;
-    }
-    
-    bool IsStatsEnabled(void) {
-        // Stats overlay is disabled in applet mode (forced off)
-        if (GUI::IsAppletMode()) {
-            return false;
-        }
-        return cfg.show_stats;
-    }
-    
-    int GetEffectiveResolutionMode(void) {
-        // Force Auto resolution in applet mode
-        if (GUI::IsAppletMode()) {
-            return ResolutionMode_Auto;
-        }
-        return cfg.resolution_mode;
-    }
-    
-    bool IsImageFilenameEnabled(void) {
-        // Forced false in applet mode (use default)
-        if (GUI::IsAppletMode()) {
-            return false;
-        }
-        return cfg.image_filename;
-    }
-    
-    bool IsEnterImagesFullscreen(void) {
-        // Forced false in applet mode (use default)
-        if (GUI::IsAppletMode()) {
-            return false;
-        }
-        return cfg.enter_images_fullscreen;
-    }
-    
-    bool IsShowDetails(void) {
-        // Forced false in applet mode (use default)
-        if (GUI::IsAppletMode()) {
-            return false;
-        }
-        return cfg.show_details;
-    }
-    
-    void SetShowDetails(bool value) {
-        // No-op in applet mode - don't modify title mode settings
-        if (GUI::IsAppletMode()) {
-            return;
-        }
-        cfg.show_details = value;
-    }
-    
-    void ToggleShowDetails(void) {
-        // No-op in applet mode - don't modify title mode settings
-        if (GUI::IsAppletMode()) {
-            return;
-        }
-        cfg.show_details = !cfg.show_details;
-    }
-    
-    void GetEffectiveAccentColor(float out[3]) {
-        // Use default teal in applet mode
-        if (GUI::IsAppletMode()) {
-            out[0] = 0.0f;
-            out[1] = 0.50f;
-            out[2] = 0.50f;
-            return;
-        }
-        out[0] = cfg.accent_color[0];
-        out[1] = cfg.accent_color[1];
-        out[2] = cfg.accent_color[2];
-    }
-    
-    std::string& GetLastDevice(void) {
-        // Use applet-specific navigation in applet mode
-        if (GUI::IsAppletMode()) {
-            return cfg.applet_last_device;
-        }
-        return cfg.last_device;
-    }
-    
-    std::string& GetLastCwd(void) {
-        // Use applet-specific navigation in applet mode
-        if (GUI::IsAppletMode()) {
-            return cfg.applet_last_cwd;
-        }
-        return cfg.last_cwd;
+        return eff.lang;
     }
     
     void SetLastDevice(const std::string& dev) {
-        // Save to applet-specific setting in applet mode
         if (GUI::IsAppletMode()) {
             cfg.applet_last_device = dev;
+            eff.last_device = dev;
         } else {
             cfg.last_device = dev;
+            eff.last_device = dev;
         }
     }
     
-    void SetLastCwd(const std::string& cwd) {
-        // Save to applet-specific setting in applet mode
+    void SetLastCwd(const std::string& path) {
         if (GUI::IsAppletMode()) {
-            cfg.applet_last_cwd = cwd;
+            cfg.applet_last_cwd = path;
+            eff.last_cwd = path;
         } else {
-            cfg.last_cwd = cwd;
+            cfg.last_cwd = path;
+            eff.last_cwd = path;
         }
     }
 }
