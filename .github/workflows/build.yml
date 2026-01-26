@@ -53,32 +53,42 @@ jobs:
 
       - name: Determine version
         id: version
+        env:
+          INPUT_RELEASE: ${{ github.event.inputs.release }}
+          INPUT_VERSION: ${{ github.event.inputs.version }}
         run: |
-          IS_RELEASE="false"
+          echo "Debug: INPUT_RELEASE='${INPUT_RELEASE}'"
+          echo "Debug: INPUT_VERSION='${INPUT_VERSION}'"
+          echo "Debug: GITHUB_REF='${GITHUB_REF}'"
           
-          if [ "${{ github.event.inputs.release }}" == "true" ] && [ -n "${{ github.event.inputs.version }}" ]; then
-            VERSION="${{ github.event.inputs.version }}"
+          IS_RELEASE="false"
+          VERSION=""
+          
+          # Check for manual release trigger
+          if [ "${INPUT_RELEASE}" = "true" ] && [ -n "${INPUT_VERSION}" ]; then
+            VERSION="${INPUT_VERSION}"
             IS_RELEASE="true"
-          elif [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            echo "Manual release triggered with version: ${VERSION}"
+          # Check for tag push
+          elif [[ "${GITHUB_REF}" == refs/tags/v* ]]; then
             VERSION="${GITHUB_REF#refs/tags/v}"
             IS_RELEASE="true"
+            echo "Tag push detected with version: ${VERSION}"
           else
-            VERSION=""
+            echo "Development build - no release"
           fi
           
           echo "is_release=${IS_RELEASE}" >> $GITHUB_OUTPUT
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "tag=v${VERSION}" >> $GITHUB_OUTPUT
           
           if [ -n "$VERSION" ]; then
-            echo "version=${VERSION}" >> $GITHUB_OUTPUT
-            echo "tag=v${VERSION}" >> $GITHUB_OUTPUT
             echo "cmake_version_flag=-DPROJECT_VERSION_OVERRIDE=${VERSION}" >> $GITHUB_OUTPUT
-            echo "Release build - Version: ${VERSION}"
           else
-            echo "version=" >> $GITHUB_OUTPUT
-            echo "tag=" >> $GITHUB_OUTPUT
             echo "cmake_version_flag=" >> $GITHUB_OUTPUT
-            echo "Development build - Using default version from CMakeLists.txt"
           fi
+          
+          echo "Final: is_release=${IS_RELEASE}, version=${VERSION}"
 
       - name: Configure CMake
         run: cmake -B build -DCMAKE_BUILD_TYPE=Release ${{ steps.version.outputs.cmake_version_flag }}
@@ -101,7 +111,7 @@ jobs:
 
   release:
     needs: build
-    if: ${{ !github.event.env.ACT && needs.build.outputs.is_release == 'true' }}
+    if: needs.build.outputs.is_release == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: write
