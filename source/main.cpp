@@ -102,12 +102,12 @@ namespace Services {
         
         // Config and logging
         phase_tick = armGetSystemTick();
-        Config::Load(app.config, app.fs);
-        Log::Init();
+        Config::Load(app.config, app.fs, GUI::IsAppletMode());
+        Log::Init(app);
         
         // Socket/nxlink only if logging enabled (for console output via nxlink)
         // Normal users skip this entirely - saves ~60-70ms
-        if (app.config.effective.dev_options) {
+        if (app.config.DevOptions()) {
             Net::InitSocketWithNxlink();
         }
         LogTiming("Config/Log/Socket init", phase_tick);
@@ -188,7 +188,7 @@ namespace Services {
 
         // USB host filesystem
         phase_tick = armGetSystemTick();
-        if (R_FAILED(ret = USB::Init())) {
+        if (R_FAILED(ret = USB::Init(app.device_registry))) {
             Log::Error("usbHsFsInitialize(0) failed: 0x%x\n", ret);
             return ret;
         }
@@ -196,13 +196,13 @@ namespace Services {
 
         // GUI and graphics
         phase_tick = armGetSystemTick();
-        if (!GUI::Init())
+        if (!GUI::Init(app))
             Log::Error("GUI::Init() failed: 0x%x\n", ret);
         LogTiming("GUI::Init", phase_tick);
         
         // Textures
         phase_tick = armGetSystemTick();
-        Textures::Init();
+        Textures::Init(app);
         LogTiming("Textures::Init", phase_tick);
         
         plExit();
@@ -221,10 +221,10 @@ namespace Services {
         Config::Save(app.config, app.fs);
         
         // Clean up textures first (requires valid GL context)
-        Textures::Exit();
+        Textures::Exit(app);
         
         // Clean up GUI (includes GL context and ImGui)
-        GUI::Exit();
+        GUI::Exit(app);
         
         // Stop USB thread and cleanup (do this early to avoid hangs)
         USB::Exit();
@@ -285,8 +285,8 @@ int main(int argc, char* argv[]) {
     if (previous_crash) {
         // Previous run crashed - reset to safe defaults
         Log::Error("Crash marker detected - previous run crashed. Resetting to safe defaults.\n");
-        Config::SetLastDevice(app.config, "", GUI::IsAppletMode());  // Reset to partition root
-        Config::SetLastCwd(app.config, "/", GUI::IsAppletMode());
+        app.config.SetLastDevice("");  // Reset to partition root
+        app.config.SetLastCwd("/");
         Config::Save(app.config, app.fs);
     }
     
@@ -312,15 +312,15 @@ int main(int argc, char* argv[]) {
     LogTiming("Metadata cache/storage info", phase_tick);
     
     // Set initial focus (sdmc: at partition root, or ".." in directory)
-    Tabs::RequestFileBrowserFocus();
+    Tabs::RequestFileBrowserFocus(app.fs);
     
     // Log total startup time
     Log::Debug("[TIMING] ========== STARTUP COMPLETE ==========\n");
     LogTiming("Total startup time", s_startup_begin_tick);
     
-    while (GUI::Loop(key)) {
-        Windows::MainWindow(app.window, key, false);
-        GUI::RenderStatsOverlay();
+    while (GUI::Loop(app, key)) {
+        Windows::MainWindow(app, key, false);
+        GUI::RenderStatsOverlay(app);
         GUI::Render();
     }
 

@@ -97,8 +97,10 @@ struct DeviceRegistry {
 // Config Service
 // ============================================================================
 
-struct ConfigData {
+// Normal mode: full configuration with all user-customizable settings
+struct NormalConfig {
     int lang = LANG_AUTO;
+    int resolved_lang = 1;  // Computed from lang at load time (not persisted)
     bool dev_options = false;
     bool image_filename = false;
     bool enter_images_fullscreen = false;
@@ -110,16 +112,76 @@ struct ConfigData {
     std::string last_cwd = "/";
     float accent_color[3] = {0.0f, 0.50f, 0.50f};
     int button_style = ButtonStyle_Colored;
-    
-    // Applet mode settings
-    bool applet_dev_options = false;
-    std::string applet_last_device = "sdmc:";
-    std::string applet_last_cwd = "/";
 };
 
+// Applet mode: limited settings (most values are forced defaults)
+struct AppletConfig {
+    bool dev_options = false;
+    std::string last_device = "sdmc:";
+    std::string last_cwd = "/";
+};
+
+// Unified config service - use accessors to get effective values
 struct ConfigService {
-    ConfigData saved;      // Saved to disk
-    ConfigData effective;  // Runtime effective (read from this!)
+    NormalConfig normal;   // Persisted normal-mode settings
+    AppletConfig applet;   // Persisted applet-mode settings
+    bool is_applet_mode = false;
+    
+    // Effective value accessors - these return the correct value based on mode
+    // Applet mode forces most settings to safe defaults
+    int Lang() const { 
+        return is_applet_mode ? 1 : normal.resolved_lang; 
+    }
+    bool DevOptions() const { 
+        return is_applet_mode ? applet.dev_options : normal.dev_options; 
+    }
+    bool ImageFilename() const { 
+        return is_applet_mode ? false : normal.image_filename; 
+    }
+    bool EnterImagesFullscreen() const { 
+        return is_applet_mode ? false : normal.enter_images_fullscreen; 
+    }
+    int ResolutionMode() const { 
+        return is_applet_mode ? ResolutionMode_720p : normal.resolution_mode; 
+    }
+    int ThemeMode() const { 
+        return is_applet_mode ? ThemeMode_Dark : normal.theme_mode; 
+    }
+    bool ShowDetails() const { 
+        return is_applet_mode ? false : normal.show_details; 
+    }
+    bool ShowStats() const { 
+        return is_applet_mode ? false : normal.show_stats; 
+    }
+    const std::string& LastDevice() const { 
+        return is_applet_mode ? applet.last_device : normal.last_device; 
+    }
+    const std::string& LastCwd() const { 
+        return is_applet_mode ? applet.last_cwd : normal.last_cwd; 
+    }
+    float AccentR() const { return is_applet_mode ? 0.0f : normal.accent_color[0]; }
+    float AccentG() const { return is_applet_mode ? 0.50f : normal.accent_color[1]; }
+    float AccentB() const { return is_applet_mode ? 0.50f : normal.accent_color[2]; }
+    int ButtonStyle() const { 
+        return is_applet_mode ? ButtonStyle_Mono : normal.button_style; 
+    }
+    
+    // Mutable accessors for settings UI (always modifies normal config)
+    // Show details can be toggled in both modes for the current session
+    void SetShowDetails(bool val) {
+        if (is_applet_mode) return;  // Not persisted in applet mode
+        normal.show_details = val;
+    }
+    
+    // Navigation state updates the appropriate config
+    void SetLastDevice(const std::string& dev) {
+        if (is_applet_mode) applet.last_device = dev;
+        else normal.last_device = dev;
+    }
+    void SetLastCwd(const std::string& cwd) {
+        if (is_applet_mode) applet.last_cwd = cwd;
+        else normal.last_cwd = cwd;
+    }
 };
 
 // ============================================================================
@@ -249,10 +311,9 @@ struct App {
     WindowService window;
     GUIService gui;
     
-    // Singleton-like access for transition period
-    // Will be removed once all code is refactored
     static App* instance;
 };
 
-// Global app instance accessor (for transition period)
+// Global app instance accessor - use only at program entry points (main, init, exit)
+// All other code should receive App& as a parameter for explicit dependency injection
 App& GetApp();

@@ -1,9 +1,10 @@
 #pragma once
 
 #include <string>
+#include "services.hpp"
 
 namespace Archive {
-    void SetArchivePath(const std::string &path);
+    void SetArchivePath(FileSystemService &fs_svc, const std::string &path);
     const std::string& GetArchivePath(void);
-    bool ExtractZip(void);
+    bool ExtractZip(App &app);
 }

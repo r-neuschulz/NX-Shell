@@ -6,6 +6,7 @@
 #include "imgui.h"
 #include "imgui_internal.h"
 #include "language.hpp"
+#include "services.hpp"
 
 namespace BottomBar {
     // Internal constants
@@ -34,14 +35,14 @@ namespace BottomBar {
     }
 
     // Draw a circle button (A, B, X, Y, +, -)
-    static float DrawCircleButton(ImDrawList* draw_list, float x, float center_y, float radius,
+    static float DrawCircleButton(ConfigService &cfg_svc, ImDrawList* draw_list, float x, float center_y, float radius,
                                   const char* letter, ImU32 bg_color, ImU32 text_color, 
                                   const char* label, ImU32 label_color, bool active) {
         ImVec2 center(x + radius, center_y);
         
         // Draw active ring if enabled
         if (active) {
-            draw_list->AddCircle(center, radius + 3.0f, GUI::GetAccentColorU32(), 24, 3.0f);
+            draw_list->AddCircle(center, radius + 3.0f, GUI::GetAccentColorU32(cfg_svc), 24, 3.0f);
         }
         
         // Draw filled circle background
@@ -53,7 +54,7 @@ namespace BottomBar {
         
         // Draw label
         float label_x = x + radius * 2 + 6.0f;
-        ImU32 final_label_color = active ? GUI::GetAccentColorU32() : label_color;
+        ImU32 final_label_color = active ? GUI::GetAccentColorU32(cfg_svc) : label_color;
         draw_list->AddText(ImVec2(label_x, center_y - ImGui::GetTextLineHeight() * 0.5f), final_label_color, label);
         
         // Return total width consumed
@@ -61,10 +62,10 @@ namespace BottomBar {
     }
 
     // Draw the minus button with hold-to-close progress arc
-    static float DrawMinusButton(ImDrawList* draw_list, float x, float center_y, float radius,
+    static float DrawMinusButton(ConfigService &cfg_svc, ImDrawList* draw_list, float x, float center_y, float radius,
                                  const char* label, ImU32 label_color) {
-        const ImU32 color_minus_bg = GUI::GetButtonColorMinus();
-        const ImU32 color_text = GUI::GetButtonTextColor();
+        const ImU32 color_minus_bg = GUI::GetButtonColorMinus(cfg_svc);
+        const ImU32 color_text = GUI::GetButtonTextColor(cfg_svc);
         
         ImVec2 center(x + radius, center_y);
         
@@ -77,7 +78,7 @@ namespace BottomBar {
         
         // Draw progress arc when holding
         if (is_holding && hold_progress > 0.0f) {
-            DrawProgressArc(draw_list, center, radius + 3.0f, hold_progress, GUI::GetAccentColorU32());
+            DrawProgressArc(draw_list, center, radius + 3.0f, hold_progress, GUI::GetAccentColorU32(cfg_svc));
         }
         
         // Draw minus sign
@@ -91,7 +92,7 @@ namespace BottomBar {
         // Draw label with hold-aware coloring
         float label_x = x + radius * 2 + 6.0f;
         ImU32 final_label_color = is_holding 
-            ? GUI::GetAccentColorU32WithAlpha(200 + static_cast<int>(55 * hold_progress))
+            ? GUI::GetAccentColorU32WithAlpha(cfg_svc, 200 + static_cast<int>(55 * hold_progress))
             : label_color;
         draw_list->AddText(ImVec2(label_x, center_y - ImGui::GetTextLineHeight() * 0.5f), final_label_color, label);
         
@@ -99,10 +100,10 @@ namespace BottomBar {
     }
 
     // Draw the plus button (can have refresh animation)
-    static float DrawPlusButton(ImDrawList* draw_list, float x, float center_y, float radius,
+    static float DrawPlusButton(ConfigService &cfg_svc, ImDrawList* draw_list, float x, float center_y, float radius,
                                 const char* label, ImU32 label_color, bool show_refresh_anim) {
-        const ImU32 color_plus_bg = GUI::GetButtonColorPlus();
-        const ImU32 color_text = GUI::GetButtonTextColor();
+        const ImU32 color_plus_bg = GUI::GetButtonColorPlus(cfg_svc);
+        const ImU32 color_text = GUI::GetButtonTextColor(cfg_svc);
         
         ImVec2 center(x + radius, center_y);
         
@@ -113,7 +114,7 @@ namespace BottomBar {
         if (show_refresh_anim) {
             float refresh_progress = 0.0f;
             if (GUI::IsRefreshAnimating(refresh_progress)) {
-                DrawProgressArc(draw_list, center, radius + 3.0f, refresh_progress, GUI::GetAccentColorU32());
+                DrawProgressArc(draw_list, center, radius + 3.0f, refresh_progress, GUI::GetAccentColorU32(cfg_svc));
             }
         }
         
@@ -138,11 +139,11 @@ namespace BottomBar {
     }
 
     // Draw L shoulder button (chamfered on left)
-    static float DrawShoulderL(ImDrawList* draw_list, float x, float center_y,
+    static float DrawShoulderL(ConfigService &cfg_svc, ImDrawList* draw_list, float x, float center_y,
                                const char* label, ImU32 label_color) {
-        const bool is_dark = GUI::IsCurrentThemeDark();
+        const bool is_dark = GUI::IsCurrentThemeDark(cfg_svc);
         const ImU32 color_shoulder = is_dark ? IM_COL32(100, 100, 100, 255) : IM_COL32(150, 150, 155, 255);
-        const ImU32 color_text = GUI::GetButtonTextColor();
+        const ImU32 color_text = GUI::GetButtonTextColor(cfg_svc);
         
         float btn_y = center_y - SHOULDER_HEIGHT * 0.5f;
         
@@ -168,11 +169,11 @@ namespace BottomBar {
     }
 
     // Draw R shoulder button (chamfered on right)
-    static float DrawShoulderR(ImDrawList* draw_list, float x, float center_y,
+    static float DrawShoulderR(ConfigService &cfg_svc, ImDrawList* draw_list, float x, float center_y,
                                const char* label, ImU32 label_color) {
-        const bool is_dark = GUI::IsCurrentThemeDark();
+        const bool is_dark = GUI::IsCurrentThemeDark(cfg_svc);
         const ImU32 color_shoulder = is_dark ? IM_COL32(100, 100, 100, 255) : IM_COL32(150, 150, 155, 255);
-        const ImU32 color_text = GUI::GetButtonTextColor();
+        const ImU32 color_text = GUI::GetButtonTextColor(cfg_svc);
         
         float btn_y = center_y - SHOULDER_HEIGHT * 0.5f;
         
@@ -198,10 +199,10 @@ namespace BottomBar {
     }
 
     // Draw ZR button (outlined, smaller text)
-    static float DrawZRButton(ImDrawList* draw_list, float x, float center_y,
+    static float DrawZRButton(ConfigService &cfg_svc, ImDrawList* draw_list, float x, float center_y,
                               const char* label, ImU32 label_color, bool active) {
-        const bool is_dark = GUI::IsCurrentThemeDark();
-        const ImU32 color_outline = active ? GUI::GetAccentColorU32() : (is_dark ? IM_COL32(120, 120, 120, 255) : IM_COL32(100, 100, 105, 255));
+        const bool is_dark = GUI::IsCurrentThemeDark(cfg_svc);
+        const ImU32 color_outline = active ? GUI::GetAccentColorU32(cfg_svc) : (is_dark ? IM_COL32(120, 120, 120, 255) : IM_COL32(100, 100, 105, 255));
         
         float btn_y = center_y - ZR_HEIGHT * 0.5f;
         
@@ -230,9 +231,9 @@ namespace BottomBar {
     }
 
     // Draw Left Stick style button (circle with X-cross gaps and "l" letter)
-    static float DrawLeftStick(ImDrawList* draw_list, float x, float center_y,
+    static float DrawLeftStick(ConfigService &cfg_svc, ImDrawList* draw_list, float x, float center_y,
                                const char* label, ImU32 label_color) {
-        const bool is_dark = GUI::IsCurrentThemeDark();
+        const bool is_dark = GUI::IsCurrentThemeDark(cfg_svc);
         const ImU32 color_stick = is_dark ? IM_COL32(80, 80, 80, 255) : IM_COL32(140, 140, 145, 255);
         const ImU32 color_bg = is_dark ? IM_COL32(45, 45, 45, 255) : IM_COL32(233, 233, 233, 255);
         
@@ -277,9 +278,9 @@ namespace BottomBar {
     }
 
     // Draw DPad Down arrow
-    static float DrawDPadDown(ImDrawList* draw_list, float x, float center_y,
+    static float DrawDPadDown(ConfigService &cfg_svc, ImDrawList* draw_list, float x, float center_y,
                               const char* label, ImU32 label_color) {
-        const bool is_dark = GUI::IsCurrentThemeDark();
+        const bool is_dark = GUI::IsCurrentThemeDark(cfg_svc);
         const ImU32 color_dpad = is_dark ? IM_COL32(80, 80, 80, 255) : IM_COL32(140, 140, 145, 255);
         
         float arrow_x = x + DPAD_SIZE;
@@ -296,9 +297,9 @@ namespace BottomBar {
     }
 
     // Draw Right Stick style button (circle with X-cross gaps and "r" letter)
-    static float DrawRightStick(ImDrawList* draw_list, float x, float center_y,
+    static float DrawRightStick(ConfigService &cfg_svc, ImDrawList* draw_list, float x, float center_y,
                                 const char* label, ImU32 label_color) {
-        const bool is_dark = GUI::IsCurrentThemeDark();
+        const bool is_dark = GUI::IsCurrentThemeDark(cfg_svc);
         const ImU32 color_stick = is_dark ? IM_COL32(80, 80, 80, 255) : IM_COL32(140, 140, 145, 255);
         const ImU32 color_bg = is_dark ? IM_COL32(45, 45, 45, 255) : IM_COL32(233, 233, 233, 255);
         
@@ -377,14 +378,14 @@ namespace BottomBar {
     }
 
     // Get button color based on type
-    static ImU32 GetButtonColor(ButtonType type) {
+    static ImU32 GetButtonColor(ConfigService &cfg_svc, ButtonType type) {
         switch (type) {
-            case ButtonType::CircleA: return GUI::GetButtonColorA();
-            case ButtonType::CircleB: return GUI::GetButtonColorB();
-            case ButtonType::CircleX: return GUI::GetButtonColorX();
-            case ButtonType::CircleY: return GUI::GetButtonColorY();
-            case ButtonType::Plus:    return GUI::GetButtonColorPlus();
-            case ButtonType::Minus:   return GUI::GetButtonColorMinus();
+            case ButtonType::CircleA: return GUI::GetButtonColorA(cfg_svc);
+            case ButtonType::CircleB: return GUI::GetButtonColorB(cfg_svc);
+            case ButtonType::CircleX: return GUI::GetButtonColorX(cfg_svc);
+            case ButtonType::CircleY: return GUI::GetButtonColorY(cfg_svc);
+            case ButtonType::Plus:    return GUI::GetButtonColorPlus(cfg_svc);
+            case ButtonType::Minus:   return GUI::GetButtonColorMinus(cfg_svc);
             default: return IM_COL32(128, 128, 128, 255);
         }
     }
@@ -403,48 +404,48 @@ namespace BottomBar {
     }
 
     // Draw a single hint item and return width consumed
-    static float DrawHintItem(ImDrawList* draw_list, const HintItem& item, float x, float center_y,
+    static float DrawHintItem(ConfigService &cfg_svc, ImDrawList* draw_list, const HintItem& item, float x, float center_y,
                               float button_radius, ImU32 label_color) {
-        const ImU32 text_color = GUI::GetButtonTextColor();
+        const ImU32 text_color = GUI::GetButtonTextColor(cfg_svc);
         
         switch (item.type) {
             case ButtonType::Minus:
-                return DrawMinusButton(draw_list, x, center_y, button_radius, item.label, label_color);
+                return DrawMinusButton(cfg_svc, draw_list, x, center_y, button_radius, item.label, label_color);
                 
             case ButtonType::Plus:
-                return DrawPlusButton(draw_list, x, center_y, button_radius, item.label, label_color, item.active);
+                return DrawPlusButton(cfg_svc, draw_list, x, center_y, button_radius, item.label, label_color, item.active);
                 
             case ButtonType::CircleA:
             case ButtonType::CircleB:
             case ButtonType::CircleX:
             case ButtonType::CircleY:
-                return DrawCircleButton(draw_list, x, center_y, button_radius,
-                                        GetButtonLetter(item.type), GetButtonColor(item.type),
+                return DrawCircleButton(cfg_svc, draw_list, x, center_y, button_radius,
+                                        GetButtonLetter(item.type), GetButtonColor(cfg_svc, item.type),
                                         text_color, item.label, label_color, item.active);
                 
             case ButtonType::ShoulderL:
-                return DrawShoulderL(draw_list, x, center_y, item.label, label_color);
+                return DrawShoulderL(cfg_svc, draw_list, x, center_y, item.label, label_color);
                 
             case ButtonType::ShoulderR:
-                return DrawShoulderR(draw_list, x, center_y, item.label, label_color);
+                return DrawShoulderR(cfg_svc, draw_list, x, center_y, item.label, label_color);
                 
             case ButtonType::ShoulderZR:
-                return DrawZRButton(draw_list, x, center_y, item.label, label_color, item.active);
+                return DrawZRButton(cfg_svc, draw_list, x, center_y, item.label, label_color, item.active);
                 
             case ButtonType::DPadUp:
-                return DrawLeftStick(draw_list, x, center_y, item.label, label_color);
+                return DrawLeftStick(cfg_svc, draw_list, x, center_y, item.label, label_color);
                 
             case ButtonType::DPadDown:
-                return DrawDPadDown(draw_list, x, center_y, item.label, label_color);
+                return DrawDPadDown(cfg_svc, draw_list, x, center_y, item.label, label_color);
                 
             case ButtonType::RightStick:
-                return DrawRightStick(draw_list, x, center_y, item.label, label_color);
+                return DrawRightStick(cfg_svc, draw_list, x, center_y, item.label, label_color);
         }
         
         return 0.0f;
     }
 
-    void Draw(const Config& config,
+    void Draw(ConfigService &cfg_svc, const Config& config,
               const std::vector<HintItem>& left_items,
               const std::vector<HintItem>& right_items) {
         
@@ -453,9 +454,10 @@ namespace BottomBar {
             ? ImGui::GetForegroundDrawList() 
             : ImGui::GetWindowDrawList();
         
-        // Get display dimensions
-        const float display_w = static_cast<float>(GUI::display_width);
-        const float display_h = static_cast<float>(GUI::display_height);
+        // Get display dimensions from ImGui IO (works without GUIService reference)
+        ImGuiIO &io = ImGui::GetIO();
+        const float display_w = io.DisplaySize.x;
+        const float display_h = io.DisplaySize.y;
         
         // Calculate bar position
         float bar_y, center_y, left_x, right_edge;
@@ -476,8 +478,8 @@ namespace BottomBar {
         }
         
         // Theme-aware colors
-        const bool is_dark = GUI::IsCurrentThemeDark();
-        const ImU32 label_color = GUI::GetThemeLabelColor();
+        const bool is_dark = GUI::IsCurrentThemeDark(cfg_svc);
+        const ImU32 label_color = GUI::GetThemeLabelColor(cfg_svc);
         
         // Draw background bar if requested
         if (config.draw_background) {
@@ -497,7 +499,7 @@ namespace BottomBar {
         // Draw left-aligned items
         float x_offset = left_x;
         for (const auto& item : left_items) {
-            float width = DrawHintItem(draw_list, item, x_offset, center_y, config.button_radius, label_color);
+            float width = DrawHintItem(cfg_svc, draw_list, item, x_offset, center_y, config.button_radius, label_color);
             x_offset += width + config.hint_spacing;
         }
         
@@ -513,7 +515,7 @@ namespace BottomBar {
         // Draw right-aligned items
         x_offset = right_edge - total_right_width;
         for (const auto& item : right_items) {
-            float width = DrawHintItem(draw_list, item, x_offset, center_y, config.button_radius, label_color);
+            float width = DrawHintItem(cfg_svc, draw_list, item, x_offset, center_y, config.button_radius, label_color);
             x_offset += width + config.hint_spacing;
         }
     }

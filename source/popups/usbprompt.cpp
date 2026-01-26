@@ -12,10 +12,9 @@
 namespace Popups {
     static bool done = false;
 
-    void USBPopup(bool &state) {
-        App& app = GetApp();
-        const int lang = Config::GetLang();
-        Popups::SetupPopup(strings[lang][Lang::SettingsUSBTitle]);
+    void USBPopup(App &app, bool &state) {
+        const int lang = app.config.Lang();
+        Popups::SetupPopup(app, strings[lang][Lang::SettingsUSBTitle]);
 
         if (ImGui::BeginPopupModal(strings[lang][Lang::SettingsUSBTitle], nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
             if (!done)
@@ -35,11 +34,11 @@ namespace Popups {
                     
                     app.fs.cwd = "/";
                     app.window.entries.clear();
-                    if (!FS::RefreshDirectory(app.window.entries, app.window.metadata_cache, true)) {
+                    if (!FS::RefreshDirectory(app.fs, app.selection, app.window.entries, app.window.metadata_cache, true)) {
                         Log::Error("USBPopup: Failed to refresh directory after USB unmount\n");
                     }
-                    FS::GetUsedStorageSpace(app.window.used_storage);
-                    FS::GetTotalStorageSpace(app.window.total_storage);
+                    FS::GetUsedStorageSpace(app.fs, app.window.used_storage);
+                    FS::GetTotalStorageSpace(app.fs, app.window.total_storage);
                     app.window.sort = -1;
                     
                     ImGui::CloseCurrentPopup();

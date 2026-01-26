@@ -40,7 +40,7 @@ namespace TextReader {
     void SetHexMode(bool mode) { s_hex_mode = mode; }
     void ToggleHexMode(void) { s_hex_mode = !s_hex_mode; }
     
-    bool LoadFile(const std::string &path, bool restore_offset) {
+    bool LoadFile(App &app, const std::string &path, bool restore_offset) {
         FILE *file = fopen(path.c_str(), "rb");
         if (!file) {
             return false;
@@ -51,7 +51,6 @@ namespace TextReader {
         std::size_t size = ftell(file);
         fseek(file, 0, SEEK_SET);
         
-        App& app = GetApp();
         // Check file size limit
         if (size > MAX_FILE_SIZE) {
             fclose(file);
@@ -88,8 +87,7 @@ namespace TextReader {
         s_saved_scroll_offset = s_scroll_y;
     }
     
-    void Clear(void) {
-        App& app = GetApp();
+    void Clear(App &app) {
         app.window.text_content.clear();
         s_raw_content.clear();
         s_scroll_y = 0.0f;
@@ -97,8 +95,7 @@ namespace TextReader {
         s_hex_mode = false;
     }
     
-    bool HandleScroll(int index, bool restore_offset) {
-        App& app = GetApp();
+    bool HandleScroll(App &app, int index, bool restore_offset) {
         if (app.window.entries[index].type == FsDirEntryType_Dir)
             return false;
         
@@ -111,13 +108,12 @@ namespace TextReader {
         s_hex_mode = (type == FileTypeBinary);
         
         app.window.selected = index;
-        std::string path = FS::BuildPath(app.window.entries[index]);
-        return TextReader::LoadFile(path, restore_offset);
+        std::string path = FS::BuildPath(app.fs, app.window.entries[index]);
+        return TextReader::LoadFile(app, path, restore_offset);
     }
     
     // Navigate to adjacent text file (direction: -1 = prev, +1 = next)
-    static bool HandleNavigate(int direction) {
-        App& app = GetApp();
+    static bool HandleNavigate(App &app, int direction) {
         const int count = static_cast<int>(app.window.entries.size());
         const int start = static_cast<int>(app.window.selected) + direction;
         
@@ -130,7 +126,7 @@ namespace TextReader {
         
         // Search in direction from current position
         for (int i = start; direction > 0 ? i < count : i >= 0; i += direction) {
-            if (TextReader::HandleScroll(i, true))  // restore_offset = true
+            if (TextReader::HandleScroll(app, i, true))  // restore_offset = true
                 return true;
         }
         
@@ -138,7 +134,7 @@ namespace TextReader {
         int wrap_start = direction > 0 ? 0 : count - 1;
         int wrap_end = static_cast<int>(app.window.selected);
         for (int i = wrap_start; direction > 0 ? i < wrap_end : i > wrap_end; i += direction) {
-            if (TextReader::HandleScroll(i, true))  // restore_offset = true
+            if (TextReader::HandleScroll(app, i, true))  // restore_offset = true
                 return true;
         }
         
@@ -146,17 +142,15 @@ namespace TextReader {
     }
 
     // Public API wrappers
-    bool HandlePrev(void) { return HandleNavigate(-1); }
-    bool HandleNext(void) { return HandleNavigate(+1); }
+    bool HandlePrev(App &app) { return HandleNavigate(app, -1); }
+    bool HandleNext(App &app) { return HandleNavigate(app, +1); }
     
-    void HandleControls(u64 &key, bool &properties) {
+    void HandleControls(App &app, u64 &key, bool &properties) {
         if (key & HidNpadButton_X)
             properties = true;
-        
-        App& app = GetApp();
         if (!properties) {
             if (key & HidNpadButton_B) {
-                TextReader::Clear();
+                TextReader::Clear(app);
                 app.window.state = WINDOW_STATE_FILEBROWSER;
             }
             
@@ -167,15 +161,15 @@ namespace TextReader {
             }
             
             if (key & HidNpadButton_L) {
-                TextReader::Clear();
+                TextReader::Clear(app);
                 
-                if (!TextReader::HandlePrev())
+                if (!TextReader::HandlePrev(app))
                     app.window.state = WINDOW_STATE_FILEBROWSER;
             }
             else if (key & HidNpadButton_R) {
-                TextReader::Clear();
+                TextReader::Clear(app);
                 
-                if (!TextReader::HandleNext())
+                if (!TextReader::HandleNext(app))
                     app.window.state = WINDOW_STATE_FILEBROWSER;
             }
             
@@ -239,8 +233,8 @@ namespace TextReader {
 }
 
 namespace Windows {
-    static void DrawTextReaderBottomBar(void) {
-        const int lang = Config::GetLang();
+    static void DrawTextReaderBottomBar(App &app) {
+        const int lang = app.config.Lang();
         
         // Left-aligned items (minus button for exit)
         std::vector<BottomBar::HintItem> left_items = {
@@ -261,18 +255,18 @@ namespace Windows {
         config.use_foreground_draw_list = true;
         config.draw_background = true;
         
-        BottomBar::Draw(config, left_items, right_items);
+        BottomBar::Draw(app.config, config, left_items, right_items);
     }
     
     // Helper function to render hex view with virtual scrolling for performance
-    static void RenderHexView(void) {
+    static void RenderHexView(ConfigService &config_svc) {
         const auto& raw_content = TextReader::GetRawContent();
         if (raw_content.empty()) {
             ImGui::TextUnformatted("[Empty file]");
             return;
         }
         
-        const bool is_dark = GUI::IsCurrentThemeDark();
+        const bool is_dark = GUI::IsCurrentThemeDark(config_svc);
         const ImU32 offset_color = is_dark ? IM_COL32(100, 180, 255, 255) : IM_COL32(0, 100, 200, 255);  // Blue for offset
         const ImU32 hex_color = is_dark ? IM_COL32(220, 220, 220, 255) : IM_COL32(30, 30, 30, 255);      // Main hex color
         const ImU32 ascii_color = is_dark ? IM_COL32(180, 255, 180, 255) : IM_COL32(0, 130, 0, 255);     // Green for ASCII
@@ -353,8 +347,7 @@ namespace Windows {
         clipper.End();
     }
     
-    void TextReader(bool &properties, bool &file_stat) {
-        App& app = GetApp();
+    void TextReader(App &app, bool &properties, bool &file_stat) {
         const float display_w = static_cast<float>(app.gui.display_width);
         const float display_h = static_cast<float>(app.gui.display_height);
         const float bottom_bar_height = 45.0f;
@@ -400,7 +393,7 @@ namespace Windows {
             
             // Render content based on mode
             if (TextReader::IsHexMode()) {
-                Windows::RenderHexView();
+                Windows::RenderHexView(app.config);
             } else {
                 // Regular text mode
                 if (!app.window.text_content.empty()) {
@@ -420,14 +413,14 @@ namespace Windows {
         ImGui::PopStyleVar();
         
         // Draw the bottom bar
-        Windows::DrawTextReaderBottomBar();
+        Windows::DrawTextReaderBottomBar(app);
         
         // Draw filename toast overlay (when enabled in settings)
-        if (app.config.effective.image_filename) {
-            Toast::DrawFilename(app.window.entries[app.window.selected].name);
+        if (app.config.ImageFilename()) {
+            Toast::DrawFilename(app.config, app.window.entries[app.window.selected].name);
         }
         
         if (properties)
-            Popups::FilePropertiesPopup(app.window, file_stat, &properties);
+            Popups::FilePropertiesPopup(app, file_stat, &properties);
     }
 }

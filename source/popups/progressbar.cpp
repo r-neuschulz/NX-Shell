@@ -7,12 +7,12 @@
 
 namespace Popups {
     
-    void ProgressBar(float offset, float size, const std::string &title, const std::string &text) {
+    void ProgressBar(App &app, float offset, float size, const std::string &title, const std::string &text) {
         u64 key = ImGui_ImplSwitch_NewFrame();
         ImGui::NewFrame();
         
-        Windows::MainWindow(data, key, true);
-        Popups::SetupPopup(title.c_str());
+        Windows::MainWindow(app, key, true);
+        Popups::SetupPopup(app, title.c_str());
         
         if (ImGui::BeginPopupModal(title.c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
             ImGui::Text("%s", text.c_str());

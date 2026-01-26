@@ -16,8 +16,6 @@
 #include "popups.hpp"
 #include "services.hpp"
 
-// Legacy globals defined in legacy.cpp
-
 namespace FS {
 
     // ========================================================================
@@ -40,7 +38,7 @@ namespace FS {
         return ret;
     }
 
-    static bool CopyFile(const std::string &src_path, const std::string &dest_path) {
+    static bool CopyFile(App &app, const std::string &src_path, const std::string &dest_path) {
         FILE *src = fopen(src_path.c_str(), "rb");
         if (!src) {
             Log::Error("FS::CopyFile (%s) failed to open src file.\n", src_path.c_str());
@@ -64,41 +62,38 @@ namespace FS {
 
         std::size_t bytes_read = 0, offset = 0;
         const std::size_t buf_size = 0x10000;
-        unsigned char *buf = new unsigned char[buf_size];
+        std::vector<unsigned char> buf(buf_size);
         std::string filename = std::filesystem::path(src_path).filename();
 
         do {
-            std::memset(buf, 0, buf_size);
+            std::fill(buf.begin(), buf.end(), 0);
 
-            bytes_read = fread(buf, sizeof(unsigned char), buf_size, src);
+            bytes_read = fread(buf.data(), sizeof(unsigned char), buf_size, src);
             if (bytes_read < 0) {
                 Log::Error("FS::CopyFile (%s) failed to read src file.\n", src_path.c_str());
-                delete[] buf;
                 fclose(src);
                 fclose(dest);
                 return false;
             }
             
-            std::size_t bytes_written = fwrite(buf, sizeof(unsigned char), bytes_read, dest);
+            std::size_t bytes_written = fwrite(buf.data(), sizeof(unsigned char), bytes_read, dest);
             if (bytes_written != bytes_read) {
                 Log::Error("FS::CopyFile (%s) failed to write to dest file.\n", dest_path.c_str());
-                delete[] buf;
                 fclose(src);
                 fclose(dest);
                 return false;
             }
             
             offset += bytes_read;
-            Popups::ProgressBar(static_cast<float>(offset), static_cast<float>(size), strings[Config::GetLang()][Lang::OptionsCopying], filename.c_str());
+            Popups::ProgressBar(app, static_cast<float>(offset), static_cast<float>(size), strings[app.config.Lang()][Lang::OptionsCopying], filename.c_str());
         } while (offset < size);
 
-        delete[] buf;
         fclose(src);
         fclose(dest);
         return true;
     }
 
-    static bool CopyDir(const std::string &src_path, const std::string &dest_path) {
+    static bool CopyDir(App &app, const std::string &src_path, const std::string &dest_path) {
         DIR *dir = nullptr;
         struct dirent *entry = nullptr;
         dir = opendir(src_path.c_str());
@@ -121,9 +116,9 @@ namespace FS {
 
                 bool copy_result = false;
                 if (entry->d_type & DT_DIR)
-                    copy_result = CopyDir(src.c_str(), dest.c_str());
+                    copy_result = CopyDir(app, src.c_str(), dest.c_str());
                 else
-                    copy_result = CopyFile(src.c_str(), dest.c_str());
+                    copy_result = CopyFile(app, src.c_str(), dest.c_str());
                 
                 if (!copy_result) {
                     closedir(dir);
@@ -284,19 +279,17 @@ namespace FS {
         return (stat(dest_path.c_str(), &dest_stat) == 0);
     }
 
-    bool ChangeDirNext(FileSystemService &fs_svc, const std::string &path, std::vector<FsDirectoryEntry> &entries) {
-        App& app = GetApp();
-        return ChangeDir(fs_svc, app.config, BuildPath(fs_svc, path, false), entries);
+    bool ChangeDirNext(FileSystemService &fs_svc, ConfigService &config_svc, const std::string &path, std::vector<FsDirectoryEntry> &entries) {
+        return ChangeDir(fs_svc, config_svc, BuildPath(fs_svc, path, false), entries);
     }
     
-    bool ChangeDirPrev(FileSystemService &fs_svc, std::vector<FsDirectoryEntry> &entries) {
-        App& app = GetApp();
+    bool ChangeDirPrev(FileSystemService &fs_svc, ConfigService &config_svc, std::vector<FsDirectoryEntry> &entries) {
         if (fs_svc.cwd.compare("/") == 0)
             return false;
         
         std::filesystem::path path = fs_svc.cwd;
         std::string parent_path = path.parent_path();
-        return ChangeDir(fs_svc, app.config, parent_path.empty() ? fs_svc.cwd : parent_path, entries);
+        return ChangeDir(fs_svc, config_svc, parent_path.empty() ? fs_svc.cwd : parent_path, entries);
     }
 
     bool Rename(FileSystemService &fs_svc, FsDirectoryEntry &entry, const std::string &dest_path) {
@@ -364,28 +357,28 @@ namespace FS {
         return false;
     }
 
-    bool Paste(FileSystemService &fs_svc, ConfigService &config_svc) {
+    bool Paste(App &app) {
         bool ret = false;
-        std::string path = BuildPath(fs_svc, fs_svc.copy_entry.filename, true);
+        std::string path = BuildPath(app.fs, app.fs.copy_entry.filename, true);
         
-        if (fs_svc.copy_entry.is_directory)
-            ret = CopyDir(fs_svc.copy_entry.path, path);
+        if (app.fs.copy_entry.is_directory)
+            ret = CopyDir(app, app.fs.copy_entry.path, path);
         else
-            ret = CopyFile(fs_svc.copy_entry.path, path);
+            ret = CopyFile(app, app.fs.copy_entry.path, path);
 
-        fs_svc.copy_entry = {};
+        app.fs.copy_entry = {};
         return ret;
     }
 
-    bool Move(FileSystemService &fs_svc, ConfigService &config_svc) {
-        std::string path = BuildPath(fs_svc, fs_svc.copy_entry.filename, true);
+    bool Move(App &app) {
+        std::string path = BuildPath(app.fs, app.fs.copy_entry.filename, true);
 
-        if (rename(fs_svc.copy_entry.path.c_str(), path.c_str()) != 0) {
-            Log::Error("FS::Move(%s, %s) failed.\n", fs_svc.copy_entry.path.c_str(), path.c_str());
+        if (rename(app.fs.copy_entry.path.c_str(), path.c_str()) != 0) {
+            Log::Error("FS::Move(%s, %s) failed.\n", app.fs.copy_entry.path.c_str(), path.c_str());
             return false;
         }
 
-        fs_svc.copy_entry = {};
+        app.fs.copy_entry = {};
         return true;
     }
 
@@ -606,13 +599,13 @@ namespace FS {
     }
     
     void SaveCurrentPath(FileSystemService &fs_svc, ConfigService &config_svc) {
-        Config::SetLastDevice(config_svc, fs_svc.device, GUI::IsAppletMode());
-        Config::SetLastCwd(config_svc, fs_svc.cwd, GUI::IsAppletMode());
+        config_svc.SetLastDevice(fs_svc.device);
+        config_svc.SetLastCwd(fs_svc.cwd);
         Config::Save(config_svc, fs_svc);
     }
     
     bool RestoreSavedPath(FileSystemService &fs_svc, DeviceRegistry &dev_reg, ConfigService &config_svc, std::vector<FsDirectoryEntry> &entries) {
-        if (config_svc.effective.last_device.empty()) {
+        if (config_svc.LastDevice().empty()) {
             GoToPartitionRoot(fs_svc, dev_reg, config_svc, entries);
             return true;
         }
@@ -620,8 +613,8 @@ namespace FS {
         std::scoped_lock lock(dev_reg.mutex);
         bool device_found = false;
         for (std::size_t i = 0; i < dev_reg.devices.size(); i++) {
-            if (dev_reg.devices[i] == config_svc.effective.last_device) {
-                fs_svc.device = config_svc.effective.last_device;
+            if (dev_reg.devices[i] == config_svc.LastDevice()) {
+                fs_svc.device = config_svc.LastDevice();
                 fs_svc.current_fs = &fs_svc.devices[i];
                 device_found = true;
                 break;
@@ -629,12 +622,12 @@ namespace FS {
         }
         
         if (!device_found) {
-            Log::Debug("FS::RestoreSavedPath - device %s not found, going to partition root\n", config_svc.effective.last_device.c_str());
+            Log::Debug("FS::RestoreSavedPath - device %s not found, going to partition root\n", config_svc.LastDevice().c_str());
             GoToPartitionRoot(fs_svc, dev_reg, config_svc, entries);
             return false;
         }
         
-        fs_svc.cwd = config_svc.effective.last_cwd;
+        fs_svc.cwd = config_svc.LastCwd();
         if (!GetDirList(fs_svc.device, fs_svc.cwd, entries)) {
             Log::Debug("FS::RestoreSavedPath - path %s%s not found, searching for valid parent\n", fs_svc.device.c_str(), fs_svc.cwd.c_str());
             
@@ -720,10 +713,9 @@ namespace FS {
         return true;
     }
 
-    bool GetTimeStamp(FsDirectoryEntry &entry, FsTimeStampRaw &timestamp) {
-        App& app = GetApp();
+    bool GetTimeStamp(FileSystemService &fs_svc, FsDirectoryEntry &entry, FsTimeStampRaw &timestamp) {
         struct stat file_stat = { 0 };
-        std::string full_path = BuildPath(app.fs, entry);
+        std::string full_path = BuildPath(fs_svc, entry);
 
         if (stat(full_path.c_str(), std::addressof(file_stat)) != 0) {
             Log::Error("FS::GetTimeStamp(%s) failed to stat file.\n", full_path.c_str());
@@ -819,141 +811,5 @@ namespace FS {
         std::string ext = std::filesystem::path(filename).extension();
         std::transform(ext.begin(), ext.end(), ext.begin(), ::toupper);
         return ext;
-    }
-
-    // ========================================================================
-    // Legacy API - forwards to App instance
-    // ========================================================================
-    
-    bool DestinationExists(void) {
-        return DestinationExists(GetApp().fs);
-    }
-
-    size_t CountConflicts(void) {
-        App& app = GetApp();
-        return CountConflicts(app.fs, app.selection);
-    }
-    
-    void SetConflictHandling(ConflictHandling mode) {
-        SetConflictHandling(GetApp().fs, mode);
-    }
-    
-    ConflictHandling GetConflictHandling(void) {
-        return GetConflictHandling(GetApp().fs);
-    }
-    
-    void ClearConflictHandling(void) {
-        ClearConflictHandling(GetApp().fs);
-    }
-    
-    bool ShouldSkipDueToConflict(const std::string &dest_path) {
-        return ShouldSkipDueToConflict(GetApp().fs, dest_path);
-    }
-    
-    bool ChangeDirNext(const std::string &path, std::vector<FsDirectoryEntry> &entries) {
-        return ChangeDirNext(GetApp().fs, path, entries);
-    }
-    
-    bool ChangeDirPrev(std::vector<FsDirectoryEntry> &entries) {
-        return ChangeDirPrev(GetApp().fs, entries);
-    }
-
-    bool Rename(FsDirectoryEntry &entry, const std::string &dest_path) {
-        return Rename(GetApp().fs, entry, dest_path);
-    }
-
-    bool Delete(FsDirectoryEntry &entry) {
-        return Delete(GetApp().fs, entry);
-    }
-
-    void Copy(FsDirectoryEntry &entry, const std::string &path) {
-        Copy(GetApp().fs, entry, path);
-    }
-
-    bool Paste(void) {
-        App& app = GetApp();
-        return Paste(app.fs, app.config);
-    }
-
-    bool Move(void) {
-        App& app = GetApp();
-        return Move(app.fs, app.config);
-    }
-
-    bool WouldCauseRecursiveCopy(void) {
-        return WouldCauseRecursiveCopy(GetApp().fs);
-    }
-
-    std::string GetCopyEntryFilename(void) {
-        return GetCopyEntryFilename(GetApp().fs);
-    }
-    
-    Result SetArchiveBit(const std::string &path) {
-        return SetArchiveBit(GetApp().fs, path);
-    }
-    
-    bool HasArchiveBit(const std::string &path) {
-        return HasArchiveBit(GetApp().fs, path);
-    }
-    
-    Result GetFreeStorageSpace(s64 &size) {
-        return GetFreeStorageSpace(GetApp().fs, size);
-    }
-    
-    Result GetTotalStorageSpace(s64 &size) {
-        return GetTotalStorageSpace(GetApp().fs, size);
-    }
-    
-    Result GetUsedStorageSpace(s64 &size) {
-        return GetUsedStorageSpace(GetApp().fs, size);
-    }
-
-    std::string BuildPath(FsDirectoryEntry &entry) {
-        return BuildPath(GetApp().fs, entry);
-    }
-
-    std::string BuildPath(const std::string &path, bool device_name) {
-        return BuildPath(GetApp().fs, path, device_name);
-    }
-
-    void PopulateMetadataCache(const std::vector<FsDirectoryEntry> &entries, std::vector<FileMetadataCache> &cache) {
-        PopulateMetadataCache(GetApp().fs, entries, cache);
-    }
-    
-    bool RefreshDirectory(std::vector<FsDirectoryEntry> &entries, std::vector<FileMetadataCache> &cache, bool clear_selection) {
-        App& app = GetApp();
-        return RefreshDirectory(app.fs, app.selection, entries, cache, clear_selection);
-    }
-    
-    bool IsAtPartitionRoot(void) {
-        return IsAtPartitionRoot(GetApp().fs);
-    }
-    
-    void GetPartitionList(std::vector<FsDirectoryEntry> &entries) {
-        GetPartitionList(GetApp().device_registry, entries);
-    }
-    
-    void GoToPartitionRoot(std::vector<FsDirectoryEntry> &entries) {
-        App& app = GetApp();
-        GoToPartitionRoot(app.fs, app.device_registry, app.config, entries);
-    }
-    
-    bool SelectPartition(const std::string &partition_name, std::vector<FsDirectoryEntry> &entries) {
-        App& app = GetApp();
-        return SelectPartition(app.fs, app.device_registry, app.config, partition_name, entries);
-    }
-    
-    std::string GetDisplayPath(void) {
-        return GetDisplayPath(GetApp().fs);
-    }
-    
-    void SaveCurrentPath(void) {
-        App& app = GetApp();
-        SaveCurrentPath(app.fs, app.config);
-    }
-    
-    bool RestoreSavedPath(std::vector<FsDirectoryEntry> &entries) {
-        App& app = GetApp();
-        return RestoreSavedPath(app.fs, app.device_registry, app.config, entries);
     }
 }

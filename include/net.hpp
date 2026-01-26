@@ -1,6 +1,7 @@
 #pragma once
 
 #include <string>
+#include "services.hpp"
 
 namespace Net {
     // Socket initialization management (lazy init for faster startup)
@@ -12,5 +13,5 @@ namespace Net {
     bool GetNetworkStatus(void);
     bool GetAvailableUpdate(const std::string &tag);
     std::string GetLatestReleaseJSON(void);
-    void GetLatestReleaseNRO(const std::string &tag);
+    void GetLatestReleaseNRO(FileSystemService &fs_svc, const std::string &tag);
 }

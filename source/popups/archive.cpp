@@ -22,14 +22,13 @@ namespace Archive {
     static std::string current_file;
     static float progress = 0.0f;
     
-    void SetArchivePath(const std::string &path) {
-        App& app = GetApp();
+    void SetArchivePath(FileSystemService &fs_svc, const std::string &path) {
         archive_path = path;
         // Default extraction destination: same directory as the archive
         std::filesystem::path p(path);
         extract_dest = p.parent_path().string();
         if (extract_dest.empty()) {
-            extract_dest = app.fs.device + app.fs.cwd;
+            extract_dest = fs_svc.device + fs_svc.cwd;
         }
         extraction_in_progress = false;
         extraction_complete = false;
@@ -49,7 +48,7 @@ namespace Archive {
         return !ec;
     }
     
-    bool ExtractZip(void) {
+    bool ExtractZip(App &app) {
         if (archive_path.empty()) {
             Log::Error("Archive::ExtractZip - No archive path set\n");
             return false;
@@ -69,7 +68,7 @@ namespace Archive {
             return false;
         }
         
-        const int lang = Config::GetLang();
+        const int lang = app.config.Lang();
         const std::string title = strings[lang][Lang::ArchiveTitle];
         const std::string extracting_prefix = strings[lang][Lang::ArchiveExtracting];
         
@@ -157,7 +156,7 @@ namespace Archive {
                 short_filename = "..." + short_filename.substr(short_filename.length() - 37);
             }
             std::string progress_text = extracting_prefix + " " + short_filename;
-            Popups::ProgressBar(static_cast<float>(files_extracted), static_cast<float>(global_info.number_entry), title, progress_text);
+            Popups::ProgressBar(app, static_cast<float>(files_extracted), static_cast<float>(global_info.number_entry), title, progress_text);
             
             ret = unzGoToNextFile(zip);
         }
@@ -171,9 +170,9 @@ namespace Archive {
 }
 
 namespace Popups {
-    void ArchivePopup(void) {
-        const int lang = Config::GetLang();
-        Popups::SetupPopup(strings[lang][Lang::ArchiveTitle]);
+    void ArchivePopup(App &app) {
+        const int lang = app.config.Lang();
+        Popups::SetupPopup(app, strings[lang][Lang::ArchiveTitle]);
         
         if (ImGui::BeginPopupModal(strings[lang][Lang::ArchiveTitle], nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
             ImGui::Text("%s", strings[lang][Lang::ArchiveMessage]);
@@ -192,13 +191,12 @@ namespace Popups {
                 ImGui::PopStyleVar();
                 ImGui::Render();
                 
-                if (!Archive::ExtractZip()) {
+                if (!Archive::ExtractZip(app)) {
                     Log::Error("Archive extraction failed\n");
                 }
                 
                 // Refresh directory listing
-                App& app = GetApp();
-                if (!FS::RefreshDirectory(app.window.entries, app.window.metadata_cache, true)) {
+                if (!FS::RefreshDirectory(app.fs, app.selection, app.window.entries, app.window.metadata_cache, true)) {
                     Log::Error("ArchivePopup: Failed to refresh directory after extraction\n");
                 }
                 app.window.sort = -1;
@@ -210,7 +208,6 @@ namespace Popups {
             ImGui::SameLine(0.0f, 15.0f);
             
             if (ImGui::Button(strings[lang][Lang::ButtonCancel], ImVec2(120, 0))) {
-                App& app = GetApp();
                 ImGui::CloseCurrentPopup();
                 app.window.state = WINDOW_STATE_FILEBROWSER;
             }

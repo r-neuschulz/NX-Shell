@@ -6,11 +6,6 @@
 #include <dirent.h>
 #include <sys/stat.h>
 
-// Global selection store instance - wraps App::selection
-SelectionStore g_selection(GetApp().selection);
-
-SelectionStore::SelectionStore() : svc_(&GetApp().selection) {}
-
 SelectionStore::SelectionStore(SelectionService &svc) : svc_(&svc) {}
 
 std::string SelectionStore::BuildFullPath(const std::string &device, const std::string &cwd, const std::string &name) {

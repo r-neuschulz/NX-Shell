@@ -5,8 +5,6 @@
 #include "usbhsfs.h"
 #include "windows.hpp"
 
-// Use the extern declarations from windows.hpp (which forward to App)
-
 namespace USB {
     static UEvent *status_change_event = nullptr, exit_event = {0};
     static u32 usb_device_count = 0;
@@ -14,11 +12,14 @@ namespace USB {
     static Thread thread = {0};
     static u32 listed_device_count = 0;
     static bool thread_created = false;
+    
+    // Pointer to device registry - set at init, used by thread
+    static DeviceRegistry *s_device_registry = nullptr;
 
     // This function is heavily based off the example provided by DarkMatterCore
     // https://github.com/DarkMatterCore/libusbhsfs/blob/main/example/source/main.c
     static void usbMscThreadFunc(void *arg) {
-        (void)arg;
+        DeviceRegistry *dev_reg = static_cast<DeviceRegistry*>(arg);
         
         Result ret = 0;
         int idx = 0;
@@ -40,7 +41,7 @@ namespace USB {
             USB::Unmount();
 
             {
-                std::scoped_lock lock(devices_list_mutex);
+                std::scoped_lock lock(dev_reg->mutex);
 
                 /* Get mounted device count. */
                 usb_device_count = usbHsFsGetMountedDeviceCount();
@@ -62,7 +63,7 @@ namespace USB {
                 /* Print info from mounted devices. */
                 for(u32 i = 0; i < listed_device_count; i++) {
                     UsbHsFsDevice *device = std::addressof(usb_devices[i]);
-                    devices_list.push_back(device->name);
+                    dev_reg->devices.push_back(device->name);
                 }
             }
         }
@@ -71,8 +72,9 @@ namespace USB {
         return;
     }
 
-    Result Init(void) {
-        std::scoped_lock lock(devices_list_mutex);
+    Result Init(DeviceRegistry &dev_reg) {
+        s_device_registry = &dev_reg;
+        std::scoped_lock lock(dev_reg.mutex);
 
         Result ret = usbHsFsInitialize(0);
         if (R_SUCCEEDED(ret)) {
@@ -82,8 +84,8 @@ namespace USB {
             /* Create usermode thread exit event. */
             ueventCreate(&exit_event, true);
 
-            /* Create thread. */
-            if (R_SUCCEEDED(ret = threadCreate(&thread, usbMscThreadFunc, nullptr, nullptr, 0x10000, 0x2C, -2))) {
+            /* Create thread - pass device registry as argument */
+            if (R_SUCCEEDED(ret = threadCreate(&thread, usbMscThreadFunc, s_device_registry, nullptr, 0x10000, 0x2C, -2))) {
                 if (R_SUCCEEDED(ret = threadStart(&thread)))
                     thread_created = true;
             }
@@ -93,7 +95,9 @@ namespace USB {
     }
 
     void Exit(void) {
-        std::scoped_lock lock(devices_list_mutex);
+        if (!s_device_registry)
+            return;
+        std::scoped_lock lock(s_device_registry->mutex);
 
         if (thread_created) {
             /* Signal background thread. */
@@ -112,18 +116,22 @@ namespace USB {
     }
     
     bool Connected(void) {
-        std::scoped_lock lock(devices_list_mutex);
+        if (!s_device_registry)
+            return false;
+        std::scoped_lock lock(s_device_registry->mutex);
         return (listed_device_count > 0);
     }
 
     void Unmount(void) {
-        std::scoped_lock lock(devices_list_mutex);
+        if (!s_device_registry)
+            return;
+        std::scoped_lock lock(s_device_registry->mutex);
 
         /* Unmount devices. */
         if (usb_devices) {
             for(u32 i = 0; i < listed_device_count; i++) {
                 UsbHsFsDevice *device = std::addressof(usb_devices[i]);
-                devices_list.pop_back();
+                s_device_registry->devices.pop_back();
                 usbHsFsUnmountDevice(device, false);
             }
 

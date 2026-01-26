@@ -48,14 +48,12 @@ namespace ImageViewer {
         textures.clear();
     }
     
-    void ClearTextures(void) {
-        App& app = GetApp();
+    void ClearTextures(App &app) {
         FreeTextureVector(app.window.textures);
         app.window.frame_count = 0;
     }
     
-    void ClearPreloadedTextures(void) {
-        App& app = GetApp();
+    void ClearPreloadedTextures(App &app) {
         FreeTextureVector(app.window.textures_prev);
         app.window.preload_prev_index = -1;
         
@@ -69,8 +67,7 @@ namespace ImageViewer {
     }
 
     // Helper to check if an entry is a valid image file
-    static bool IsImageEntry(int index) {
-        App& app = GetApp();
+    static bool IsImageEntry(App &app, int index) {
         if (index < 0 || index >= static_cast<int>(app.window.entries.size()))
             return false;
         if (app.window.entries[index].type == FsDirEntryType_Dir)
@@ -80,13 +77,12 @@ namespace ImageViewer {
     }
 
     // Find adjacent image file in given direction (direction: -1 = prev, +1 = next)
-    static int FindAdjacentImageIndex(int from_index, int direction) {
-        App& app = GetApp();
+    static int FindAdjacentImageIndex(App &app, int from_index, int direction) {
         const int count = static_cast<int>(app.window.entries.size());
         
         // Search in direction from current position
         for (int i = from_index + direction; direction > 0 ? i < count : i >= 0; i += direction) {
-            if (IsImageEntry(i))
+            if (IsImageEntry(app, i))
                 return i;
         }
         
@@ -94,7 +90,7 @@ namespace ImageViewer {
         int wrap_start = direction > 0 ? 0 : count - 1;
         int wrap_end = from_index;
         for (int i = wrap_start; direction > 0 ? i < wrap_end : i > wrap_end; i += direction) {
-            if (IsImageEntry(i))
+            if (IsImageEntry(app, i))
                 return i;
         }
         
@@ -102,12 +98,11 @@ namespace ImageViewer {
     }
 
     // Public API wrappers
-    int FindPrevImageIndex(int from_index) { return FindAdjacentImageIndex(from_index, -1); }
-    int FindNextImageIndex(int from_index) { return FindAdjacentImageIndex(from_index, +1); }
+    int FindPrevImageIndex(App &app, int from_index) { return FindAdjacentImageIndex(app, from_index, -1); }
+    int FindNextImageIndex(App &app, int from_index) { return FindAdjacentImageIndex(app, from_index, +1); }
 
     // Pre-load ONE adjacent image (called only when idle, alternates between prev/next)
-    void PreloadAdjacentImages(void) {
-        App& app = GetApp();
+    void PreloadAdjacentImages(App &app) {
         // Don't pre-load immediately after navigation - wait for user to settle
         if (s_frames_since_navigation < PRELOAD_DELAY_FRAMES) {
             s_frames_since_navigation++;
@@ -117,8 +112,8 @@ namespace ImageViewer {
         int current = static_cast<int>(app.window.selected);
         
         // Find prev and next image indices
-        int prev_idx = FindPrevImageIndex(current);
-        int next_idx = FindNextImageIndex(current);
+        int prev_idx = FindPrevImageIndex(app, current);
+        int next_idx = FindNextImageIndex(app, current);
         
         // Check what needs pre-loading
         bool need_prev = (prev_idx >= 0 && prev_idx != app.window.preload_prev_index && app.window.textures_prev.empty());
@@ -148,8 +143,7 @@ namespace ImageViewer {
         }
     }
 
-    bool HandleScroll(int index) {
-        App& app = GetApp();
+    bool HandleScroll(App &app, int index) {
         if (app.window.entries[index].type == FsDirEntryType_Dir)
             return false;
         
@@ -170,9 +164,8 @@ namespace ImageViewer {
     }
 
     // Navigate to adjacent image (direction: -1 = prev, +1 = next)
-    static bool HandleNavigate(int direction) {
-        App& app = GetApp();
-        int target_idx = FindAdjacentImageIndex(static_cast<int>(app.window.selected), direction);
+    static bool HandleNavigate(App &app, int direction) {
+        int target_idx = FindAdjacentImageIndex(app, static_cast<int>(app.window.selected), direction);
         
         if (target_idx < 0)
             return false;  // No other images, stay on current
@@ -239,11 +232,10 @@ namespace ImageViewer {
     }
 
     // Public API wrappers
-    bool HandlePrev(void) { return HandleNavigate(-1); }
-    bool HandleNext(void) { return HandleNavigate(+1); }
+    bool HandlePrev(App &app) { return HandleNavigate(app, -1); }
+    bool HandleNext(App &app) { return HandleNavigate(app, +1); }
 
-    void HandleControls(u64 &key, bool &properties) {
-        App& app = GetApp();
+    void HandleControls(App &app, u64 &key, bool &properties) {
         if (key & HidNpadButton_X)
             properties = true;
         
@@ -297,8 +289,8 @@ namespace ImageViewer {
         
         if (!properties) {
             if (key & HidNpadButton_B) {
-                ImageViewer::ClearTextures();
-                ImageViewer::ClearPreloadedTextures();
+                ImageViewer::ClearTextures(app);
+                ImageViewer::ClearPreloadedTextures(app);
                 // Don't process deferred deletions here - this frame's draw commands
                 // still reference the textures. They'll be freed at the start of
                 // the next frame by CleanupDeferredDeletions() in MainWindow.
@@ -311,19 +303,18 @@ namespace ImageViewer {
             }
             
             if (key & HidNpadButton_L) {
-                ImageViewer::HandlePrev();
+                ImageViewer::HandlePrev(app);
             }
             else if (key & HidNpadButton_R) {
-                ImageViewer::HandleNext();
+                ImageViewer::HandleNext(app);
             }
         }
     }
 }
 
 namespace Windows {
-    static void DrawImageViewerBottomBar(void) {
-        App& app = GetApp();
-        const int lang = Config::GetLang();
+    static void DrawImageViewerBottomBar(App &app) {
+        const int lang = app.config.Lang();
         
         // Left-aligned items (minus button for exit)
         std::vector<BottomBar::HintItem> left_items = {
@@ -345,11 +336,10 @@ namespace Windows {
         config.use_foreground_draw_list = true;
         config.draw_background = true;
         
-        BottomBar::Draw(config, left_items, right_items);
+        BottomBar::Draw(app.config, config, left_items, right_items);
     }
     
-    void ImageViewer(bool &properties, bool &file_stat) {
-        App& app = GetApp();
+    void ImageViewer(App &app, bool &properties, bool &file_stat) {
         // Note: Deferred texture deletions are processed at the start of MainWindow
         // in window.cpp, which ensures they run every frame regardless of state.
         
@@ -431,17 +421,17 @@ namespace Windows {
         }
         
         if (!app.window.image_fullscreen) {
-            Windows::DrawImageViewerBottomBar();
+            Windows::DrawImageViewerBottomBar(app);
         }
         
         // Draw filename toast overlay (when enabled in settings)
-        if (app.config.effective.image_filename) {
-            Toast::DrawFilename(app.window.entries[app.window.selected].name);
+        if (app.config.ImageFilename()) {
+            Toast::DrawFilename(app.config, app.window.entries[app.window.selected].name);
         }
         
         // Draw fullscreen toast notification (temporary, shows when entering fullscreen)
         if (app.window.image_fullscreen && ImageViewer::s_toast_timer > 0.0f) {
-            const int lang = Config::GetLang();
+            const int lang = app.config.Lang();
             
             // Fade out in the last 0.5 seconds
             float alpha = 1.0f;
@@ -449,17 +439,17 @@ namespace Windows {
                 alpha = ImageViewer::s_toast_timer / 0.5f;
             }
             
-            Toast::DrawCentered(strings[lang][Lang::HintExitFullscreen], alpha);
+            Toast::DrawCentered(app.gui, strings[lang][Lang::HintExitFullscreen], alpha);
             
             // Decrement timer
             ImageViewer::s_toast_timer -= ImGui::GetIO().DeltaTime;
         }
         
         // Pre-load adjacent images only after settling delay
-        ImageViewer::PreloadAdjacentImages();
+        ImageViewer::PreloadAdjacentImages(app);
 
         if (properties && !app.window.textures.empty() && app.window.textures[0].id != 0)
-            Popups::ImageProperties(properties, app.window.textures[0], file_stat);
+            Popups::ImageProperties(app, properties, app.window.textures[0], file_stat);
         
         ImGui::End();
         ImGui::PopStyleVar(app.window.image_fullscreen ? 3 : 2);  // Pop WindowBorderSize (fullscreen only), WindowPadding, WindowRounding

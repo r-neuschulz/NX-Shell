@@ -3,8 +3,10 @@
 #include <memory>
 #include <sys/stat.h>
 
-// BMP
+// BMP - explicitly use C linkage
+extern "C" {
 #include "libnsbmp.h"
+}
 
 // GIF
 #include <gif_lib.h>
@@ -12,7 +14,9 @@
 // JPEG
 #include <turbojpeg.h>
 
-// STB
+// STB - suppress unused function warnings from header-only library
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wunused-function"
 #define STB_IMAGE_IMPLEMENTATION
 #define STBI_NO_BMP
 #define STBI_NO_HDR
@@ -24,6 +28,7 @@
 #define STBI_ONLY_PSD
 #define STBI_ONLY_TGA
 #include "stb_image.h"
+#pragma GCC diagnostic pop
 
 // PNG
 #include <png.h>
@@ -42,9 +47,9 @@
 #include "windows.hpp"
 
 #define BYTES_PER_PIXEL 4
+
 #define MAX_IMAGE_BYTES (48 * 1024 * 1024)
 
-// Legacy globals defined in legacy.cpp
 
 namespace BMP {
     static void *bitmap_create(int width, int height, [[maybe_unused]] unsigned int state) {
@@ -58,10 +63,6 @@ namespace BMP {
     static unsigned char *bitmap_get_buffer(void *bitmap) {
         assert(bitmap);
         return static_cast<unsigned char *>(bitmap);
-    }
-    
-    static size_t bitmap_get_bpp([[maybe_unused]] void *bitmap) {
-        return BYTES_PER_PIXEL;
     }
     
     static void bitmap_destroy(void *bitmap) {
@@ -157,8 +158,7 @@ namespace Textures {
         bmp_bitmap_callback_vt bitmap_callbacks = {
             BMP::bitmap_create,
             BMP::bitmap_destroy,
-            BMP::bitmap_get_buffer,
-            BMP::bitmap_get_bpp
+            BMP::bitmap_get_buffer
         };
         
         bmp_result code = BMP_OK;
@@ -375,7 +375,7 @@ namespace Textures {
         return ret;
     }
     
-    void Init(void) {
+    void Init(App &app) {
         const int num_icons = 5;
 
         const std::string paths[num_icons] {
@@ -386,31 +386,24 @@ namespace Textures {
             "romfs:/file0x.png"  // Binary/Hex icon
         };
 
-        bool image_ret = Textures::LoadImagePNG("romfs:/folder.png", folder_icon);
-        IM_ASSERT(image_ret);
-
-        image_ret = Textures::LoadImagePNG("romfs:/check.png", check_icon);
-        IM_ASSERT(image_ret);
-
-        image_ret = Textures::LoadImagePNG("romfs:/uncheck.png", uncheck_icon);
-        IM_ASSERT(image_ret);
-
-        image_ret = Textures::LoadImagePNG("romfs:/partcheck.png", partcheck_icon);
-        IM_ASSERT(image_ret);
+        // Load all icons - don't use IM_ASSERT for calls with side effects
+        // (IM_ASSERT can be disabled in release builds, skipping the actual load!)
+        Textures::LoadImagePNG("romfs:/folder.png", app.textures.folder_icon);
+        Textures::LoadImagePNG("romfs:/check.png", app.textures.check_icon);
+        Textures::LoadImagePNG("romfs:/uncheck.png", app.textures.uncheck_icon);
+        Textures::LoadImagePNG("romfs:/partcheck.png", app.textures.partcheck_icon);
         
         // Try to load drive icon, fall back to folder icon if not available
-        if (!Textures::LoadImagePNG("romfs:/drive.png", drive_icon)) {
-            drive_icon = folder_icon;  // Use folder icon as fallback
+        if (!Textures::LoadImagePNG("romfs:/drive.png", app.textures.drive_icon)) {
+            app.textures.drive_icon = app.textures.folder_icon;  // Use folder icon as fallback
         }
         
-        image_ret = Textures::LoadImagePNG("romfs:/settings.png", settings_icon);
-        IM_ASSERT(image_ret);
+        Textures::LoadImagePNG("romfs:/settings.png", app.textures.settings_icon);
         
-        file_icons.resize(num_icons);
+        app.textures.file_icons.resize(num_icons);
 
         for (int i = 0; i < num_icons; i++) {
-            bool ret = Textures::LoadImagePNG(paths[i], file_icons[i]);
-            IM_ASSERT(ret);
+            Textures::LoadImagePNG(paths[i], app.textures.file_icons[i]);
         }
     }
     
@@ -418,29 +411,29 @@ namespace Textures {
         glDeleteTextures(1, std::addressof(texture.id));
     }
     
-    void Exit(void) {
+    void Exit(App &app) {
         // Clean up any deferred texture deletions first
         ImageViewer::CleanupDeferredDeletions();
         
-        for (unsigned int i = 0; i < file_icons.size(); i++)
-            Textures::Free(file_icons[i]);
+        for (unsigned int i = 0; i < app.textures.file_icons.size(); i++)
+            Textures::Free(app.textures.file_icons[i]);
 
-        Textures::Free(uncheck_icon);
-        Textures::Free(check_icon);
-        Textures::Free(partcheck_icon);
-        Textures::Free(folder_icon);
-        Textures::Free(settings_icon);
+        Textures::Free(app.textures.uncheck_icon);
+        Textures::Free(app.textures.check_icon);
+        Textures::Free(app.textures.partcheck_icon);
+        Textures::Free(app.textures.folder_icon);
+        Textures::Free(app.textures.settings_icon);
         // Only free drive_icon if it's not the same as folder_icon (i.e., was loaded separately)
-        if (drive_icon.id != folder_icon.id)
-            Textures::Free(drive_icon);
+        if (app.textures.drive_icon.id != app.textures.folder_icon.id)
+            Textures::Free(app.textures.drive_icon);
 
-        for (unsigned int i = 0; i < data.textures.size(); i++)
-            Textures::Free(data.textures[i]);
+        for (unsigned int i = 0; i < app.window.textures.size(); i++)
+            Textures::Free(app.window.textures[i]);
         
         // Free pre-loaded image textures
-        for (unsigned int i = 0; i < data.textures_prev.size(); i++)
-            Textures::Free(data.textures_prev[i]);
-        for (unsigned int i = 0; i < data.textures_next.size(); i++)
-            Textures::Free(data.textures_next[i]);
+        for (unsigned int i = 0; i < app.window.textures_prev.size(); i++)
+            Textures::Free(app.window.textures_prev[i]);
+        for (unsigned int i = 0; i < app.window.textures_next.size(); i++)
+            Textures::Free(app.window.textures_next[i]);
     }
 }

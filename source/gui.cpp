@@ -12,13 +12,15 @@
 #include "language.hpp"
 #include "services.hpp"
 #include "imgui.h"
-#define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui_internal.h"
 #include "imgui_impl_switch.hpp"
 #include "log.hpp"
 #include "windows.hpp"
 
 namespace GUI {
+    // Note: display_width() and display_height() are now inline functions in gui.hpp
+    // to avoid static initialization order fiasco
+    
     static EGLDisplay s_display = EGL_NO_DISPLAY;
     static EGLContext s_context = EGL_NO_CONTEXT;
     static EGLSurface s_surface = EGL_NO_SURFACE;
@@ -50,7 +52,7 @@ namespace GUI {
     // Track when surface is recreated to reapply vsync setting after swap
     static bool s_surface_recreated = false;
     
-    // Display dimensions are defined in legacy.cpp, accessed via GetApp().gui
+    // Display dimensions accessed via GetApp().gui
     
     bool IsDocked(void) {
         return s_operation_mode == AppletOperationMode_Console;
@@ -64,8 +66,7 @@ namespace GUI {
     }
     
     // Recreate the EGL surface for new dimensions (needed for runtime resolution changes)
-    static bool RecreateSurface(void) {
-        App& app = GetApp();
+    static bool RecreateSurface(App &app) {
         if (!s_display || !s_window || !s_config)
             return false;
         
@@ -104,8 +105,7 @@ namespace GUI {
         return true;
     }
     
-    void UpdateDisplayDimensions(void) {
-        App& app = GetApp();
+    void UpdateDisplayDimensions(App &app) {
         AppletOperationMode mode = appletGetOperationMode();
         s_operation_mode = mode;
         
@@ -113,7 +113,7 @@ namespace GUI {
         int target_width = 1280;
         int target_height = 720;
         
-        switch (app.config.effective.resolution_mode) {
+        switch (app.config.ResolutionMode()) {
             case ResolutionMode_Auto:
                 // Auto-detect based on dock state
                 if (IsDocked()) {
@@ -143,12 +143,11 @@ namespace GUI {
             app.gui.display_height = target_height;
             
             // Recreate the EGL surface for the new resolution
-            RecreateSurface();
+            RecreateSurface(app);
         }
     }
     
-    static bool InitEGL(NWindow* win) {
-        App& app = GetApp();
+    static bool InitEGL(App &app, NWindow* win) {
         s_window = win;
         
         // Check initial dock state and set dimensions accordingly
@@ -264,9 +263,8 @@ namespace GUI {
         return result;
     }
 
-    bool IsCurrentThemeDark(void) {
-        App& app = GetApp();
-        switch (app.config.effective.theme_mode) {
+    bool IsCurrentThemeDark(ConfigService &config_svc) {
+        switch (config_svc.ThemeMode()) {
             case ThemeMode_Auto:
                 return IsSystemThemeDark();
             case ThemeMode_Dark:
@@ -278,18 +276,18 @@ namespace GUI {
         }
     }
     
-    ImU32 GetThemeLabelColor(void) {
+    ImU32 GetThemeLabelColor(ConfigService &config_svc) {
         // Light gray for dark theme, dark gray for light theme
-        return IsCurrentThemeDark() 
+        return IsCurrentThemeDark(config_svc) 
             ? IM_COL32(200, 200, 200, 255)   // Light gray on dark background
             : IM_COL32(60, 60, 65, 255);     // Dark gray on light background
     }
     
-    void UpdateThemeColors(void) {
+    void UpdateThemeColors(ConfigService &config_svc) {
         ImVec4 *colors = ImGui::GetStyle().Colors;
         
         // Determine if we should use dark or light theme
-        bool use_dark = IsCurrentThemeDark();
+        bool use_dark = IsCurrentThemeDark(config_svc);
         
         if (use_dark) {
             // Dark theme colors (background and text)
@@ -360,12 +358,12 @@ namespace GUI {
         }
     }
     
-    void SetDefaultTheme(void) {
+    static void SetDefaultTheme(ConfigService &config_svc) {
         ImGui::GetStyle().FrameRounding = 4.0f;
         ImGui::GetStyle().GrabRounding = 4.0f;
         
         // Initialize theme tracking to match current state
-        s_last_theme_dark = IsCurrentThemeDark();
+        s_last_theme_dark = IsCurrentThemeDark(config_svc);
         
         ImVec4 *colors = ImGui::GetStyle().Colors;
         
@@ -386,15 +384,14 @@ namespace GUI {
         colors[ImGuiCol_NavWindowingDimBg] = ImVec4(0.80f, 0.80f, 0.80f, 0.20f);
         
         // Apply theme-dependent colors (background, text, and modal dim)
-        UpdateThemeColors();
+        UpdateThemeColors(config_svc);
         
         // Apply accent colors from config
-        UpdateAccentColors();
+        UpdateAccentColors(config_svc);
     }
     
-    void UpdateAccentColors(void) {
-        App& app = GetApp();
-        ImVec4 accent = ImVec4(app.config.effective.accent_color[0], app.config.effective.accent_color[1], app.config.effective.accent_color[2], 1.0f);
+    void UpdateAccentColors(ConfigService &config_svc) {
+        ImVec4 accent = ImVec4(config_svc.AccentR(), config_svc.AccentG(), config_svc.AccentB(), 1.0f);
         ImVec4 *colors = ImGui::GetStyle().Colors;
         
         colors[ImGuiCol_CheckMark] = accent;
@@ -409,22 +406,20 @@ namespace GUI {
         colors[ImGuiCol_NavCursor] = accent;
     }
     
-    ImU32 GetAccentColorU32(void) {
-        App& app = GetApp();
+    ImU32 GetAccentColorU32(ConfigService &config_svc) {
         return IM_COL32(
-            static_cast<int>(app.config.effective.accent_color[0] * 255),
-            static_cast<int>(app.config.effective.accent_color[1] * 255),
-            static_cast<int>(app.config.effective.accent_color[2] * 255),
+            static_cast<int>(config_svc.AccentR() * 255),
+            static_cast<int>(config_svc.AccentG() * 255),
+            static_cast<int>(config_svc.AccentB() * 255),
             255
         );
     }
     
-    ImU32 GetAccentColorU32WithAlpha(int alpha) {
-        App& app = GetApp();
+    ImU32 GetAccentColorU32WithAlpha(ConfigService &config_svc, int alpha) {
         return IM_COL32(
-            static_cast<int>(app.config.effective.accent_color[0] * 255),
-            static_cast<int>(app.config.effective.accent_color[1] * 255),
-            static_cast<int>(app.config.effective.accent_color[2] * 255),
+            static_cast<int>(config_svc.AccentR() * 255),
+            static_cast<int>(config_svc.AccentG() * 255),
+            static_cast<int>(config_svc.AccentB() * 255),
             alpha
         );
     }
@@ -438,89 +433,60 @@ namespace GUI {
         return true;
     }
     
+    // Nintendo Switch standard button colors (lookup table: A=Red, B=Yellow, X=Blue, Y=Green)
+    static constexpr ImU32 kNintendoButtonColors[4] = {
+        IM_COL32(235, 64, 52, 255),   // A - Red
+        IM_COL32(200, 150, 0, 255),   // B - Yellow
+        IM_COL32(65, 137, 230, 255),  // X - Blue
+        IM_COL32(100, 180, 100, 255), // Y - Green
+    };
+    
+    // Mono button color (theme-aware)
+    static ImU32 GetMonoButtonColor(ConfigService &config_svc) {
+        return IsCurrentThemeDark(config_svc) 
+            ? IM_COL32(180, 180, 180, 255)   // Light gray on dark theme
+            : IM_COL32(80, 80, 80, 255);     // Dark gray on light theme
+    }
+    
+    // Plus/Minus button color (theme-aware, same for all styles)
+    static ImU32 GetPlusMinusColor(ConfigService &config_svc) {
+        return IsCurrentThemeDark(config_svc) 
+            ? IM_COL32(80, 80, 80, 255)
+            : IM_COL32(140, 140, 145, 255);
+    }
+    
+    // Internal helper for ABXY button colors based on style
+    static ImU32 GetABXYButtonColor(ConfigService &config_svc, int index) {
+        int style = config_svc.ButtonStyle();
+        
+        if (style == ButtonStyle_Accent) {
+            return GetAccentColorU32(config_svc);
+        }
+        if (style == ButtonStyle_Mono) {
+            return GetMonoButtonColor(config_svc);
+        }
+        return kNintendoButtonColors[index];  // Colored style
+    }
+    
     // Button color functions - returns colors based on effective button style
-    ImU32 GetButtonColorA(void) {
-        App& app = GetApp();
-        int style = app.config.effective.button_style;
-        if (style == ButtonStyle_Accent) {
-            return GetAccentColorU32();
-        }
-        if (style == ButtonStyle_Mono) {
-            return IsCurrentThemeDark() 
-                ? IM_COL32(180, 180, 180, 255)   // Light gray on dark
-                : IM_COL32(80, 80, 80, 255);     // Dark gray on light
-        }
-        return IM_COL32(235, 64, 52, 255);  // Red (Nintendo Switch A)
-    }
+    ImU32 GetButtonColorA(ConfigService &config_svc)     { return GetABXYButtonColor(config_svc, 0); }
+    ImU32 GetButtonColorB(ConfigService &config_svc)     { return GetABXYButtonColor(config_svc, 1); }
+    ImU32 GetButtonColorX(ConfigService &config_svc)     { return GetABXYButtonColor(config_svc, 2); }
+    ImU32 GetButtonColorY(ConfigService &config_svc)     { return GetABXYButtonColor(config_svc, 3); }
+    ImU32 GetButtonColorPlus(ConfigService &config_svc)  { return GetPlusMinusColor(config_svc); }
+    ImU32 GetButtonColorMinus(ConfigService &config_svc) { return GetPlusMinusColor(config_svc); }
     
-    ImU32 GetButtonColorB(void) {
-        App& app = GetApp();
-        int style = app.config.effective.button_style;
-        if (style == ButtonStyle_Accent) {
-            return GetAccentColorU32();
-        }
-        if (style == ButtonStyle_Mono) {
-            return IsCurrentThemeDark() 
-                ? IM_COL32(180, 180, 180, 255)
-                : IM_COL32(80, 80, 80, 255);
-        }
-        return IM_COL32(200, 150, 0, 255);  // Yellow (Nintendo Switch B)
-    }
-    
-    ImU32 GetButtonColorX(void) {
-        App& app = GetApp();
-        int style = app.config.effective.button_style;
-        if (style == ButtonStyle_Accent) {
-            return GetAccentColorU32();
-        }
-        if (style == ButtonStyle_Mono) {
-            return IsCurrentThemeDark() 
-                ? IM_COL32(180, 180, 180, 255)
-                : IM_COL32(80, 80, 80, 255);
-        }
-        return IM_COL32(65, 137, 230, 255);  // Blue (Nintendo Switch X)
-    }
-    
-    ImU32 GetButtonColorY(void) {
-        App& app = GetApp();
-        int style = app.config.effective.button_style;
-        if (style == ButtonStyle_Accent) {
-            return GetAccentColorU32();
-        }
-        if (style == ButtonStyle_Mono) {
-            return IsCurrentThemeDark() 
-                ? IM_COL32(180, 180, 180, 255)
-                : IM_COL32(80, 80, 80, 255);
-        }
-        return IM_COL32(100, 180, 100, 255);  // Green (Nintendo Switch Y)
-    }
-    
-    ImU32 GetButtonColorPlus(void) {
-        // Plus/Minus are always gray (same in both styles, theme-aware)
-        return IsCurrentThemeDark() 
-            ? IM_COL32(80, 80, 80, 255)
-            : IM_COL32(140, 140, 145, 255);
-    }
-    
-    ImU32 GetButtonColorMinus(void) {
-        // Plus/Minus are always gray (same in both styles, theme-aware)
-        return IsCurrentThemeDark() 
-            ? IM_COL32(80, 80, 80, 255)
-            : IM_COL32(140, 140, 145, 255);
-    }
-    
-    ImU32 GetButtonTextColor(void) {
-        App& app = GetApp();
-        int style = app.config.effective.button_style;
+    ImU32 GetButtonTextColor(ConfigService &config_svc) {
+        int style = config_svc.ButtonStyle();
         // Text on buttons - white for colored/accent style, contrasting for mono
         if (style == ButtonStyle_Mono) {
-            return IsCurrentThemeDark() 
+            return IsCurrentThemeDark(config_svc) 
                 ? IM_COL32(40, 40, 40, 255)      // Dark text on light buttons (dark theme)
                 : IM_COL32(240, 240, 240, 255);  // Light text on dark buttons (light theme)
         }
         if (style == ButtonStyle_Accent) {
             // Calculate luminance of accent color to determine text color
-            float luminance = 0.299f * app.config.effective.accent_color[0] + 0.587f * app.config.effective.accent_color[1] + 0.114f * app.config.effective.accent_color[2];
+            float luminance = 0.299f * config_svc.AccentR() + 0.587f * config_svc.AccentG() + 0.114f * config_svc.AccentB();
             return luminance > 0.5f 
                 ? IM_COL32(30, 30, 30, 255)      // Dark text on light accent
                 : IM_COL32(255, 255, 255, 255);  // White text on dark accent
@@ -551,7 +517,7 @@ namespace GUI {
         }
     }
     
-    bool Init(void) {
+    bool Init(App &app) {
         IMGUI_CHECKVERSION();
         ImGui::CreateContext();
         ImGuiIO &io = ImGui::GetIO();
@@ -566,7 +532,7 @@ namespace GUI {
         // Try to load existing settings if the file exists
         ImGui::LoadIniSettingsFromDisk(imgui_ini_path);
         
-        if (!GUI::InitEGL(nwindowGetDefault()))
+        if (!InitEGL(app, nwindowGetDefault()))
             return false;
         
         gladLoadGL();
@@ -574,7 +540,7 @@ namespace GUI {
         ImGui_ImplSwitch_Init("#version 130");
         
         // Determine which fonts are needed based on current language setting
-        int lang = Config::GetLang();
+        int lang = app.config.Lang();
         int font_reqs = GetFontRequirements(lang);
         
         // Always load CJK fonts for proper display of all filenames/paths
@@ -645,11 +611,11 @@ namespace GUI {
             // Font atlas is built automatically when needed by the new texture system
         }
 
-        GUI::SetDefaultTheme();
+        SetDefaultTheme(app.config);
         return true;
     }
     
-    bool Loop(u64 &key) {
+    bool Loop(App &app, u64 &key) {
         if (!appletMainLoop())
             return false;
         
@@ -683,14 +649,14 @@ namespace GUI {
         }
         
         // Check for dock/undock and update resolution if needed
-        UpdateDisplayDimensions();
+        UpdateDisplayDimensions(app);
         
         // Check if theme has changed (for Auto mode or manual changes) and refresh colors
-        bool current_theme_dark = IsCurrentThemeDark();
+        bool current_theme_dark = IsCurrentThemeDark(app.config);
         if (current_theme_dark != s_last_theme_dark) {
             s_last_theme_dark = current_theme_dark;
-            UpdateThemeColors();
-            UpdateAccentColors();
+            UpdateThemeColors(app.config);
+            UpdateAccentColors(app.config);
         }
         
         key = ImGui_ImplSwitch_NewFrame();
@@ -763,7 +729,9 @@ namespace GUI {
         }
     }
     
-    void Exit(void) {
+    void Exit(App &app) {
+        (void)app;  // Currently unused but available for future cleanup needs
+        
         // Save ImGui settings (table column widths, etc.) to SD card
         ImGui::SaveIniSettingsToDisk(ImGui::GetIO().IniFilename);
         
@@ -777,7 +745,7 @@ namespace GUI {
         ImGui::DestroyContext();
         
         // Clean up EGL (includes glFinish() for GPU sync)
-        GUI::ExitEGL();
+        ExitEGL();
     }
     
     bool IsHoldingToClose(float &progress) {
@@ -818,25 +786,23 @@ namespace GUI {
         return true;
     }
     
-    void ResetUIState(void) {
-        App& app = GetApp();
+    void ResetUIState(App &app) {
         // Called after language change - the overlay will re-assert its z-order
         // in RenderStatsOverlay via BringWindowToDisplayFront
-        Log::Debug("ResetUIState called - cfg.show_stats=%d, cfg.lang=%d\n", app.config.saved.show_stats, app.config.saved.lang);
+        Log::Debug("ResetUIState called - cfg.show_stats=%d, cfg.lang=%d\n", app.config.normal.show_stats, app.config.normal.lang);
     }
     
     void SetRightStickScrollSuppressed(bool suppress) {
         s_right_stick_scroll_suppressed = suppress;
     }
     
-    void ResetImGuiSettings(void) {
-        App& app = GetApp();
+    void ResetImGuiSettings(FileSystemService &fs_svc) {
         // Clear in-memory ImGui settings (table column widths, window positions, etc.)
         ImGui::ClearIniSettings();
         
         // Delete the ini file from disk so it won't be reloaded
         static const char* imgui_ini_path = "/switch/NX-Shell/imgui.ini";
-        fsFsDeleteFile(std::addressof(app.fs.devices[FileSystemSDMC]), imgui_ini_path);
+        fsFsDeleteFile(std::addressof(fs_svc.devices[FileSystemSDMC]), imgui_ini_path);
         
         Log::Debug("ResetImGuiSettings - cleared in-memory settings and deleted %s\n", imgui_ini_path);
     }
@@ -861,14 +827,13 @@ namespace GUI {
         }
     }
 
-    void RenderStatsOverlay(void) {
-        App& app = GetApp();
-        if (!app.config.effective.show_stats) {
+    void RenderStatsOverlay(App &app) {
+        if (!app.config.ShowStats()) {
             return;
         }
         
         ImGuiIO &io = ImGui::GetIO();
-        const int lang = Config::GetLang();
+        const int lang = app.config.Lang();
         
         // FPS history buffer for 1 minute graph (store one sample per frame, ~60 fps = 3600 samples)
         static constexpr int FPS_HISTORY_SIZE = 3600;  // ~60 seconds at 60 fps
@@ -976,7 +941,7 @@ namespace GUI {
 }
 
 namespace Toast {
-    void DrawFilename(const char* text) {
+    void DrawFilename(ConfigService &config_svc, const char* text) {
         ImDrawList *draw_list = ImGui::GetForegroundDrawList();
         
         ImVec2 text_size = ImGui::CalcTextSize(text);
@@ -990,7 +955,7 @@ namespace Toast {
         const float toast_h = text_size.y + padding_y * 2;
         
         // Theme-aware colors
-        const bool is_dark = GUI::IsCurrentThemeDark();
+        const bool is_dark = GUI::IsCurrentThemeDark(config_svc);
         ImU32 bg_color = is_dark ? IM_COL32(0, 0, 0, 180) : IM_COL32(255, 255, 255, 220);
         ImU32 text_color = is_dark ? IM_COL32(255, 255, 255, 255) : IM_COL32(0, 0, 0, 255);
         
@@ -1006,12 +971,11 @@ namespace Toast {
         );
     }
     
-    void DrawCentered(const char* text, float alpha) {
-        App& app = GetApp();
+    void DrawCentered(GUIService &gui_svc, const char* text, float alpha) {
         ImDrawList *draw_list = ImGui::GetForegroundDrawList();
         
-        const float display_w = static_cast<float>(app.gui.display_width);
-        const float display_h = static_cast<float>(app.gui.display_height);
+        const float display_w = static_cast<float>(gui_svc.display_width);
+        const float display_h = static_cast<float>(gui_svc.display_height);
         
         ImVec2 text_size = ImGui::CalcTextSize(text);
         

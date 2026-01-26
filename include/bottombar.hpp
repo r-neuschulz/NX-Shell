@@ -3,6 +3,7 @@
 #include <vector>
 
 #include "imgui.h"
+#include "services.hpp"
 
 namespace BottomBar {
     // Button types that can appear in the bottom bar
@@ -38,10 +39,11 @@ namespace BottomBar {
     };
 
     // Main drawing function
+    // - cfg_svc: Config service for theme/button colors
     // - config: Bar configuration (draw list type, background, dimensions)
     // - left_items: Left-aligned items (typically just Minus button)
     // - right_items: Right-aligned items (main button hints)
-    void Draw(const Config& config, 
+    void Draw(ConfigService &cfg_svc, const Config& config, 
               const std::vector<HintItem>& left_items,
               const std::vector<HintItem>& right_items);
     

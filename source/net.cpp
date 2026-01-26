@@ -9,6 +9,7 @@
 #include "fs.hpp"
 #include "log.hpp"
 #include "net.hpp"
+#include "services.hpp"
 
 namespace Net {
     static s64 offset = 0;
@@ -121,7 +122,7 @@ namespace Net {
         return (size * nmemb);
     }
     
-    void GetLatestReleaseNRO(const std::string &tag) {
+    void GetLatestReleaseNRO(FileSystemService &fs_svc, const std::string &tag) {
         // Ensure socket is ready before network operations (lazy init if needed)
         EnsureSocketReady();
         
@@ -130,9 +131,9 @@ namespace Net {
         const char path[FS_MAX_PATH] = "/switch/NX-Shell/NX-Shell_UPDATE.nro";
 
         if (!FS::FileExists(path))
-            fsFsCreateFile(std::addressof(devices[FileSystemSDMC]), path, 0, 0);
+            fsFsCreateFile(std::addressof(fs_svc.devices[FileSystemSDMC]), path, 0, 0);
 
-        if (R_FAILED(ret = fsFsOpenFile(std::addressof(devices[FileSystemSDMC]), path, FsOpenMode_Write | FsOpenMode_Append, std::addressof(file)))) {
+        if (R_FAILED(ret = fsFsOpenFile(std::addressof(fs_svc.devices[FileSystemSDMC]), path, FsOpenMode_Write | FsOpenMode_Append, std::addressof(file)))) {
             Log::Error("fsFsOpenFile(%s) failed: 0x%x\n", path, ret);
             return;
         }

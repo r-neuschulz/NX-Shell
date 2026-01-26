@@ -7,7 +7,7 @@
 
 namespace Popups {
     // Returns: 0 = cancelled/pending, 1 = open as text, 2 = open as hex
-    int OpenModePopup(bool &show) {
+    int OpenModePopup(App &app, bool &show) {
         static int result = 0;
         
         if (!show) {
@@ -15,8 +15,8 @@ namespace Popups {
             return 0;
         }
         
-        const int lang = Config::GetLang();
-        Popups::SetupPopup(strings[lang][Lang::HexModeOpenTitle]);
+        const int lang = app.config.Lang();
+        Popups::SetupPopup(app, strings[lang][Lang::HexModeOpenTitle]);
         
         if (ImGui::BeginPopupModal(strings[lang][Lang::HexModeOpenTitle], nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
             ImGui::Text("%s", strings[lang][Lang::HexModeOpenMessage]);
@@ -25,8 +25,8 @@ namespace Popups {
             
             // Center the buttons
             float button_width = 150.0f;
-            float spacing = 15.0f;
-            float total_width = button_width * 2 + spacing;
+            float spacing_btn = 15.0f;
+            float total_width = button_width * 2 + spacing_btn;
             float start_x = (ImGui::GetWindowWidth() - total_width) * 0.5f;
             ImGui::SetCursorPosX(start_x);
             
@@ -36,7 +36,7 @@ namespace Popups {
                 ImGui::CloseCurrentPopup();
             }
             
-            ImGui::SameLine(0.0f, spacing);
+            ImGui::SameLine(0.0f, spacing_btn);
             
             if (ImGui::Button(strings[lang][Lang::HexModeOpenAsHex], ImVec2(button_width, 0))) {
                 result = 2;  // Open as hex

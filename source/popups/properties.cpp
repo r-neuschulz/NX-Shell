@@ -16,9 +16,10 @@ namespace Popups {
         return string;
     }
 
-    void FilePropertiesPopup(WindowData &data, bool &file_stat, bool *properties) {
-        const int lang = Config::GetLang();
-        Popups::SetupPopup(strings[lang][Lang::OptionsProperties]);
+    void FilePropertiesPopup(App &app, bool &file_stat, bool *properties) {
+        WindowData &data = app.window;
+        const int lang = app.config.Lang();
+        Popups::SetupPopup(app, strings[lang][Lang::OptionsProperties]);
         
         if (ImGui::BeginPopupModal(strings[lang][Lang::OptionsProperties], nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
             std::string name_text = strings[lang][Lang::PropertiesName] + std::string(data.entries[data.selected].name);
@@ -41,7 +42,7 @@ namespace Popups {
             }
             
             FsTimeStampRaw timestamp;
-            if (FS::GetTimeStamp(data.entries[data.selected], timestamp)) {
+            if (FS::GetTimeStamp(app.fs, data.entries[data.selected], timestamp)) {
                 if (timestamp.is_valid == 1) { // Confirm valid timestamp
                     char date[3][36];
                     
@@ -78,9 +79,8 @@ namespace Popups {
         Popups::ExitPopup();
     }
 
-    void ImageProperties(bool &state, Tex &texture, bool &file_stat) {
-        App& app = GetApp();
-        Popups::SetupPopup(strings[Config::GetLang()][Lang::OptionsProperties]);
+    void ImageProperties(App &app, bool &state, Tex &texture, bool &file_stat) {
+        Popups::SetupPopup(app, strings[app.config.Lang()][Lang::OptionsProperties]);
 
         std::string new_width, new_height;
         if (ImGui::BeginPopupModal("Properties", std::addressof(state), ImGuiWindowFlags_AlwaysAutoResize)) {

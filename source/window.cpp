@@ -7,7 +7,6 @@
 #include "gui.hpp"
 #include "services.hpp"
 #include "imgui.h"
-#define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui_internal.h"
 #include "popups.hpp"
 #include "selection.hpp"
@@ -30,10 +29,9 @@ namespace Windows {
         ImageViewer::CleanupDeferredDeletions();
     }
 
-    void SetupWindow(void) {
-        App& app = GetApp();
+    void SetupWindow(GUIService &gui_svc) {
         ImGui::SetNextWindowPos(ImVec2(0.0f, 0.0f), ImGuiCond_Always);
-        ImGui::SetNextWindowSize(ImVec2(static_cast<float>(app.gui.display_width), static_cast<float>(app.gui.display_height)), ImGuiCond_Always);
+        ImGui::SetNextWindowSize(ImVec2(static_cast<float>(gui_svc.display_width), static_cast<float>(gui_svc.display_height)), ImGuiCond_Always);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
     };
     
@@ -49,9 +47,9 @@ namespace Windows {
     static constexpr float SHOULDER_BTN_SPACING = 8.0f;  // Padding around button
     static constexpr float SHOULDER_BTN_CHAMFER = 8.0f;  // Chamfer size for corners
     
-    static void DrawShoulderButton(ImDrawList *draw_list, ImVec2 pos, const char *label, bool is_left) {
+    static void DrawShoulderButton(ConfigService &config_svc, ImDrawList *draw_list, ImVec2 pos, const char *label, bool is_left) {
         // Theme-aware colors for shoulder buttons
-        const bool dark_theme = GUI::IsCurrentThemeDark();
+        const bool dark_theme = GUI::IsCurrentThemeDark(config_svc);
         const ImU32 bg_color = dark_theme ? IM_COL32(60, 60, 60, 255) : IM_COL32(180, 180, 185, 255);
         const ImU32 text_color = dark_theme ? IM_COL32(255, 255, 255, 255) : IM_COL32(40, 40, 45, 255);
         
@@ -96,12 +94,12 @@ namespace Windows {
     
     // Draw the WiFi signal strength indicator (4 bars + dB value)
     // rssi: signal strength in dBm, or 0 if unavailable (nifm fallback)
-    static void DrawWiFiIndicator(ImDrawList *draw_list, ImVec2 pos, int signal_bars, bool connected, s32 rssi) {
-        const bool dark_theme = GUI::IsCurrentThemeDark();
+    static void DrawWiFiIndicator(ConfigService &config_svc, ImDrawList *draw_list, ImVec2 pos, int signal_bars, bool connected, s32 rssi) {
+        const bool dark_theme = GUI::IsCurrentThemeDark(config_svc);
         const ImU32 bar_active_color = dark_theme ? IM_COL32(255, 255, 255, 255) : IM_COL32(40, 40, 45, 255);
         const ImU32 bar_inactive_color = dark_theme ? IM_COL32(80, 80, 80, 180) : IM_COL32(180, 180, 185, 180);
         const ImU32 text_color = dark_theme ? IM_COL32(255, 255, 255, 255) : IM_COL32(40, 40, 45, 255);
-        const ImU32 disconnected_color = GUI::GetAccentColorU32();  // Use accent color when disconnected
+        const ImU32 disconnected_color = GUI::GetAccentColorU32(config_svc);  // Use accent color when disconnected
         
         const float bar_width = 3.0f;
         const float bar_spacing = 2.0f;
@@ -141,8 +139,8 @@ namespace Windows {
     }
     
     // Draw the battery indicator with percentage
-    static void DrawBatteryIndicator(ImDrawList *draw_list, ImVec2 pos, u32 percent, bool is_charging) {
-        const bool dark_theme = GUI::IsCurrentThemeDark();
+    static void DrawBatteryIndicator(ConfigService &config_svc, ImDrawList *draw_list, ImVec2 pos, u32 percent, bool is_charging) {
+        const bool dark_theme = GUI::IsCurrentThemeDark(config_svc);
         const ImU32 outline_color = dark_theme ? IM_COL32(200, 200, 200, 255) : IM_COL32(60, 60, 65, 255);
         const ImU32 text_color = dark_theme ? IM_COL32(255, 255, 255, 255) : IM_COL32(40, 40, 45, 255);
         
@@ -219,10 +217,10 @@ namespace Windows {
     
     // Draw the dock/resolution indicator with corner brackets around the text
     // is_forced: true when resolution is manually set and differs from auto-detected
-    static void DrawDockIndicator(ImDrawList *draw_list, ImVec2 pos, bool is_1080p, bool is_forced) {
-        const bool dark_theme = GUI::IsCurrentThemeDark();
+    static void DrawDockIndicator(ConfigService &config_svc, ImDrawList *draw_list, ImVec2 pos, bool is_1080p, bool is_forced) {
+        const bool dark_theme = GUI::IsCurrentThemeDark(config_svc);
         const ImU32 normal_color = dark_theme ? IM_COL32(200, 200, 200, 255) : IM_COL32(60, 60, 65, 255);
-        const ImU32 accent_color = GUI::GetAccentColorU32();
+        const ImU32 accent_color = GUI::GetAccentColorU32(config_svc);
         
         // Use accent color when resolution is forced (overriding auto)
         const ImU32 indicator_color = is_forced ? accent_color : normal_color;
@@ -331,7 +329,7 @@ namespace Windows {
     }
     
     // Draw the complete status bar in the title bar area
-    static void DrawStatusBar(ImDrawList *draw_list, ImVec2 title_bar_max) {
+    static void DrawStatusBar(App &app, ImDrawList *draw_list, ImVec2 title_bar_max) {
         // Get battery info
         u32 battery_percent = 100;
         bool is_charging = false;
@@ -377,7 +375,6 @@ namespace Windows {
             }
         }
         
-        App& app = GetApp();
         // Check actual display resolution (not just dock state, as user may have forced a resolution)
         bool is_1080p = (app.gui.display_height >= 1080);
         
@@ -386,10 +383,10 @@ namespace Windows {
         bool is_docked = GUI::IsDocked();
         bool auto_would_be_1080p = is_docked;
         bool is_resolution_forced = false;
-        if (app.config.effective.resolution_mode == ResolutionMode_1080p && !auto_would_be_1080p) {
+        if (app.config.ResolutionMode() == ResolutionMode_1080p && !auto_would_be_1080p) {
             // User forced 1080p while handheld (auto would be 720p)
             is_resolution_forced = true;
-        } else if (app.config.effective.resolution_mode == ResolutionMode_720p && auto_would_be_1080p) {
+        } else if (app.config.ResolutionMode() == ResolutionMode_720p && auto_would_be_1080p) {
             // User forced 720p while docked (auto would be 1080p)
             is_resolution_forced = true;
         }
@@ -400,24 +397,26 @@ namespace Windows {
         float y = title_bar_max.y - ICON_HEIGHT - 6.0f;  // Vertically center in title bar
         
         // Draw WiFi indicator with dB value
-        DrawWiFiIndicator(draw_list, ImVec2(start_x, y), wifi_bars, wifi_connected, rssi);
+        DrawWiFiIndicator(app.config, draw_list, ImVec2(start_x, y), wifi_bars, wifi_connected, rssi);
         start_x += 62.0f + STATUS_ITEM_SPACING;
         
         // Draw dock/resolution indicator (highlighted if resolution is forced)
-        DrawDockIndicator(draw_list, ImVec2(start_x, y), is_1080p, is_resolution_forced);
+        DrawDockIndicator(app.config, draw_list, ImVec2(start_x, y), is_1080p, is_resolution_forced);
         start_x += 78.0f + STATUS_ITEM_SPACING;
         
         // Draw battery indicator
-        DrawBatteryIndicator(draw_list, ImVec2(start_x, y), battery_percent, is_charging);
+        DrawBatteryIndicator(app.config, draw_list, ImVec2(start_x, y), battery_percent, is_charging);
     }
 
-    void MainWindow(WindowData &data, u64 &key, bool progress) {
+    void MainWindow(App &app, u64 &key, bool progress) {
         // Process deferred image texture deletions at the START of each frame,
         // AFTER the previous frame's GPU commands have executed (via eglSwapBuffers).
         // This prevents the "font texture flash" when exiting the image viewer.
         ProcessImageViewerCleanup();
         
-        Windows::SetupWindow();
+        SelectionStore selection(app.selection);
+        
+        Windows::SetupWindow(app.gui);
         if (ImGui::Begin("NX-Shell", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse)) {
             ImDrawList *draw_list = ImGui::GetWindowDrawList();
             
@@ -425,12 +424,11 @@ namespace Windows {
             // Use GetForegroundDrawList() because the title bar is outside the window's
             // InnerClipRect that gets pushed after Begin() - window draw list would be clipped
             // Skip drawing when in fullscreen image viewer mode (user wants distraction-free viewing)
-            App& app = GetApp();
             ImGuiWindow* window = ImGui::GetCurrentWindow();
             if (window && !(app.window.state == WINDOW_STATE_IMAGEVIEWER && app.window.image_fullscreen)) {
                 ImVec2 title_bar_min = ImVec2(window->Pos.x, window->Pos.y);
                 ImVec2 title_bar_max = ImVec2(window->Pos.x + window->Size.x, window->Pos.y + ImGui::GetFrameHeight());
-                DrawStatusBar(ImGui::GetForegroundDrawList(), title_bar_max);
+                DrawStatusBar(app, ImGui::GetForegroundDrawList(), title_bar_max);
                 
                 // Draw applet mode warning banner if running in applet mode
                 if (GUI::IsAppletMode()) {
@@ -442,16 +440,16 @@ namespace Windows {
             
             // Draw L button on the left
             ImVec2 l_btn_pos = ImVec2(cursor_start.x, cursor_start.y + 2.0f);
-            DrawShoulderButton(draw_list, l_btn_pos, "L", true);
+            DrawShoulderButton(app.config, draw_list, l_btn_pos, "L", true);
             
             // Move cursor past L button
             ImGui::SetCursorScreenPos(ImVec2(cursor_start.x + SHOULDER_BTN_WIDTH + SHOULDER_BTN_SPACING, cursor_start.y));
             
             if (ImGui::BeginTabBar("NX-Shell-tabs", ImGuiTabBarFlags_None)) {
                 // Track active tab based on which tab content is rendered
-                Tabs::FileBrowser(data, current_tab, active_tab);
-                Tabs::Settings(data, current_tab, active_tab);
-                Tabs::About(data, current_tab, active_tab);
+                Tabs::FileBrowser(app, current_tab, active_tab);
+                Tabs::Settings(app, current_tab, active_tab);
+                Tabs::About(app, current_tab, active_tab);
                 
                 // Get tab bar info before ending
                 ImGuiTabBar* tab_bar = ImGui::GetCurrentTabBar();
@@ -462,7 +460,7 @@ namespace Windows {
                 
                 // Draw R button right after the last tab
                 ImVec2 r_btn_pos = ImVec2(cursor_start.x + SHOULDER_BTN_WIDTH + SHOULDER_BTN_SPACING + tabs_width + SHOULDER_BTN_SPACING, cursor_start.y + 2.0f);
-                DrawShoulderButton(draw_list, r_btn_pos, "R", false);
+                DrawShoulderButton(app.config, draw_list, r_btn_pos, "R", false);
                 
                 // Draw underline extending under both L and R buttons
                 ImU32 line_color = ImGui::GetColorU32(ImGuiCol_TabSelected);
@@ -481,7 +479,6 @@ namespace Windows {
         }
         Windows::ExitWindow();
         
-        App& app = GetApp();
         // Handle L/R button tab switching - only when in file browser (not image viewer, text reader, etc.)
         if (app.window.state == WINDOW_STATE_FILEBROWSER) {
             if (key & HidNpadButton_L) {
@@ -489,7 +486,7 @@ namespace Windows {
                 current_tab = new_tab;
                 // Request focus on the appropriate element for each tab
                 switch (new_tab) {
-                    case 0: Tabs::RequestFileBrowserFocus(); break;
+                    case 0: Tabs::RequestFileBrowserFocus(app.fs); break;
                     case 1: Tabs::RequestSettingsFocus(); break;
                     case 2: Tabs::RequestAboutFocus(); break;
                 }
@@ -499,7 +496,7 @@ namespace Windows {
                 current_tab = new_tab;
                 // Request focus on the appropriate element for each tab
                 switch (new_tab) {
-                    case 0: Tabs::RequestFileBrowserFocus(); break;
+                    case 0: Tabs::RequestFileBrowserFocus(app.fs); break;
                     case 1: Tabs::RequestSettingsFocus(); break;
                     case 2: Tabs::RequestAboutFocus(); break;
                 }
@@ -511,50 +508,50 @@ namespace Windows {
 
         switch (app.window.state) {
             case WINDOW_STATE_OPTIONS:
-                Popups::OptionsPopup(app.window);
+                Popups::OptionsPopup(app);
                 break;
 
             case WINDOW_STATE_PROPERTIES:
-                Popups::FilePropertiesPopup(app.window, file_stat);
+                Popups::FilePropertiesPopup(app, file_stat);
                 break;
             
             case WINDOW_STATE_DELETE:
-                Popups::DeletePopup(app.window);
+                Popups::DeletePopup(app);
                 break;
 
             case WINDOW_STATE_ARCHIVEEXTRACT:
-                Popups::ArchivePopup();
+                Popups::ArchivePopup(app);
                 break;
 
             case WINDOW_STATE_REPLACE:
-                Popups::ReplacePopup(app.window, Popups::IsPendingReplaceMove());
+                Popups::ReplacePopup(app, Popups::IsPendingReplaceMove());
                 break;
 
             case WINDOW_STATE_MULTI_REPLACE:
-                Popups::MultiReplacePopup(app.window, Popups::IsPendingReplaceMove(), 
+                Popups::MultiReplacePopup(app, Popups::IsPendingReplaceMove(), 
                                           Popups::GetMultiConflictCount(), 
                                           Popups::GetMultiTotalCount());
                 break;
 
             case WINDOW_STATE_IMAGEVIEWER:
-                Windows::ImageViewer(image_properties, file_stat);
-                ImageViewer::HandleControls(key, image_properties);
+                Windows::ImageViewer(app, image_properties, file_stat);
+                ImageViewer::HandleControls(app, key, image_properties);
                 break;
 
             case WINDOW_STATE_TEXTREADER:
-                Windows::TextReader(text_properties, file_stat);
-                TextReader::HandleControls(key, text_properties);
+                Windows::TextReader(app, text_properties, file_stat);
+                TextReader::HandleControls(app, key, text_properties);
                 break;
 
             case WINDOW_STATE_OPENMODE:
                 {
                     static bool show_openmode_popup = true;
-                    int mode_result = Popups::OpenModePopup(show_openmode_popup);
+                    int mode_result = Popups::OpenModePopup(app, show_openmode_popup);
                     
                     if (mode_result == 1) {
                         // Open as text
-                        std::string path = FS::BuildPath(app.window.entries[app.window.selected]);
-                        if (TextReader::LoadFile(path)) {
+                        std::string path = FS::BuildPath(app.fs, app.window.entries[app.window.selected]);
+                        if (TextReader::LoadFile(app, path)) {
                             TextReader::SetHexMode(false);
                             app.window.state = WINDOW_STATE_TEXTREADER;
                         } else {
@@ -563,8 +560,8 @@ namespace Windows {
                         show_openmode_popup = true;  // Reset for next time
                     } else if (mode_result == 2) {
                         // Open as hex
-                        std::string path = FS::BuildPath(app.window.entries[app.window.selected]);
-                        if (TextReader::LoadFile(path)) {
+                        std::string path = FS::BuildPath(app.fs, app.window.entries[app.window.selected]);
+                        if (TextReader::LoadFile(app, path)) {
                             TextReader::SetHexMode(true);
                             app.window.state = WINDOW_STATE_TEXTREADER;
                         } else {
@@ -583,7 +580,7 @@ namespace Windows {
                 break;
         }
 
-        if ((key & HidNpadButton_X) && (app.window.state == WINDOW_STATE_FILEBROWSER) && (active_tab == 0) && !FS::IsAtPartitionRoot())
+        if ((key & HidNpadButton_X) && (app.window.state == WINDOW_STATE_FILEBROWSER) && (active_tab == 0) && !FS::IsAtPartitionRoot(app.fs))
             app.window.state = WINDOW_STATE_OPTIONS;
         
         // Plus button opens the device selector when in file browser
@@ -592,7 +589,7 @@ namespace Windows {
         
         // ZR button toggles details view (size, date modified columns)
         if ((key & HidNpadButton_ZR) && (app.window.state == WINDOW_STATE_FILEBROWSER) && (active_tab == 0))
-            Tabs::ToggleDetails();
+            Tabs::ToggleDetails(app);
 
         if ((key & HidNpadButton_Y) && (app.window.state == WINDOW_STATE_FILEBROWSER) && (active_tab == 0)) {
             // Toggle selection using SelectionStore
@@ -605,9 +602,9 @@ namespace Windows {
                 // For folders, use recursive selection/deselection
                 // This allows users to later unselect individual items within
                 if (app.window.entries[app.window.selected].type == FsDirEntryType_Dir) {
-                    g_selection.ToggleFolder(selected_path);
+                    selection.ToggleFolder(selected_path);
                 } else {
-                    g_selection.Toggle(selected_path);
+                    selection.Toggle(selected_path);
                 }
             }
         }
@@ -626,7 +623,7 @@ namespace Windows {
                     else if ((active_tab == 1 || active_tab == 2) && !popup_was_open) {
                         // Jump back to file browser tab (but not if a combo/popup was open)
                         current_tab = 0;
-                        Tabs::RequestFileBrowserFocus();
+                        Tabs::RequestFileBrowserFocus(app.fs);
                     }
                     break;
                 
@@ -648,7 +645,7 @@ namespace Windows {
                     break;
 
                 case WINDOW_STATE_MULTI_REPLACE:
-                    Popups::ClearPendingMultiOperation();
+                    Popups::ClearPendingMultiOperation(app.fs);
                     app.window.state = WINDOW_STATE_OPTIONS;
                     break;
 
@@ -666,7 +663,7 @@ namespace Windows {
                         file_stat = false;
                     }
                     else {
-                        ImageViewer::ClearTextures();
+                        ImageViewer::ClearTextures(app);
                         app.window.state = WINDOW_STATE_FILEBROWSER;
                     }
                     
@@ -678,7 +675,7 @@ namespace Windows {
                         file_stat = false;
                     }
                     else {
-                        TextReader::Clear();
+                        TextReader::Clear(app);
                         app.window.state = WINDOW_STATE_FILEBROWSER;
                     }
                     

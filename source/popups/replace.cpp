@@ -14,9 +14,10 @@ namespace Popups {
     extern bool move;
     extern bool pending_replace_is_move;
 
-    void ReplacePopup(WindowData &data, bool is_move) {
-        const int lang = Config::GetLang();
-        Popups::SetupPopup(strings[lang][Lang::ReplaceTitle]);
+    void ReplacePopup(App &app, bool is_move) {
+        WindowData &data = app.window;
+        const int lang = app.config.Lang();
+        Popups::SetupPopup(app, strings[lang][Lang::ReplaceTitle]);
         
         if (ImGui::BeginPopupModal(strings[lang][Lang::ReplaceTitle], nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
             ImGui::Text("%s", strings[lang][Lang::ReplaceMessage]);
@@ -25,7 +26,7 @@ namespace Popups {
             
             if (ImGui::Button(strings[lang][Lang::ReplaceButton], ImVec2(120, 0))) {
                 // Build destination path and delete existing file/directory first
-                std::string dest_path = FS::BuildPath(FS::GetCopyEntryFilename(), true);
+                std::string dest_path = FS::BuildPath(app.fs, FS::GetCopyEntryFilename(app.fs), true);
                 if (!FS::DeletePath(dest_path)) {
                     Log::Error("ReplacePopup: Failed to delete existing destination: %s\n", dest_path.c_str());
                     // Continue anyway - the copy/move might still succeed
@@ -33,21 +34,21 @@ namespace Popups {
                 
                 bool ret = false;
                 if (is_move) {
-                    ret = FS::Move();
+                    ret = FS::Move(app);
                     move = false;
                 } else {
                     ImGui::EndPopup();
                     ImGui::PopStyleVar();
                     ImGui::Render();
                     
-                    ret = FS::Paste();
+                    ret = FS::Paste(app);
                     copy = false;
                     
                     if (ret) {
-                        if (!FS::RefreshDirectory(data.entries, data.metadata_cache, true)) {
+                        if (!FS::RefreshDirectory(app.fs, app.selection, data.entries, data.metadata_cache, true)) {
                             Log::Error("ReplacePopup: Failed to refresh directory after paste\n");
                         }
-                        sort = -1;
+                        data.sort = -1;
                     }
                     
                     data.state = WINDOW_STATE_FILEBROWSER;
@@ -55,10 +56,10 @@ namespace Popups {
                 }
                 
                 if (ret) {
-                    if (!FS::RefreshDirectory(data.entries, data.metadata_cache, true)) {
+                    if (!FS::RefreshDirectory(app.fs, app.selection, data.entries, data.metadata_cache, true)) {
                         Log::Error("ReplacePopup: Failed to refresh directory after move\n");
                     }
-                    sort = -1;
+                    data.sort = -1;
                 }
                 
                 ImGui::CloseCurrentPopup();
@@ -76,9 +77,10 @@ namespace Popups {
         Popups::ExitPopup();
     }
 
-    void MultiReplacePopup(WindowData &data, bool is_move, size_t conflict_count, size_t total_count) {
-        const int lang = Config::GetLang();
-        Popups::SetupPopup(strings[lang][Lang::ReplaceTitle]);
+    void MultiReplacePopup(App &app, bool is_move, size_t conflict_count, size_t total_count) {
+        WindowData &data = app.window;
+        const int lang = app.config.Lang();
+        Popups::SetupPopup(app, strings[lang][Lang::ReplaceTitle]);
         
         if (ImGui::BeginPopupModal(strings[lang][Lang::ReplaceTitle], nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
             // Format the message with conflict count
@@ -91,7 +93,7 @@ namespace Popups {
             
             // Replace All button
             if (ImGui::Button(strings[lang][Lang::MultiReplaceAll], ImVec2(150, 0))) {
-                FS::SetConflictHandling(ConflictHandling_ReplaceAll);
+                FS::SetConflictHandling(app.fs, ConflictHandling_ReplaceAll);
                 ImGui::CloseCurrentPopup();
                 data.state = WINDOW_STATE_OPTIONS;  // Return to options to execute copy/move
             }
@@ -100,7 +102,7 @@ namespace Popups {
             
             // Skip Existing button
             if (ImGui::Button(strings[lang][Lang::MultiReplaceSkip], ImVec2(150, 0))) {
-                FS::SetConflictHandling(ConflictHandling_SkipAll);
+                FS::SetConflictHandling(app.fs, ConflictHandling_SkipAll);
                 ImGui::CloseCurrentPopup();
                 data.state = WINDOW_STATE_OPTIONS;  // Return to options to execute copy/move
             }
@@ -109,7 +111,7 @@ namespace Popups {
             
             // Cancel button
             if (ImGui::Button(strings[lang][Lang::ButtonCancel], ImVec2(120, 0))) {
-                Popups::ClearPendingMultiOperation();
+                Popups::ClearPendingMultiOperation(app.fs);
                 copy = false;
                 move = false;
                 ImGui::CloseCurrentPopup();

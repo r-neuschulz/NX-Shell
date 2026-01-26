@@ -9,8 +9,7 @@
 // SelectionStore class wrapping SelectionService for compatibility
 class SelectionStore {
 public:
-    SelectionStore();
-    SelectionStore(SelectionService &svc);
+    explicit SelectionStore(SelectionService &svc);
     
     bool IsSelected(const std::string &path) const;
     bool HasSelectionsUnder(const std::string &prefix) const;
@@ -42,6 +41,3 @@ private:
     void UpdateCachedInfo();
     void DeselectAncestors(const std::string &path);
 };
-
-// Global selection store instance (forwards to App::selection)
-extern SelectionStore g_selection;

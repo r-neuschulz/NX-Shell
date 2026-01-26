@@ -9,18 +9,24 @@ namespace Log {
     static s64 offset = 0;
     static bool file_is_open = false;
     
+    // Cached references set at init time - avoids GetApp() in hot paths
+    static FsFileSystem *s_sdmc_fs = nullptr;
+    static bool s_dev_options = false;
+    
     // Internal helper to ensure log file is open (lazy initialization)
     static bool EnsureFileOpen(void) {
-        App& app = GetApp();
         if (file_is_open)
             return true;
+        
+        if (!s_sdmc_fs)
+            return false;
         
         const char *log_path = "/switch/NX-Shell/debug.log";
         
         if (!FS::FileExists(log_path))
-            fsFsCreateFile(std::addressof(app.fs.devices[FileSystemSDMC]), log_path, 0, 0);
+            fsFsCreateFile(s_sdmc_fs, log_path, 0, 0);
             
-        if (R_FAILED(fsFsOpenFile(std::addressof(app.fs.devices[FileSystemSDMC]), log_path, (FsOpenMode_Read | FsOpenMode_Write | FsOpenMode_Append), std::addressof(file))))
+        if (R_FAILED(fsFsOpenFile(s_sdmc_fs, log_path, (FsOpenMode_Read | FsOpenMode_Write | FsOpenMode_Append), std::addressof(file))))
             return false;
         
         file_is_open = true;
@@ -34,17 +40,19 @@ namespace Log {
         return true;
     }
     
-    void Init(void) {
-        App& app = GetApp();
-        if (!app.config.effective.dev_options)
+    void Init(App &app) {
+        // Cache values to avoid GetApp() calls in logging functions
+        s_sdmc_fs = std::addressof(app.fs.devices[FileSystemSDMC]);
+        s_dev_options = app.config.DevOptions();
+        
+        if (!s_dev_options)
             return;
         
         EnsureFileOpen();
     }
     
     void Error(const char *data, ...) {
-        App& app = GetApp();
-        if (!app.config.effective.dev_options)
+        if (!s_dev_options)
             return;
          
         char buf[256 + FS_MAX_PATH];
@@ -71,8 +79,7 @@ namespace Log {
     }
     
     void Debug(const char *data, ...) {
-        App& app = GetApp();
-        if (!app.config.effective.dev_options)
+        if (!s_dev_options)
             return;
          
         char buf[256 + FS_MAX_PATH];
@@ -99,8 +106,7 @@ namespace Log {
     }
     
     void Flush(void) {
-        App& app = GetApp();
-        if (!app.config.effective.dev_options || !file_is_open)
+        if (!s_dev_options || !file_is_open)
             return;
         
         std::fflush(stdout);  // Flush nxlink

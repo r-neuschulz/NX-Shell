@@ -25,11 +25,11 @@ static bool prev_at_partition_root = false;  // Track previous partition root st
 static bool prev_show_details = false;  // Track previous details state
 
 namespace Tabs {
-    void RequestFileBrowserFocus(void) {
+    void RequestFileBrowserFocus(FileSystemService &fs_svc) {
         // Focus appropriate entry based on current view
         // At partition root: focus "sdmc:" (SD card)
         // In directory: focus ".." (parent navigation)
-        pending_focus_name = FS::IsAtPartitionRoot() ? "sdmc:" : "..";
+        pending_focus_name = FS::IsAtPartitionRoot(fs_svc) ? "sdmc:" : "..";
     }
     
     void RequestDeviceCombo(void) {
@@ -41,11 +41,10 @@ namespace Tabs {
         go_to_parent_directory = true;
     }
     
-    void ToggleDetails(void) {
-        App& app = GetApp();
+    void ToggleDetails(App &app) {
         if (!GUI::IsAppletMode()) {  // No-op in applet mode
-            app.config.saved.show_details = !app.config.saved.show_details;
-            Config::Save(app.config.saved);
+            app.config.normal.show_details = !app.config.normal.show_details;
+            Config::Save(app.config, app.fs);
         }
         // Preserve current focus when toggling details (table ID changes)
         if (!current_focused_name.empty()) {
@@ -53,16 +52,14 @@ namespace Tabs {
         }
     }
     
-    bool IsShowingDetails(void) {
-        App& app = GetApp();
-        return app.config.effective.show_details;
+    bool IsShowingDetails(ConfigService &config_svc) {
+        return config_svc.ShowDetails();
     }
 }
 
 namespace FileBrowser {
     // Sort without using ImGuiTableSortSpecs
-    bool Sort(const FsDirectoryEntry &entryA, const FsDirectoryEntry &entryB) {
-        App& app = GetApp();
+    bool Sort(FileSystemService &fs_svc, WindowService &win_svc, const FsDirectoryEntry &entryA, const FsDirectoryEntry &entryB) {
         // Make sure ".." stays at the top regardless of sort direction
         if (strcasecmp(entryA.name, "..") == 0)
             return true;
@@ -75,7 +72,7 @@ namespace FileBrowser {
         else if (!(entryA.type == FsDirEntryType_Dir) && (entryB.type == FsDirEntryType_Dir))
             return false;
 
-        switch(app.window.sort) {
+        switch(win_svc.sort) {
             case FS_SORT_ALPHA_ASC:
                 return (strcasecmp(entryA.name, entryB.name) < 0);
                 break;
@@ -130,18 +127,19 @@ namespace Tabs {
         ImGui::Dummy(size);  // Advance cursor
     }
     
-    void FileBrowser(WindowData &data, int &current_tab, int &active_tab) {
-        App& app = GetApp();
+    void FileBrowser(App &app, int &current_tab, int &active_tab) {
+        WindowData &data = app.window;
+        SelectionStore selection(app.selection);
         ImGuiTabItemFlags flags = (current_tab == 0) ? ImGuiTabItemFlags_SetSelected : 0;
         if (current_tab == 0) current_tab = -1; // Reset after applying
         
-        if (ImGui::BeginTabItem(strings[Config::GetLang()][Lang::TabFiles], nullptr, flags)) {
+        if (ImGui::BeginTabItem(strings[app.config.Lang()][Lang::TabFiles], nullptr, flags)) {
             active_tab = 0;  // Update active tab when this tab is visible
             
             // When tab is clicked/touched, focus the first table entry instead of staying on the tab
             // This allows pressing down to select the first file, not the table header
             if (ImGui::IsItemActivated()) {
-                pending_focus_name = FS::IsAtPartitionRoot() ? "sdmc:" : "..";
+                pending_focus_name = FS::IsAtPartitionRoot(app.fs) ? "sdmc:" : "..";
             }
             
             ImGui::Dummy(ImVec2(0.0f, 1.0f)); // Spacing
@@ -151,12 +149,12 @@ namespace Tabs {
                 go_to_partition_root = false;
                 
                 // Start visual feedback animation when refreshing at partition root
-                if (FS::IsAtPartitionRoot()) {
+                if (FS::IsAtPartitionRoot(app.fs)) {
                     GUI::StartRefreshAnimation();
                 }
                 
                 // Always refresh when going to partition root
-                FS::GoToPartitionRoot(data.entries);
+                FS::GoToPartitionRoot(app.fs, app.device_registry, app.config, data.entries);
                 data.metadata_cache.clear();  // No metadata for partition entries
                 data.used_storage = 0;
                 data.total_storage = 0;
@@ -168,17 +166,17 @@ namespace Tabs {
             if (go_to_parent_directory) {
                 go_to_parent_directory = false;
                 
-                if (FS::IsAtPartitionRoot()) {
+                if (FS::IsAtPartitionRoot(app.fs)) {
                     // Already at partition root - do nothing
                 }
-                else if (FS::ChangeDirPrev(data.entries)) {
-                    FS::PopulateMetadataCache(data.entries, data.metadata_cache);
+                else if (FS::ChangeDirPrev(app.fs, app.config, data.entries)) {
+                    FS::PopulateMetadataCache(app.fs, data.entries, data.metadata_cache);
                     pending_focus_name = "..";  // Focus ".." when going back
                     app.window.sort = -1;
                 }
                 else {
                     // At device root - go to partition root
-                    FS::GoToPartitionRoot(data.entries);
+                    FS::GoToPartitionRoot(app.fs, app.device_registry, app.config, data.entries);
                     data.metadata_cache.clear();  // No metadata for partition entries
                     data.used_storage = 0;
                     data.total_storage = 0;
@@ -188,16 +186,16 @@ namespace Tabs {
             }
 
             // Display full path (or "Select Device" at partition root)
-            std::string display_path = FS::GetDisplayPath();
-            if (FS::IsAtPartitionRoot()) {
-                ImGui::TextDisabled("%s", strings[Config::GetLang()][Lang::FileBrowserSelectDevice]);
+            std::string display_path = FS::GetDisplayPath(app.fs);
+            if (FS::IsAtPartitionRoot(app.fs)) {
+                ImGui::TextDisabled("%s", strings[app.config.Lang()][Lang::FileBrowserSelectDevice]);
             } else {
                 ImGui::Text("%s", display_path.c_str());
             }
             
             // Draw storage bar (empty at partition root, filled otherwise)
             ImGui::Dummy(ImVec2(0.0f, 1.0f)); // Spacing
-            if (!FS::IsAtPartitionRoot() && data.total_storage > 0) {
+            if (!FS::IsAtPartitionRoot(app.fs) && data.total_storage > 0) {
                 ImGui::ProgressBar(static_cast<float>(data.used_storage) / static_cast<float>(data.total_storage), ImVec2(ImGui::GetContentRegionAvail().x, 6.0f), "");
             } else {
                 ImGui::ProgressBar(0.0f, ImVec2(ImGui::GetContentRegionAvail().x, 6.0f), "");  // Empty bar at partition root
@@ -212,8 +210,8 @@ namespace Tabs {
             float available_height = ImGui::GetContentRegionAvail().y - button_bar_height;
             
             // Column setup depends on whether we're at partition root or in a directory
-            bool at_partition_root_for_columns = FS::IsAtPartitionRoot();
-            bool show_details = app.config.effective.show_details;
+            bool at_partition_root_for_columns = FS::IsAtPartitionRoot(app.fs);
+            bool show_details = app.config.ShowDetails();
             bool show_details_columns = show_details && !at_partition_root_for_columns;
             bool show_usage_column = show_details && at_partition_root_for_columns;
             // At partition root: 2 or 3 columns depending on details (checkbox + device [+ usage bar])
@@ -251,20 +249,20 @@ namespace Tabs {
                 ImGui::TableSetupColumn("", checkbox_flags);
                 if (show_usage_column) {
                     // Partition root with details: Device 60%, Usage 40% - Usage is sortable by %
-                    ImGui::TableSetupColumn(strings[Config::GetLang()][Lang::FileBrowserDevice], ImGuiTableColumnFlags_DefaultSort | ImGuiTableColumnFlags_WidthStretch, 0.60f);
+                    ImGui::TableSetupColumn(strings[app.config.Lang()][Lang::FileBrowserDevice], ImGuiTableColumnFlags_DefaultSort | ImGuiTableColumnFlags_WidthStretch, 0.60f);
                     ImGui::TableSetupColumn("Usage", ImGuiTableColumnFlags_WidthStretch, 0.40f);
                 } else if (at_partition_root_for_columns) {
                     // Partition root without details: Device takes full width
-                    ImGui::TableSetupColumn(strings[Config::GetLang()][Lang::FileBrowserDevice], ImGuiTableColumnFlags_DefaultSort);
+                    ImGui::TableSetupColumn(strings[app.config.Lang()][Lang::FileBrowserDevice], ImGuiTableColumnFlags_DefaultSort);
                 } else if (show_details_columns) {
                     // Details view: Filename 50%, Size 15%, Date 25%, Archive 10% - Archive is sortable
-                    ImGui::TableSetupColumn(strings[Config::GetLang()][Lang::FileBrowserFilename], ImGuiTableColumnFlags_DefaultSort | ImGuiTableColumnFlags_WidthStretch, 0.50f);
-                    ImGui::TableSetupColumn(strings[Config::GetLang()][Lang::FileBrowserSize], ImGuiTableColumnFlags_WidthStretch, 0.15f);
-                    ImGui::TableSetupColumn(strings[Config::GetLang()][Lang::FileBrowserModified], ImGuiTableColumnFlags_WidthStretch, 0.25f);
-                    ImGui::TableSetupColumn(strings[Config::GetLang()][Lang::FileBrowserArchive], ImGuiTableColumnFlags_WidthStretch, 0.10f);
+                    ImGui::TableSetupColumn(strings[app.config.Lang()][Lang::FileBrowserFilename], ImGuiTableColumnFlags_DefaultSort | ImGuiTableColumnFlags_WidthStretch, 0.50f);
+                    ImGui::TableSetupColumn(strings[app.config.Lang()][Lang::FileBrowserSize], ImGuiTableColumnFlags_WidthStretch, 0.15f);
+                    ImGui::TableSetupColumn(strings[app.config.Lang()][Lang::FileBrowserModified], ImGuiTableColumnFlags_WidthStretch, 0.25f);
+                    ImGui::TableSetupColumn(strings[app.config.Lang()][Lang::FileBrowserArchive], ImGuiTableColumnFlags_WidthStretch, 0.10f);
                 } else {
                     // No details: Filename takes full width
-                    ImGui::TableSetupColumn(strings[Config::GetLang()][Lang::FileBrowserFilename], ImGuiTableColumnFlags_DefaultSort);
+                    ImGui::TableSetupColumn(strings[app.config.Lang()][Lang::FileBrowserFilename], ImGuiTableColumnFlags_DefaultSort);
                 }
                 // Disable keyboard/gamepad navigation on the header row so that pressing down
                 // goes directly to the first table entry, not the sort headers
@@ -278,7 +276,7 @@ namespace Tabs {
                 //   Partition root: column 2 = usage
                 //   Directory view: column 2 = size, column 3 = modified, column 4 = archive
                 if (ImGuiTableSortSpecs *sorts_specs = ImGui::TableGetSortSpecs()) {
-                    bool is_at_partition_root = FS::IsAtPartitionRoot();
+                    bool is_at_partition_root = FS::IsAtPartitionRoot(app.fs);
                     bool reset_to_default = (app.window.sort == -1);
                     if (reset_to_default) {
                         // Reset visual sort indicator to device/filename column (column 1), ascending
@@ -334,7 +332,7 @@ namespace Tabs {
                         }
                         
                         std::sort(index_map.begin(), index_map.end(), 
-                            [&entries, &cache, &usage_ratios, sort_column, descending, is_at_partition_root, &app](const std::pair<size_t, size_t> &a, const std::pair<size_t, size_t> &b) {
+                            [&entries, &cache, &usage_ratios, sort_column, descending, is_at_partition_root, &app, &selection](const std::pair<size_t, size_t> &a, const std::pair<size_t, size_t> &b) {
                                 const FsDirectoryEntry &entryA = entries[a.first];
                                 const FsDirectoryEntry &entryB = entries[b.first];
                                 
@@ -383,12 +381,12 @@ namespace Tabs {
                                     base_path += "/";
                                 
                                 switch (sort_column) {
-                                    case 0: // Selected (checkbox) - query g_selection
+                                    case 0: // Selected (checkbox) - query selection
                                         {
                                             std::string pathA = base_path + entryA.name;
                                             std::string pathB = base_path + entryB.name;
-                                            bool checkedA = g_selection.IsSelected(pathA);
-                                            bool checkedB = g_selection.IsSelected(pathB);
+                                            bool checkedA = selection.IsSelected(pathA);
+                                            bool checkedB = selection.IsSelected(pathB);
                                             if (checkedA != checkedB)
                                                 return descending ? (checkedA < checkedB) : (checkedA > checkedB);  // Checked items first by default
                                         }
@@ -466,7 +464,7 @@ namespace Tabs {
                     }
                 }
 
-                bool at_partition_root = FS::IsAtPartitionRoot();
+                bool at_partition_root = FS::IsAtPartitionRoot(app.fs);
                 
                 // Pre-compute base path for selection lookups
                 std::string base_path = app.fs.device + app.fs.cwd;
@@ -482,34 +480,29 @@ namespace Tabs {
                     
                     // Show uncheck icon at partition root (visual only, non-functional)
                     // Show check/uncheck/partcheck based on state in directory view
-                    ImU32 accent_tint = GUI::GetAccentColorU32();
+                    ImU32 accent_tint = GUI::GetAccentColorU32(app.config);
                     
                     // Build full path for this item
                     std::string item_path = base_path + data.entries[i].name;
                     
                     // Check if this specific item is selected
-                    bool is_checked = !at_partition_root && g_selection.IsSelected(item_path);
+                    bool is_checked = !at_partition_root && selection.IsSelected(item_path);
                     
                     // Debug: Log path check for first few entries (only once per navigation)
                     static std::string last_debug_base;
-                    if (i < 3 && base_path != last_debug_base && g_selection.HasSelections()) {
+                    if (i < 3 && base_path != last_debug_base && selection.HasSelections()) {
                         Log::Debug("Display check: base='%s' item='%s' is_checked=%d\n", 
                                    base_path.c_str(), item_path.c_str(), is_checked ? 1 : 0);
                         if (i == 2) last_debug_base = base_path;
                     }
                     
-                    // Determine if this item should show partial check
+                    // Determine if this item should show partial check (subfolders only, not "..")
                     bool is_partchecked = false;
-                    if (!at_partition_root && !is_checked && g_selection.HasSelections()) {
-                        if (std::strncmp(data.entries[i].name, "..", 2) == 0) {
-                            // ".." entry: show partcheck if any selections exist that require going "up"
-                            // This means: selections are NOT in current folder AND NOT in a descendant
-                            is_partchecked = !g_selection.HasSelectionsUnder(base_path);
-                        }
-                        else if (data.entries[i].type == FsDirEntryType_Dir) {
+                    if (!at_partition_root && !is_checked && selection.HasSelections()) {
+                        if (data.entries[i].type == FsDirEntryType_Dir && std::strncmp(data.entries[i].name, "..", 2) != 0) {
                             // Subfolder: show partcheck if it has some selections under it
                             // (meaning it's partially selected - some but not all contents selected)
-                            is_partchecked = g_selection.HasSelectionsUnder(item_path);
+                            is_partchecked = selection.HasSelectionsUnder(item_path);
                         }
                     }
                     
@@ -562,44 +555,44 @@ namespace Tabs {
                     if (should_activate) {
                         if (at_partition_root) {
                             // Selecting a partition - enter that device
-                            if (FS::SelectPartition(data.entries[i].name, data.entries)) {
-                                FS::PopulateMetadataCache(data.entries, data.metadata_cache);
-                                FS::GetUsedStorageSpace(data.used_storage);
-                                FS::GetTotalStorageSpace(data.total_storage);
+                            if (FS::SelectPartition(app.fs, app.device_registry, app.config, data.entries[i].name, data.entries)) {
+                                FS::PopulateMetadataCache(app.fs, data.entries, data.metadata_cache);
+                                FS::GetUsedStorageSpace(app.fs, data.used_storage);
+                                FS::GetTotalStorageSpace(app.fs, data.total_storage);
                                 pending_focus_name = FileBrowser::GetFirstContentName(data.entries);
-                                sort = -1;
+                                data.sort = -1;
                             }
                         }
                         else if (data.entries[i].type == FsDirEntryType_Dir) {
                             if (std::strncmp(data.entries[i].name, "..", 2) == 0) {
                                 // Going back
-                                if (FS::ChangeDirPrev(data.entries)) {
-                                    FS::PopulateMetadataCache(data.entries, data.metadata_cache);
+                                if (FS::ChangeDirPrev(app.fs, app.config, data.entries)) {
+                                    FS::PopulateMetadataCache(app.fs, data.entries, data.metadata_cache);
                                     pending_focus_name = "..";
                                 }
                                 else {
                                     // At device root - go to partition root
-                                    FS::GoToPartitionRoot(data.entries);
+                                    FS::GoToPartitionRoot(app.fs, app.device_registry, app.config, data.entries);
                                     data.metadata_cache.clear();
                                     data.used_storage = 0;
                                     data.total_storage = 0;
                                     pending_focus_name = "sdmc:";  // Default to SD card
                                 }
-                                sort = -1;
+                                data.sort = -1;
                             }
-                            else if (FS::ChangeDirNext(data.entries[i].name, data.entries)) {
+                            else if (FS::ChangeDirNext(app.fs, app.config, data.entries[i].name, data.entries)) {
                                 // Going deeper
-                                FS::PopulateMetadataCache(data.entries, data.metadata_cache);
+                                FS::PopulateMetadataCache(app.fs, data.entries, data.metadata_cache);
                                 pending_focus_name = FileBrowser::GetFirstContentName(data.entries);
-                                sort = -1;
+                                data.sort = -1;
                             }
                         }
                         else {
-                            std::string path = FS::BuildPath(data.entries[i]);
+                            std::string path = FS::BuildPath(app.fs, data.entries[i]);
                             
                             switch (file_type) {
                                 case FileTypeArchive:
-                                    Archive::SetArchivePath(path);
+                                    Archive::SetArchivePath(app.fs, path);
                                     data.selected = i;
                                     data.state = WINDOW_STATE_ARCHIVEEXTRACT;
                                     break;
@@ -607,13 +600,13 @@ namespace Tabs {
                                 case FileTypeImage:
                                     if (Textures::LoadImageFile(path, data.textures)) {
                                         data.selected = i;  // Set selected to the actual image being opened
-                                        data.image_fullscreen = app.config.effective.enter_images_fullscreen;
+                                        data.image_fullscreen = app.config.EnterImagesFullscreen();
                                         data.state = WINDOW_STATE_IMAGEVIEWER;
                                     }
                                     break;
 
                                 case FileTypeText:
-                                    if (TextReader::LoadFile(path)) {
+                                    if (TextReader::LoadFile(app, path)) {
                                         data.selected = i;  // Set selected to the actual text file being opened
                                         TextReader::SetHexMode(false);  // Text files open in text mode
                                         data.state = WINDOW_STATE_TEXTREADER;
@@ -622,7 +615,7 @@ namespace Tabs {
 
                                 case FileTypeBinary:
                                     // Binary files open directly in hex mode
-                                    if (TextReader::LoadFile(path)) {
+                                    if (TextReader::LoadFile(app, path)) {
                                         data.selected = i;
                                         TextReader::SetHexMode(true);  // Binary files open in hex mode
                                         data.state = WINDOW_STATE_TEXTREADER;
@@ -769,8 +762,8 @@ namespace Tabs {
                 return;
             }
             
-            const int lang = Config::GetLang();
-            bool is_at_partition_root = FS::IsAtPartitionRoot();
+            const int lang = app.config.Lang();
+            bool is_at_partition_root = FS::IsAtPartitionRoot(app.fs);
             
             // Left-aligned items (minus button for exit)
             std::vector<BottomBar::HintItem> left_items = {
@@ -793,14 +786,14 @@ namespace Tabs {
                 is_at_partition_root});  // active = true triggers refresh animation at partition root
             
             // ZR button for details toggle
-            right_items.push_back({BottomBar::ButtonType::ShoulderZR, strings[lang][Lang::HintDetails], app.config.effective.show_details});
+            right_items.push_back({BottomBar::ButtonType::ShoulderZR, strings[lang][Lang::HintDetails], app.config.ShowDetails()});
             
             BottomBar::Config config;
             config.use_foreground_draw_list = false;  // Within window
             config.draw_background = false;
             config.hint_spacing = 25.0f;
             
-            BottomBar::Draw(config, left_items, right_items);
+            BottomBar::Draw(app.config, config, left_items, right_items);
 
             ImGui::EndTabItem();
         }
