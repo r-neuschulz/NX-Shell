@@ -30,44 +30,58 @@ jobs:
     container:
       image: devkitpro/devkita64:latest
     
-    permissions:
-      contents: write  # Required for creating releases
+    outputs:
+      is_release: ${{ steps.version.outputs.is_release }}
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
 
     steps:
+      - name: Validate release inputs
+        if: github.event.inputs.release == 'true'
+        run: |
+          if [ -z "${{ github.event.inputs.version }}" ]; then
+            echo "Error: Version is required when creating a release"
+            exit 1
+          fi
+          if ! echo "${{ github.event.inputs.version }}" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+            echo "Error: Version must be in format x.y.z (e.g., 5.0.0)"
+            exit 1
+          fi
+
       - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0  # Full history for changelog generation
 
       - name: Determine version
         id: version
         run: |
+          IS_RELEASE="false"
+          
           if [ "${{ github.event.inputs.release }}" == "true" ] && [ -n "${{ github.event.inputs.version }}" ]; then
-            # Manual release with specified version
             VERSION="${{ github.event.inputs.version }}"
+            IS_RELEASE="true"
           elif [[ "$GITHUB_REF" == refs/tags/v* ]]; then
-            # Tag push - extract version from tag
             VERSION="${GITHUB_REF#refs/tags/v}"
+            IS_RELEASE="true"
           else
-            # Regular build - use version from CMakeLists.txt (default)
             VERSION=""
           fi
+          
+          echo "is_release=${IS_RELEASE}" >> $GITHUB_OUTPUT
           
           if [ -n "$VERSION" ]; then
             echo "version=${VERSION}" >> $GITHUB_OUTPUT
             echo "tag=v${VERSION}" >> $GITHUB_OUTPUT
             echo "cmake_version_flag=-DPROJECT_VERSION_OVERRIDE=${VERSION}" >> $GITHUB_OUTPUT
-            echo "Using version: ${VERSION}"
+            echo "Release build - Version: ${VERSION}"
           else
             echo "version=" >> $GITHUB_OUTPUT
             echo "tag=" >> $GITHUB_OUTPUT
             echo "cmake_version_flag=" >> $GITHUB_OUTPUT
-            echo "Using default version from CMakeLists.txt"
+            echo "Development build - Using default version from CMakeLists.txt"
           fi
 
       - name: Configure CMake
-        run: |
-          cmake -B build -DCMAKE_BUILD_TYPE=Release ${{ steps.version.outputs.cmake_version_flag }}
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release ${{ steps.version.outputs.cmake_version_flag }}
 
       - name: Build
         run: cmake --build build -j$(nproc)
@@ -85,15 +99,31 @@ jobs:
           path: build/NX-Shell.nro
           if-no-files-found: error
 
-      # === Release steps (only on tags or manual release, skip for local act runs) ===
+  release:
+    needs: build
+    if: ${{ !github.event.env.ACT && needs.build.outputs.is_release == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Download artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: NX-Shell
+          path: dist/
 
       - name: Generate changelog
-        if: ${{ !env.ACT && (startsWith(github.ref, 'refs/tags/v') || github.event.inputs.release == 'true') }}
         run: |
-          echo "## What's New in v${{ steps.version.outputs.version }}" > RELEASE_NOTES.md
+          VERSION="${{ needs.build.outputs.version }}"
+          echo "## What's New in v${VERSION}" > RELEASE_NOTES.md
           echo "" >> RELEASE_NOTES.md
           
-          # Get commits since last tag (if any)
           PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
           if [ -n "$PREV_TAG" ]; then
             echo "### Changes since ${PREV_TAG}:" >> RELEASE_NOTES.md
@@ -110,15 +140,17 @@ jobs:
           echo "1. Download \`NX-Shell.nro\`" >> RELEASE_NOTES.md
           echo "2. Copy to \`/switch/NX-Shell/\` on your SD card" >> RELEASE_NOTES.md
           echo "3. Launch from the Homebrew Menu" >> RELEASE_NOTES.md
+          
+          cat RELEASE_NOTES.md
 
       - name: Create Release
-        if: startsWith(github.ref, 'refs/tags/v') || github.event.inputs.release == 'true'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.version.outputs.tag }}
-          name: NX-Shell ${{ steps.version.outputs.version }}
+          tag_name: ${{ needs.build.outputs.tag }}
+          target_commitish: ${{ github.sha }}
+          name: NX-Shell ${{ needs.build.outputs.version }}
           body_path: RELEASE_NOTES.md
           draft: false
           prerelease: ${{ github.event.inputs.prerelease || false }}
-          files: build/NX-Shell.nro
+          files: dist/NX-Shell.nro
           fail_on_unmatched_files: true
