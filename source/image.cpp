@@ -2,11 +2,14 @@
 
 #include "bottombar.hpp"
 #include "config.hpp"
+#include "services.hpp"
+#include "fs.hpp"
 #include "gui.hpp"
 #include "imgui.h"
 #include "imgui_impl_switch.hpp"
 #include "language.hpp"
 #include "popups.hpp"
+#include "textures.hpp"
 #include "windows.hpp"
 
 #include "imgui_internal.h"
@@ -46,16 +49,18 @@ namespace ImageViewer {
     }
     
     void ClearTextures(void) {
-        FreeTextureVector(data.textures);
-        data.frame_count = 0;
+        App& app = GetApp();
+        FreeTextureVector(app.window.textures);
+        app.window.frame_count = 0;
     }
     
     void ClearPreloadedTextures(void) {
-        FreeTextureVector(data.textures_prev);
-        data.preload_prev_index = -1;
+        App& app = GetApp();
+        FreeTextureVector(app.window.textures_prev);
+        app.window.preload_prev_index = -1;
         
-        FreeTextureVector(data.textures_next);
-        data.preload_next_index = -1;
+        FreeTextureVector(app.window.textures_next);
+        app.window.preload_next_index = -1;
     }
     
     void CleanupDeferredDeletions(void) {
@@ -65,17 +70,19 @@ namespace ImageViewer {
 
     // Helper to check if an entry is a valid image file
     static bool IsImageEntry(int index) {
-        if (index < 0 || index >= static_cast<int>(data.entries.size()))
+        App& app = GetApp();
+        if (index < 0 || index >= static_cast<int>(app.window.entries.size()))
             return false;
-        if (data.entries[index].type == FsDirEntryType_Dir)
+        if (app.window.entries[index].type == FsDirEntryType_Dir)
             return false;
-        const char* name = data.entries[index].name;
+        const char* name = app.window.entries[index].name;
         return name[0] != '\0' && FS::GetFileType(name) == FileTypeImage;
     }
 
     // Find adjacent image file in given direction (direction: -1 = prev, +1 = next)
     static int FindAdjacentImageIndex(int from_index, int direction) {
-        const int count = static_cast<int>(data.entries.size());
+        App& app = GetApp();
+        const int count = static_cast<int>(app.window.entries.size());
         
         // Search in direction from current position
         for (int i = from_index + direction; direction > 0 ? i < count : i >= 0; i += direction) {
@@ -100,60 +107,62 @@ namespace ImageViewer {
 
     // Pre-load ONE adjacent image (called only when idle, alternates between prev/next)
     void PreloadAdjacentImages(void) {
+        App& app = GetApp();
         // Don't pre-load immediately after navigation - wait for user to settle
         if (s_frames_since_navigation < PRELOAD_DELAY_FRAMES) {
             s_frames_since_navigation++;
             return;
         }
         
-        int current = static_cast<int>(data.selected);
+        int current = static_cast<int>(app.window.selected);
         
         // Find prev and next image indices
         int prev_idx = FindPrevImageIndex(current);
         int next_idx = FindNextImageIndex(current);
         
         // Check what needs pre-loading
-        bool need_prev = (prev_idx >= 0 && prev_idx != data.preload_prev_index && data.textures_prev.empty());
-        bool need_next = (next_idx >= 0 && next_idx != data.preload_next_index && data.textures_next.empty());
+        bool need_prev = (prev_idx >= 0 && prev_idx != app.window.preload_prev_index && app.window.textures_prev.empty());
+        bool need_next = (next_idx >= 0 && next_idx != app.window.preload_next_index && app.window.textures_next.empty());
         
         // Only load ONE image per call to avoid blocking too long
         // Prioritize the direction that doesn't have a pre-load yet
         if (need_next) {
             char fs_path[FS_MAX_PATH + 1];
-            if (std::snprintf(fs_path, FS_MAX_PATH, "%s/%s", cwd.c_str(), data.entries[next_idx].name) > 0) {
-                if (Textures::LoadImageFile(fs_path, data.textures_next)) {
-                    data.preload_next_index = next_idx;
+            if (std::snprintf(fs_path, FS_MAX_PATH, "%s/%s", app.fs.cwd.c_str(), app.window.entries[next_idx].name) > 0) {
+                if (Textures::LoadImageFile(fs_path, app.window.textures_next)) {
+                    app.window.preload_next_index = next_idx;
                 } else {
-                    data.preload_next_index = -1;
+                    app.window.preload_next_index = -1;
                 }
             }
         }
         else if (need_prev) {
             char fs_path[FS_MAX_PATH + 1];
-            if (std::snprintf(fs_path, FS_MAX_PATH, "%s/%s", cwd.c_str(), data.entries[prev_idx].name) > 0) {
-                if (Textures::LoadImageFile(fs_path, data.textures_prev)) {
-                    data.preload_prev_index = prev_idx;
+            if (std::snprintf(fs_path, FS_MAX_PATH, "%s/%s", app.fs.cwd.c_str(), app.window.entries[prev_idx].name) > 0) {
+                if (Textures::LoadImageFile(fs_path, app.window.textures_prev)) {
+                    app.window.preload_prev_index = prev_idx;
                 } else {
-                    data.preload_prev_index = -1;
+                    app.window.preload_prev_index = -1;
                 }
             }
         }
     }
 
     bool HandleScroll(int index) {
-        if (data.entries[index].type == FsDirEntryType_Dir)
+        App& app = GetApp();
+        if (app.window.entries[index].type == FsDirEntryType_Dir)
             return false;
         
         // Load into temporary first
         std::vector<Tex> new_textures;
         char fs_path[FS_MAX_PATH + 1];
-        if (std::snprintf(fs_path, FS_MAX_PATH, "%s/%s", cwd.c_str(), data.entries[index].name) > 0) {
+        if (std::snprintf(fs_path, FS_MAX_PATH, "%s/%s", app.fs.cwd.c_str(), app.window.entries[index].name) > 0) {
             if (Textures::LoadImageFile(fs_path, new_textures)) {
                 // Success - now do atomic swap
-                FreeTextureVector(data.textures);
-                data.textures = std::move(new_textures);
-                data.selected = index;
-                data.frame_count = 0;
+                FreeTextureVector(app.window.textures);
+                app.window.textures = std::move(new_textures);
+                app.window.selected = index;
+                app.window.frame_count = 0;
                 return true;
             }
         }
@@ -162,7 +171,8 @@ namespace ImageViewer {
 
     // Navigate to adjacent image (direction: -1 = prev, +1 = next)
     static bool HandleNavigate(int direction) {
-        int target_idx = FindAdjacentImageIndex(static_cast<int>(data.selected), direction);
+        App& app = GetApp();
+        int target_idx = FindAdjacentImageIndex(static_cast<int>(app.window.selected), direction);
         
         if (target_idx < 0)
             return false;  // No other images, stay on current
@@ -173,10 +183,10 @@ namespace ImageViewer {
         // Select source/opposite preload buffers based on direction
         // When going prev (-1): source = textures_prev, opposite = textures_next
         // When going next (+1): source = textures_next, opposite = textures_prev
-        auto& source_textures = direction < 0 ? data.textures_prev : data.textures_next;
-        auto& opposite_textures = direction < 0 ? data.textures_next : data.textures_prev;
-        int& source_preload_index = direction < 0 ? data.preload_prev_index : data.preload_next_index;
-        int& opposite_preload_index = direction < 0 ? data.preload_next_index : data.preload_prev_index;
+        auto& source_textures = direction < 0 ? app.window.textures_prev : app.window.textures_next;
+        auto& opposite_textures = direction < 0 ? app.window.textures_next : app.window.textures_prev;
+        int& source_preload_index = direction < 0 ? app.window.preload_prev_index : app.window.preload_next_index;
+        int& opposite_preload_index = direction < 0 ? app.window.preload_next_index : app.window.preload_prev_index;
         
         // Check if we have this image pre-loaded and ready
         if (target_idx == source_preload_index && !source_textures.empty() && source_textures[0].id != 0) {
@@ -185,42 +195,42 @@ namespace ImageViewer {
             FreeTextureVector(opposite_textures);
             
             // Move current -> opposite preload (the image we just left)
-            opposite_textures = std::move(data.textures);
-            opposite_preload_index = static_cast<int>(data.selected);
+            opposite_textures = std::move(app.window.textures);
+            opposite_preload_index = static_cast<int>(app.window.selected);
             
             // Move source preload -> current
-            data.textures = std::move(source_textures);
+            app.window.textures = std::move(source_textures);
             source_textures.clear();
             source_preload_index = -1;
             
-            data.selected = target_idx;
-            data.frame_count = 0;
-            data.pan_offset_x = 0.0f;
-            data.pan_offset_y = 0.0f;
+            app.window.selected = target_idx;
+            app.window.frame_count = 0;
+            app.window.pan_offset_x = 0.0f;
+            app.window.pan_offset_y = 0.0f;
             return true;
         }
         
         // Pre-load not available - load directly (keeps current image visible during load)
         std::vector<Tex> new_textures;
         char fs_path[FS_MAX_PATH + 1];
-        if (std::snprintf(fs_path, FS_MAX_PATH, "%s/%s", cwd.c_str(), data.entries[target_idx].name) > 0) {
+        if (std::snprintf(fs_path, FS_MAX_PATH, "%s/%s", app.fs.cwd.c_str(), app.window.entries[target_idx].name) > 0) {
             if (Textures::LoadImageFile(fs_path, new_textures)) {
                 // Hand over current image to become opposite preload (avoid re-decoding)
                 FreeTextureVector(opposite_textures);
-                opposite_textures = std::move(data.textures);
-                opposite_preload_index = static_cast<int>(data.selected);
+                opposite_textures = std::move(app.window.textures);
+                opposite_preload_index = static_cast<int>(app.window.selected);
                 
                 // Set new current
-                data.textures = std::move(new_textures);
+                app.window.textures = std::move(new_textures);
                 
                 // Clear source preload (will be loaded by PreloadAdjacentImages)
                 FreeTextureVector(source_textures);
                 source_preload_index = -1;
                 
-                data.selected = target_idx;
-                data.frame_count = 0;
-                data.pan_offset_x = 0.0f;
-                data.pan_offset_y = 0.0f;
+                app.window.selected = target_idx;
+                app.window.frame_count = 0;
+                app.window.pan_offset_x = 0.0f;
+                app.window.pan_offset_y = 0.0f;
                 return true;
             }
         }
@@ -233,21 +243,22 @@ namespace ImageViewer {
     bool HandleNext(void) { return HandleNavigate(+1); }
 
     void HandleControls(u64 &key, bool &properties) {
+        App& app = GetApp();
         if (key & HidNpadButton_X)
             properties = true;
         
         // D-pad zoom controls
         if (ImGui::IsKeyDown(ImGuiKey_GamepadDpadDown)) {
-            data.zoom_factor -= 0.5f * ImGui::GetIO().DeltaTime;
+            app.window.zoom_factor -= 0.5f * ImGui::GetIO().DeltaTime;
             
-            if (data.zoom_factor < 0.1f)
-                data.zoom_factor = 0.1f;
+            if (app.window.zoom_factor < 0.1f)
+                app.window.zoom_factor = 0.1f;
         }
         else if (ImGui::IsKeyDown(ImGuiKey_GamepadDpadUp)) {
-            data.zoom_factor += 0.5f * ImGui::GetIO().DeltaTime;
+            app.window.zoom_factor += 0.5f * ImGui::GetIO().DeltaTime;
             
-            if (data.zoom_factor > 5.0f)
-                data.zoom_factor = 5.0f;
+            if (app.window.zoom_factor > 5.0f)
+                app.window.zoom_factor = 5.0f;
         }
         
         // Touch drag zoom - vertical drag changes zoom level
@@ -256,30 +267,30 @@ namespace ImageViewer {
             // Vertical drag: drag up (negative delta) = zoom in, drag down (positive delta) = zoom out
             // Scale factor: ~300 pixels of drag for full zoom range
             const float zoom_sensitivity = 0.004f;
-            data.zoom_factor -= touch_delta_y * zoom_sensitivity;
+            app.window.zoom_factor -= touch_delta_y * zoom_sensitivity;
             
             // Clamp zoom factor
-            if (data.zoom_factor < 0.1f)
-                data.zoom_factor = 0.1f;
-            else if (data.zoom_factor > 5.0f)
-                data.zoom_factor = 5.0f;
+            if (app.window.zoom_factor < 0.1f)
+                app.window.zoom_factor = 0.1f;
+            else if (app.window.zoom_factor > 5.0f)
+                app.window.zoom_factor = 5.0f;
         }
         
         // R stick panning - navigate around the zoomed image
         const float pan_speed = 500.0f * ImGui::GetIO().DeltaTime;
         if (ImGui::IsKeyDown(ImGuiKey_GamepadRStickUp))
-            data.pan_offset_y -= pan_speed;
+            app.window.pan_offset_y -= pan_speed;
         if (ImGui::IsKeyDown(ImGuiKey_GamepadRStickDown))
-            data.pan_offset_y += pan_speed;
+            app.window.pan_offset_y += pan_speed;
         if (ImGui::IsKeyDown(ImGuiKey_GamepadRStickLeft))
-            data.pan_offset_x -= pan_speed;
+            app.window.pan_offset_x -= pan_speed;
         if (ImGui::IsKeyDown(ImGuiKey_GamepadRStickRight))
-            data.pan_offset_x += pan_speed;
+            app.window.pan_offset_x += pan_speed;
         
         // ZR toggles fullscreen mode
         if (key & HidNpadButton_ZR) {
-            data.image_fullscreen = !data.image_fullscreen;
-            if (data.image_fullscreen) {
+            app.window.image_fullscreen = !app.window.image_fullscreen;
+            if (app.window.image_fullscreen) {
                 s_toast_timer = TOAST_DURATION;  // Show toast when entering fullscreen
             }
         }
@@ -291,12 +302,12 @@ namespace ImageViewer {
                 // Don't process deferred deletions here - this frame's draw commands
                 // still reference the textures. They'll be freed at the start of
                 // the next frame by CleanupDeferredDeletions() in MainWindow.
-                data.zoom_factor = 1.0f;
-                data.pan_offset_x = 0.0f;
-                data.pan_offset_y = 0.0f;
-                data.image_fullscreen = false;
+                app.window.zoom_factor = 1.0f;
+                app.window.pan_offset_x = 0.0f;
+                app.window.pan_offset_y = 0.0f;
+                app.window.image_fullscreen = false;
                 s_frames_since_navigation = 0;
-                data.state = WINDOW_STATE_FILEBROWSER;
+                app.window.state = WINDOW_STATE_FILEBROWSER;
             }
             
             if (key & HidNpadButton_L) {
@@ -311,6 +322,7 @@ namespace ImageViewer {
 
 namespace Windows {
     static void DrawImageViewerBottomBar(void) {
+        App& app = GetApp();
         const int lang = Config::GetLang();
         
         // Left-aligned items (minus button for exit)
@@ -326,7 +338,7 @@ namespace Windows {
             {BottomBar::ButtonType::ShoulderR, strings[lang][Lang::HintNext]},
             {BottomBar::ButtonType::DPadUp, strings[lang][Lang::HintZoomIn]},
             {BottomBar::ButtonType::DPadDown, strings[lang][Lang::HintZoomOut]},
-            {BottomBar::ButtonType::ShoulderZR, strings[lang][Lang::HintFullscreen], data.image_fullscreen}
+            {BottomBar::ButtonType::ShoulderZR, strings[lang][Lang::HintFullscreen], app.window.image_fullscreen}
         };
         
         BottomBar::Config config;
@@ -337,17 +349,18 @@ namespace Windows {
     }
     
     void ImageViewer(bool &properties, bool &file_stat) {
+        App& app = GetApp();
         // Note: Deferred texture deletions are processed at the start of MainWindow
         // in window.cpp, which ensures they run every frame regardless of state.
         
-        const float display_w = static_cast<float>(GUI::display_width);
-        const float display_h = static_cast<float>(GUI::display_height);
+        const float display_w = static_cast<float>(app.gui.display_width);
+        const float display_h = static_cast<float>(app.gui.display_height);
         
         // Bottom bar height (must match DrawImageViewerBottomBar)
         const float bottom_bar_height = 45.0f;
         
         // In non-fullscreen mode, reduce window height to not overlap with bottom bar
-        const float window_h = data.image_fullscreen ? display_h : (display_h - bottom_bar_height);
+        const float window_h = app.window.image_fullscreen ? display_h : (display_h - bottom_bar_height);
         
         // Set up window with appropriate height
         ImGui::SetNextWindowPos(ImVec2(0.0f, 0.0f), ImGuiCond_Always);
@@ -356,78 +369,78 @@ namespace Windows {
         ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
         
         // Remove window border in fullscreen mode
-        if (data.image_fullscreen) {
+        if (app.window.image_fullscreen) {
             ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
         }
         
         // Always use NoTitleBar - filename is shown as toast overlay when enabled
         ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar;
-        if (data.image_fullscreen) {
+        if (app.window.image_fullscreen) {
             window_flags |= ImGuiWindowFlags_NoScrollbar;
         } else {
             window_flags |= ImGuiWindowFlags_HorizontalScrollbar;
         }
         
-        if (ImGui::Begin(data.entries[data.selected].name, nullptr, window_flags)) {
+        if (ImGui::Begin(app.window.entries[app.window.selected].name, nullptr, window_flags)) {
             // Only render if we have valid textures
-            if (!data.textures.empty() && data.textures[0].id != 0) {
+            if (!app.window.textures.empty() && app.window.textures[0].id != 0) {
                 // Calculate zoom factor: in fullscreen mode, fit to screen
-                float effective_zoom = data.zoom_factor;
-                if (data.image_fullscreen) {
+                float effective_zoom = app.window.zoom_factor;
+                if (app.window.image_fullscreen) {
                     // Calculate scale to fit image within display
-                    float scale_x = display_w / static_cast<float>(data.textures[0].width);
-                    float scale_y = display_h / static_cast<float>(data.textures[0].height);
+                    float scale_x = display_w / static_cast<float>(app.window.textures[0].width);
+                    float scale_y = display_h / static_cast<float>(app.window.textures[0].height);
                     effective_zoom = (scale_x < scale_y) ? scale_x : scale_y;
                     // Don't upscale beyond 1:1 unless already zoomed
                     if (effective_zoom > 1.0f) effective_zoom = 1.0f;
                 }
                 
-                float img_w = data.textures[0].width * effective_zoom;
-                float img_h = data.textures[0].height * effective_zoom;
+                float img_w = app.window.textures[0].width * effective_zoom;
+                float img_h = app.window.textures[0].height * effective_zoom;
                 
                 // Calculate base cursor position (centered)
                 ImVec2 cursor_pos = (ImGui::GetWindowSize() - ImVec2(img_w, img_h)) * 0.5f;
                 
                 // Apply R stick pan offset
-                cursor_pos.x += data.pan_offset_x;
-                cursor_pos.y += data.pan_offset_y;
+                cursor_pos.x += app.window.pan_offset_x;
+                cursor_pos.y += app.window.pan_offset_y;
                 
                 // Clamp pan offset so image doesn't go completely off screen
                 float max_pan_x = img_w * 0.9f;
                 float max_pan_y = img_h * 0.9f;
-                if (data.pan_offset_x > max_pan_x) data.pan_offset_x = max_pan_x;
-                if (data.pan_offset_x < -max_pan_x) data.pan_offset_x = -max_pan_x;
-                if (data.pan_offset_y > max_pan_y) data.pan_offset_y = max_pan_y;
-                if (data.pan_offset_y < -max_pan_y) data.pan_offset_y = -max_pan_y;
+                if (app.window.pan_offset_x > max_pan_x) app.window.pan_offset_x = max_pan_x;
+                if (app.window.pan_offset_x < -max_pan_x) app.window.pan_offset_x = -max_pan_x;
+                if (app.window.pan_offset_y > max_pan_y) app.window.pan_offset_y = max_pan_y;
+                if (app.window.pan_offset_y < -max_pan_y) app.window.pan_offset_y = -max_pan_y;
                 
                 ImGui::SetCursorPos(cursor_pos);
                     
-                if (data.textures.size() > 1) {
-                    svcSleepThread(data.textures[data.frame_count].delay);
-                    float frame_w = data.textures[data.frame_count].width * effective_zoom;
-                    float frame_h = data.textures[data.frame_count].height * effective_zoom;
-                    ImGui::Image(static_cast<ImTextureID>(data.textures[data.frame_count].id), ImVec2(frame_w, frame_h));
-                    data.frame_count++;
+                if (app.window.textures.size() > 1) {
+                    svcSleepThread(app.window.textures[app.window.frame_count].delay);
+                    float frame_w = app.window.textures[app.window.frame_count].width * effective_zoom;
+                    float frame_h = app.window.textures[app.window.frame_count].height * effective_zoom;
+                    ImGui::Image(static_cast<ImTextureID>(app.window.textures[app.window.frame_count].id), ImVec2(frame_w, frame_h));
+                    app.window.frame_count++;
                     
-                    if (data.frame_count == data.textures.size() - 1)
-                        data.frame_count = 0;
+                    if (app.window.frame_count == app.window.textures.size() - 1)
+                        app.window.frame_count = 0;
                 }
                 else
-                    ImGui::Image(static_cast<ImTextureID>(data.textures[0].id), ImVec2(img_w, img_h));
+                    ImGui::Image(static_cast<ImTextureID>(app.window.textures[0].id), ImVec2(img_w, img_h));
             }
         }
         
-        if (!data.image_fullscreen) {
+        if (!app.window.image_fullscreen) {
             Windows::DrawImageViewerBottomBar();
         }
         
         // Draw filename toast overlay (when enabled in settings)
-        if (eff.image_filename) {
-            Toast::DrawFilename(data.entries[data.selected].name);
+        if (app.config.effective.image_filename) {
+            Toast::DrawFilename(app.window.entries[app.window.selected].name);
         }
         
         // Draw fullscreen toast notification (temporary, shows when entering fullscreen)
-        if (data.image_fullscreen && ImageViewer::s_toast_timer > 0.0f) {
+        if (app.window.image_fullscreen && ImageViewer::s_toast_timer > 0.0f) {
             const int lang = Config::GetLang();
             
             // Fade out in the last 0.5 seconds
@@ -445,10 +458,10 @@ namespace Windows {
         // Pre-load adjacent images only after settling delay
         ImageViewer::PreloadAdjacentImages();
 
-        if (properties && !data.textures.empty() && data.textures[0].id != 0)
-            Popups::ImageProperties(properties, data.textures[0], file_stat);
+        if (properties && !app.window.textures.empty() && app.window.textures[0].id != 0)
+            Popups::ImageProperties(properties, app.window.textures[0], file_stat);
         
         ImGui::End();
-        ImGui::PopStyleVar(data.image_fullscreen ? 3 : 2);  // Pop WindowBorderSize (fullscreen only), WindowPadding, WindowRounding
+        ImGui::PopStyleVar(app.window.image_fullscreen ? 3 : 2);  // Pop WindowBorderSize (fullscreen only), WindowPadding, WindowRounding
     }
 }

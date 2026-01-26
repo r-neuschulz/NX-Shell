@@ -8,6 +8,7 @@
 #include "bottombar.hpp"
 #include "config.hpp"
 #include "fs.hpp"
+#include "services.hpp"
 #include "gui.hpp"
 #include "imgui.h"
 #include "imgui_internal.h"
@@ -50,10 +51,11 @@ namespace TextReader {
         std::size_t size = ftell(file);
         fseek(file, 0, SEEK_SET);
         
+        App& app = GetApp();
         // Check file size limit
         if (size > MAX_FILE_SIZE) {
             fclose(file);
-            data.text_content = "[File too large to display. Maximum size: 5 MB]";
+            app.window.text_content = "[File too large to display. Maximum size: 5 MB]";
             s_raw_content.clear();
             return true;  // Still open viewer with message
         }
@@ -64,13 +66,13 @@ namespace TextReader {
         fclose(file);
         
         if (read != size) {
-            data.text_content = "[Error reading file]";
+            app.window.text_content = "[Error reading file]";
             s_raw_content.clear();
             return true;
         }
         
         // Store content as string for text mode
-        data.text_content.assign(reinterpret_cast<char*>(s_raw_content.data()), size);
+        app.window.text_content.assign(reinterpret_cast<char*>(s_raw_content.data()), size);
         
         // Restore saved offset when navigating between files, otherwise reset to 0
         if (restore_offset) {
@@ -87,7 +89,8 @@ namespace TextReader {
     }
     
     void Clear(void) {
-        data.text_content.clear();
+        App& app = GetApp();
+        app.window.text_content.clear();
         s_raw_content.clear();
         s_scroll_y = 0.0f;
         s_max_scroll_y = 0.0f;
@@ -95,40 +98,51 @@ namespace TextReader {
     }
     
     bool HandleScroll(int index, bool restore_offset) {
-        if (data.entries[index].type == FsDirEntryType_Dir)
+        App& app = GetApp();
+        if (app.window.entries[index].type == FsDirEntryType_Dir)
             return false;
         
         // Check if it's a text or binary file (both can be opened in text reader)
-        FileType type = FS::GetFileType(data.entries[index].name);
+        FileType type = FS::GetFileType(app.window.entries[index].name);
         if (type != FileTypeText && type != FileTypeBinary)
             return false;
         
         // Auto-enable hex mode for binary files
         s_hex_mode = (type == FileTypeBinary);
         
-        data.selected = index;
-        std::string path = FS::BuildPath(data.entries[index]);
+        app.window.selected = index;
+        std::string path = FS::BuildPath(app.window.entries[index]);
         return TextReader::LoadFile(path, restore_offset);
     }
     
     // Navigate to adjacent text file (direction: -1 = prev, +1 = next)
     static bool HandleNavigate(int direction) {
-        const int count = static_cast<int>(data.entries.size());
-        const int start = static_cast<int>(data.selected) + direction;
+        App& app = GetApp();
+        const int count = static_cast<int>(app.window.entries.size());
+        const int start = static_cast<int>(app.window.selected) + direction;
         
         // Bounds check
-        if (direction > 0 && data.selected >= static_cast<u64>(count))
+        if (direction > 0 && app.window.selected >= static_cast<u64>(count))
             return false;
         
         // Save current offset before navigating
         TextReader::SaveScrollOffset();
         
-        for (int i = start; direction > 0 ? i < count : i > 0; i += direction) {
+        // Search in direction from current position
+        for (int i = start; direction > 0 ? i < count : i >= 0; i += direction) {
             if (TextReader::HandleScroll(i, true))  // restore_offset = true
                 return true;
         }
         
-        return false;
+        // Wrap around: search from opposite end
+        int wrap_start = direction > 0 ? 0 : count - 1;
+        int wrap_end = static_cast<int>(app.window.selected);
+        for (int i = wrap_start; direction > 0 ? i < wrap_end : i > wrap_end; i += direction) {
+            if (TextReader::HandleScroll(i, true))  // restore_offset = true
+                return true;
+        }
+        
+        return false;  // No other text files found
     }
 
     // Public API wrappers
@@ -139,10 +153,11 @@ namespace TextReader {
         if (key & HidNpadButton_X)
             properties = true;
         
+        App& app = GetApp();
         if (!properties) {
             if (key & HidNpadButton_B) {
                 TextReader::Clear();
-                data.state = WINDOW_STATE_FILEBROWSER;
+                app.window.state = WINDOW_STATE_FILEBROWSER;
             }
             
             // Y button toggles hex mode
@@ -155,13 +170,13 @@ namespace TextReader {
                 TextReader::Clear();
                 
                 if (!TextReader::HandlePrev())
-                    data.state = WINDOW_STATE_FILEBROWSER;
+                    app.window.state = WINDOW_STATE_FILEBROWSER;
             }
             else if (key & HidNpadButton_R) {
                 TextReader::Clear();
                 
                 if (!TextReader::HandleNext())
-                    data.state = WINDOW_STATE_FILEBROWSER;
+                    app.window.state = WINDOW_STATE_FILEBROWSER;
             }
             
             // Scroll speed constants
@@ -339,8 +354,9 @@ namespace Windows {
     }
     
     void TextReader(bool &properties, bool &file_stat) {
-        const float display_w = static_cast<float>(GUI::display_width);
-        const float display_h = static_cast<float>(GUI::display_height);
+        App& app = GetApp();
+        const float display_w = static_cast<float>(app.gui.display_width);
+        const float display_h = static_cast<float>(app.gui.display_height);
         const float bottom_bar_height = 45.0f;
         const float window_h = display_h - bottom_bar_height;
         
@@ -350,7 +366,7 @@ namespace Windows {
         ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
         
         // Always use NoTitleBar - filename is shown as toast overlay when enabled
-        if (ImGui::Begin(data.entries[data.selected].name, nullptr, 
+        if (ImGui::Begin(app.window.entries[app.window.selected].name, nullptr, 
             ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar)) {
             
             // Text content area - allow scrolling via touch/mouse and controller
@@ -387,8 +403,8 @@ namespace Windows {
                 Windows::RenderHexView();
             } else {
                 // Regular text mode
-                if (!data.text_content.empty()) {
-                    ImGui::TextUnformatted(data.text_content.c_str(), data.text_content.c_str() + data.text_content.size());
+                if (!app.window.text_content.empty()) {
+                    ImGui::TextUnformatted(app.window.text_content.c_str(), app.window.text_content.c_str() + app.window.text_content.size());
                 }
             }
             
@@ -407,11 +423,11 @@ namespace Windows {
         Windows::DrawTextReaderBottomBar();
         
         // Draw filename toast overlay (when enabled in settings)
-        if (eff.image_filename) {
-            Toast::DrawFilename(data.entries[data.selected].name);
+        if (app.config.effective.image_filename) {
+            Toast::DrawFilename(app.window.entries[app.window.selected].name);
         }
         
         if (properties)
-            Popups::FilePropertiesPopup(data, file_stat, &properties);
+            Popups::FilePropertiesPopup(app.window, file_stat, &properties);
     }
 }

@@ -1,6 +1,7 @@
 #include "config.hpp"
 #include "fs.hpp"
 #include "imgui.h"
+#include "services.hpp"
 #include "language.hpp"
 #include "log.hpp"
 #include "popups.hpp"
@@ -12,6 +13,7 @@ namespace Popups {
     static bool done = false;
 
     void USBPopup(bool &state) {
+        App& app = GetApp();
         const int lang = Config::GetLang();
         Popups::SetupPopup(strings[lang][Lang::SettingsUSBTitle]);
 
@@ -28,17 +30,17 @@ namespace Popups {
                     USB::Unmount();
                     
                     // Reset device back to sdmc
-                    device = "sdmc:";
-                    fs = std::addressof(devices[FileSystemSDMC]);
+                    app.fs.device = "sdmc:";
+                    app.fs.current_fs = std::addressof(app.fs.devices[FileSystemSDMC]);
                     
-                    cwd = "/";
-                    data.entries.clear();
-                    if (!FS::RefreshDirectory(data.entries, data.metadata_cache, true)) {
+                    app.fs.cwd = "/";
+                    app.window.entries.clear();
+                    if (!FS::RefreshDirectory(app.window.entries, app.window.metadata_cache, true)) {
                         Log::Error("USBPopup: Failed to refresh directory after USB unmount\n");
                     }
-                    FS::GetUsedStorageSpace(data.used_storage);
-                    FS::GetTotalStorageSpace(data.total_storage);
-                    sort = -1;
+                    FS::GetUsedStorageSpace(app.window.used_storage);
+                    FS::GetTotalStorageSpace(app.window.total_storage);
+                    app.window.sort = -1;
                     
                     ImGui::CloseCurrentPopup();
                     done = true;

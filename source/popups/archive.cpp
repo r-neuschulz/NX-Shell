@@ -5,6 +5,7 @@
 #include "archive.hpp"
 #include "config.hpp"
 #include "fs.hpp"
+#include "services.hpp"
 #include "imgui.h"
 #include "language.hpp"
 #include "log.hpp"
@@ -22,12 +23,13 @@ namespace Archive {
     static float progress = 0.0f;
     
     void SetArchivePath(const std::string &path) {
+        App& app = GetApp();
         archive_path = path;
         // Default extraction destination: same directory as the archive
         std::filesystem::path p(path);
         extract_dest = p.parent_path().string();
         if (extract_dest.empty()) {
-            extract_dest = device + cwd;
+            extract_dest = app.fs.device + app.fs.cwd;
         }
         extraction_in_progress = false;
         extraction_complete = false;
@@ -195,20 +197,22 @@ namespace Popups {
                 }
                 
                 // Refresh directory listing
-                if (!FS::RefreshDirectory(data.entries, data.metadata_cache, true)) {
+                App& app = GetApp();
+                if (!FS::RefreshDirectory(app.window.entries, app.window.metadata_cache, true)) {
                     Log::Error("ArchivePopup: Failed to refresh directory after extraction\n");
                 }
-                sort = -1;
+                app.window.sort = -1;
                 
-                data.state = WINDOW_STATE_FILEBROWSER;
+                app.window.state = WINDOW_STATE_FILEBROWSER;
                 return;
             }
             
             ImGui::SameLine(0.0f, 15.0f);
             
             if (ImGui::Button(strings[lang][Lang::ButtonCancel], ImVec2(120, 0))) {
+                App& app = GetApp();
                 ImGui::CloseCurrentPopup();
-                data.state = WINDOW_STATE_FILEBROWSER;
+                app.window.state = WINDOW_STATE_FILEBROWSER;
             }
         }
         

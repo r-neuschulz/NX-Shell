@@ -1,6 +1,7 @@
 #include "config.hpp"
 #include "fs.hpp"
 #include "gui.hpp"
+#include "services.hpp"
 #include "imgui.h"
 #include "language.hpp"
 #include "log.hpp"
@@ -78,26 +79,27 @@ namespace Popups {
     }
 
     void ImageProperties(bool &state, Tex &texture, bool &file_stat) {
+        App& app = GetApp();
         Popups::SetupPopup(strings[Config::GetLang()][Lang::OptionsProperties]);
 
         std::string new_width, new_height;
         if (ImGui::BeginPopupModal("Properties", std::addressof(state), ImGuiWindowFlags_AlwaysAutoResize)) {
             std::string parent_text = "Parent: ";
-            parent_text.append(device);
-            parent_text.append(cwd);
+            parent_text.append(app.fs.device);
+            parent_text.append(app.fs.cwd);
             ImGui::Text(parent_text.c_str());
 
             ImGui::Dummy(ImVec2(0.0f, 5.0f)); // Spacing
 
             std::string name_text = "Name: ";
-            name_text.append(data.entries[data.selected].name);
+            name_text.append(app.window.entries[app.window.selected].name);
             ImGui::Text(name_text.c_str());
 
             ImGui::Dummy(ImVec2(0.0f, 5.0f)); // Spacing
             
             if (!file_stat) {
-                if (!FS::GetFileSize(data.entries[data.selected].name, size)) {
-                    Log::Error("ImageProperties: Failed to get file size for %s\n", data.entries[data.selected].name);
+                if (!FS::GetFileSize(app.window.entries[app.window.selected].name, size)) {
+                    Log::Error("ImageProperties: Failed to get file size for %s\n", app.window.entries[app.window.selected].name);
                     size = 0;  // Default to 0 on failure
                 }
                 file_stat = true;

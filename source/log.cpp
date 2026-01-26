@@ -2,6 +2,7 @@
 
 #include "config.hpp"
 #include "fs.hpp"
+#include "services.hpp"
 
 namespace Log {
     static FsFile file;
@@ -10,15 +11,16 @@ namespace Log {
     
     // Internal helper to ensure log file is open (lazy initialization)
     static bool EnsureFileOpen(void) {
+        App& app = GetApp();
         if (file_is_open)
             return true;
         
         const char *log_path = "/switch/NX-Shell/debug.log";
         
         if (!FS::FileExists(log_path))
-            fsFsCreateFile(std::addressof(devices[FileSystemSDMC]), log_path, 0, 0);
+            fsFsCreateFile(std::addressof(app.fs.devices[FileSystemSDMC]), log_path, 0, 0);
             
-        if (R_FAILED(fsFsOpenFile(std::addressof(devices[FileSystemSDMC]), log_path, (FsOpenMode_Read | FsOpenMode_Write | FsOpenMode_Append), std::addressof(file))))
+        if (R_FAILED(fsFsOpenFile(std::addressof(app.fs.devices[FileSystemSDMC]), log_path, (FsOpenMode_Read | FsOpenMode_Write | FsOpenMode_Append), std::addressof(file))))
             return false;
         
         file_is_open = true;
@@ -33,14 +35,16 @@ namespace Log {
     }
     
     void Init(void) {
-        if (!eff.dev_options)
+        App& app = GetApp();
+        if (!app.config.effective.dev_options)
             return;
         
         EnsureFileOpen();
     }
     
     void Error(const char *data, ...) {
-        if (!eff.dev_options)
+        App& app = GetApp();
+        if (!app.config.effective.dev_options)
             return;
          
         char buf[256 + FS_MAX_PATH];
@@ -67,7 +71,8 @@ namespace Log {
     }
     
     void Debug(const char *data, ...) {
-        if (!eff.dev_options)
+        App& app = GetApp();
+        if (!app.config.effective.dev_options)
             return;
          
         char buf[256 + FS_MAX_PATH];
@@ -94,7 +99,8 @@ namespace Log {
     }
     
     void Flush(void) {
-        if (!eff.dev_options || !file_is_open)
+        App& app = GetApp();
+        if (!app.config.effective.dev_options || !file_is_open)
             return;
         
         std::fflush(stdout);  // Flush nxlink

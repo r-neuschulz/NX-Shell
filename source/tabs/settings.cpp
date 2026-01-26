@@ -1,6 +1,7 @@
 #include "config.hpp"
 #include "fs.hpp"
 #include "gui.hpp"
+#include "services.hpp"
 #include "imgui.h"
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui_internal.h"
@@ -41,6 +42,7 @@ namespace Tabs {
     static bool reset_settings_popup = false;
     
     void Settings(WindowData &data, int &current_tab, int &active_tab) {
+        App& app = GetApp();
         ImGuiTabItemFlags flags = (current_tab == 1) ? ImGuiTabItemFlags_SetSelected : 0;
         if (current_tab == 1) current_tab = -1; // Reset after applying
         
@@ -88,7 +90,7 @@ namespace Tabs {
             // Find current selection index
             int current_selection = 0;
             for (int i = 0; i < num_languages; i++) {
-                if (supported_languages[i].value == cfg.lang) {
+                if (supported_languages[i].value == app.config.saved.lang) {
                     current_selection = i;
                     break;
                 }
@@ -107,12 +109,12 @@ namespace Tabs {
                     const bool is_selected = (current_selection == i);
                     if (ImGui::Selectable(supported_languages[i].name, is_selected)) {
                         Log::Debug("Language change: old_lang=%d, new_lang=%d, show_stats_before=%d\n", 
-                                   cfg.lang, supported_languages[i].value, cfg.show_stats);
-                        cfg.lang = supported_languages[i].value;
-                        Config::Save(cfg);
-                        Log::Debug("After Config::Save: show_stats=%d\n", cfg.show_stats);
+                                   app.config.saved.lang, supported_languages[i].value, app.config.saved.show_stats);
+                        app.config.saved.lang = supported_languages[i].value;
+                        Config::Save(app.config.saved);
+                        Log::Debug("After Config::Save: show_stats=%d\n", app.config.saved.show_stats);
                         GUI::ResetUIState();  // Force full UI refresh for new language
-                        Log::Debug("After ResetUIState: show_stats=%d\n", cfg.show_stats);
+                        Log::Debug("After ResetUIState: show_stats=%d\n", app.config.saved.show_stats);
                         language_selected = true;
                         current_tab = 1;  // Stay on Settings tab after language change
                     }
@@ -159,15 +161,15 @@ namespace Tabs {
             Internal::Indent(strings[lang][Lang::SettingsImageViewTitle]);
 
             ImGui::PushID("image_filename");
-            if (ImGui::Checkbox(strings[lang][Lang::SettingsImageViewFilenameToggle], std::addressof(cfg.image_filename)))
-                Config::Save(cfg);
+            if (ImGui::Checkbox(strings[lang][Lang::SettingsImageViewFilenameToggle], std::addressof(app.config.saved.image_filename)))
+                Config::Save(app.config.saved);
             ImGui::PopID();
 
             ImGui::Dummy(ImVec2(0.0f, 5.0f)); // Spacing
             
             ImGui::PushID("enter_images_fullscreen");
-            if (ImGui::Checkbox(strings[lang][Lang::SettingsImageViewFullscreenToggle], std::addressof(cfg.enter_images_fullscreen)))
-                Config::Save(cfg);
+            if (ImGui::Checkbox(strings[lang][Lang::SettingsImageViewFullscreenToggle], std::addressof(app.config.saved.enter_images_fullscreen)))
+                Config::Save(app.config.saved);
             ImGui::PopID();
             
             EndAppletDisabled();
@@ -180,11 +182,11 @@ namespace Tabs {
             // Logging is the only setting that works in applet mode (uses separate applet_dev_options)
             ImGui::PushID("dev_logs");
             if (GUI::IsAppletMode()) {
-                if (ImGui::Checkbox(strings[lang][Lang::SettingsDevOptsLogsToggle], std::addressof(cfg.applet_dev_options)))
-                    Config::Save(cfg);
+                if (ImGui::Checkbox(strings[lang][Lang::SettingsDevOptsLogsToggle], std::addressof(app.config.saved.applet_dev_options)))
+                    Config::Save(app.config.saved);
             } else {
-                if (ImGui::Checkbox(strings[lang][Lang::SettingsDevOptsLogsToggle], std::addressof(cfg.dev_options)))
-                    Config::Save(cfg);
+                if (ImGui::Checkbox(strings[lang][Lang::SettingsDevOptsLogsToggle], std::addressof(app.config.saved.dev_options)))
+                    Config::Save(app.config.saved);
             }
             ImGui::PopID();
             
@@ -192,8 +194,8 @@ namespace Tabs {
             
             BeginAppletDisabled();
             ImGui::PushID("show_stats");
-            if (ImGui::Checkbox(strings[lang][Lang::SettingsStatsToggle], std::addressof(cfg.show_stats)))
-                Config::Save(cfg);
+            if (ImGui::Checkbox(strings[lang][Lang::SettingsStatsToggle], std::addressof(app.config.saved.show_stats)))
+                Config::Save(app.config.saved);
             ImGui::PopID();
             EndAppletDisabled();
 
@@ -205,21 +207,21 @@ namespace Tabs {
                 // Build the title with current resolution indicator
                 char resolution_title[128];
                 std::snprintf(resolution_title, sizeof(resolution_title), "%s (%dp)", 
-                    strings[lang][Lang::SettingsResolutionTitle], GUI::display_height);
+                    strings[lang][Lang::SettingsResolutionTitle], app.gui.display_height);
                 Internal::Indent(resolution_title);
 
-                if (ImGui::RadioButton(strings[lang][Lang::SettingsResolutionAuto], &cfg.resolution_mode, ResolutionMode_Auto))
-                    Config::Save(cfg);
+                if (ImGui::RadioButton(strings[lang][Lang::SettingsResolutionAuto], &app.config.saved.resolution_mode, ResolutionMode_Auto))
+                    Config::Save(app.config.saved);
                 
                 ImGui::Dummy(ImVec2(0.0f, 5.0f)); // Spacing
                 
-                if (ImGui::RadioButton(strings[lang][Lang::SettingsResolution1080p], &cfg.resolution_mode, ResolutionMode_1080p))
-                    Config::Save(cfg);
+                if (ImGui::RadioButton(strings[lang][Lang::SettingsResolution1080p], &app.config.saved.resolution_mode, ResolutionMode_1080p))
+                    Config::Save(app.config.saved);
                 
                 ImGui::Dummy(ImVec2(0.0f, 5.0f)); // Spacing
                 
-                if (ImGui::RadioButton(strings[lang][Lang::SettingsResolution720p], &cfg.resolution_mode, ResolutionMode_720p))
-                    Config::Save(cfg);
+                if (ImGui::RadioButton(strings[lang][Lang::SettingsResolution720p], &app.config.saved.resolution_mode, ResolutionMode_720p))
+                    Config::Save(app.config.saved);
             }
             EndAppletDisabled();
 
@@ -261,7 +263,7 @@ namespace Tabs {
                 
                 // Helper to draw themed button with selection indicator
                 auto DrawThemeButton = [&](const char* label, int mode, ImVec4 bg_color, ImVec4 text_color) {
-                    bool is_selected = (cfg.theme_mode == mode);
+                    bool is_selected = (app.config.saved.theme_mode == mode);
                     
                     ImGui::PushID(mode);
                     
@@ -283,8 +285,8 @@ namespace Tabs {
                     ImGui::PushStyleColor(ImGuiCol_Text, text_color);
                     
                     if (ImGui::Button(label, ImVec2(button_width, button_height))) {
-                        cfg.theme_mode = mode;
-                        Config::Save(cfg);
+                        app.config.saved.theme_mode = mode;
+                        Config::Save(app.config.saved);
                         GUI::UpdateThemeColors();
                         GUI::UpdateAccentColors();
                     }
@@ -326,11 +328,11 @@ namespace Tabs {
                 const float spacing = 8.0f;
                 
                 // Helper to check if current accent color matches a preset
-                auto IsPresetSelected = [](const ImVec4& preset) {
+                auto IsPresetSelected = [&app](const ImVec4& preset) {
                     const float epsilon = 0.01f;
-                    return std::abs(cfg.accent_color[0] - preset.x) < epsilon &&
-                           std::abs(cfg.accent_color[1] - preset.y) < epsilon &&
-                           std::abs(cfg.accent_color[2] - preset.z) < epsilon;
+                    return std::abs(app.config.saved.accent_color[0] - preset.x) < epsilon &&
+                           std::abs(app.config.saved.accent_color[1] - preset.y) < epsilon &&
+                           std::abs(app.config.saved.accent_color[2] - preset.z) < epsilon;
                 };
                 
                 // Find which preset is selected (if any), or -1 for custom
@@ -363,10 +365,10 @@ namespace Tabs {
                     }
                     
                     if (ImGui::ColorButton("##preset", color, ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoBorder, ImVec2(button_size, button_size))) {
-                        cfg.accent_color[0] = color.x;
-                        cfg.accent_color[1] = color.y;
-                        cfg.accent_color[2] = color.z;
-                        Config::Save(cfg);
+                        app.config.saved.accent_color[0] = color.x;
+                        app.config.saved.accent_color[1] = color.y;
+                        app.config.saved.accent_color[2] = color.z;
+                        Config::Save(app.config.saved);
                         GUI::UpdateAccentColors();
                     }
                     
@@ -390,7 +392,7 @@ namespace Tabs {
                 
                 // Custom color button with settings icon
                 ImGui::SameLine(0, spacing);
-                ImVec4 custom_color = ImVec4(cfg.accent_color[0], cfg.accent_color[1], cfg.accent_color[2], 1.0f);
+                ImVec4 custom_color = ImVec4(app.config.saved.accent_color[0], app.config.saved.accent_color[1], app.config.saved.accent_color[2], 1.0f);
                 bool is_custom = (selected_preset == -1);
                 
                 // Draw selection ring if custom color is selected
@@ -418,7 +420,7 @@ namespace Tabs {
                     cursor_pos.y + (button_size - icon_size) * 0.5f
                 );
                 ImGui::GetWindowDrawList()->AddImage(
-                    static_cast<ImTextureID>(settings_icon.id),
+                    static_cast<ImTextureID>(app.textures.settings_icon.id),
                     icon_pos,
                     ImVec2(icon_pos.x + icon_size, icon_pos.y + icon_size),
                     ImVec2(0, 0), ImVec2(1, 1),
@@ -433,7 +435,7 @@ namespace Tabs {
                 bool picker_is_open = ImGui::IsPopupOpen("##accent_picker");
                 if (picker_is_open && !picker_was_open) {
                     // Popup just opened - initialize HSV from current RGB
-                    ImGui::ColorConvertRGBtoHSV(cfg.accent_color[0], cfg.accent_color[1], cfg.accent_color[2],
+                    ImGui::ColorConvertRGBtoHSV(app.config.saved.accent_color[0], app.config.saved.accent_color[1], app.config.saved.accent_color[2],
                                                picker_h, picker_s, picker_v);
                 }
                 picker_was_open = picker_is_open;
@@ -479,8 +481,8 @@ namespace Tabs {
                     // Update RGB from HSV if changed via sticks
                     if (color_changed) {
                         ImGui::ColorConvertHSVtoRGB(picker_h, picker_s, picker_v,
-                                                   cfg.accent_color[0], cfg.accent_color[1], cfg.accent_color[2]);
-                        Config::Save(cfg);
+                                                   app.config.saved.accent_color[0], app.config.saved.accent_color[1], app.config.saved.accent_color[2]);
+                        Config::Save(app.config.saved);
                         GUI::UpdateAccentColors();
                     }
                     
@@ -493,11 +495,11 @@ namespace Tabs {
                         ImGuiColorEditFlags_PickerHueBar;
                     
                     // Draw the picker itself
-                    if (ImGui::ColorPicker3("##picker", cfg.accent_color, picker_flags)) {
+                    if (ImGui::ColorPicker3("##picker", app.config.saved.accent_color, picker_flags)) {
                         // Update HSV state when user clicks/touches
-                        ImGui::ColorConvertRGBtoHSV(cfg.accent_color[0], cfg.accent_color[1], cfg.accent_color[2],
+                        ImGui::ColorConvertRGBtoHSV(app.config.saved.accent_color[0], app.config.saved.accent_color[1], app.config.saved.accent_color[2],
                                                    picker_h, picker_s, picker_v);
-                        Config::Save(cfg);
+                        Config::Save(app.config.saved);
                         GUI::UpdateAccentColors();
                     }
                     
@@ -595,13 +597,13 @@ namespace Tabs {
                     {
                         // Convert current color to hex string
                         char hex_buf[8];
-                        int r = static_cast<int>(cfg.accent_color[0] * 255.0f + 0.5f);
-                        int g = static_cast<int>(cfg.accent_color[1] * 255.0f + 0.5f);
-                        int b = static_cast<int>(cfg.accent_color[2] * 255.0f + 0.5f);
+                        int r = static_cast<int>(app.config.saved.accent_color[0] * 255.0f + 0.5f);
+                        int g = static_cast<int>(app.config.saved.accent_color[1] * 255.0f + 0.5f);
+                        int b = static_cast<int>(app.config.saved.accent_color[2] * 255.0f + 0.5f);
                         std::snprintf(hex_buf, sizeof(hex_buf), "#%02X%02X%02X", r, g, b);
                         
                         // Color preview square
-                        ImVec4 preview_col(cfg.accent_color[0], cfg.accent_color[1], cfg.accent_color[2], 1.0f);
+                        ImVec4 preview_col(app.config.saved.accent_color[0], app.config.saved.accent_color[1], app.config.saved.accent_color[2], 1.0f);
                         ImGui::ColorButton("##preview", preview_col, ImGuiColorEditFlags_NoTooltip | ImGuiColorEditFlags_NoBorder, ImVec2(24, 24));
                         ImGui::SameLine();
                         
@@ -641,13 +643,13 @@ namespace Tabs {
                                 const char* parse_str = result.c_str();
                                 if (parse_str[0] == '#') parse_str++;
                                 if (std::sscanf(parse_str, "%06X", &hex_val) == 1) {
-                                    cfg.accent_color[0] = ((hex_val >> 16) & 0xFF) / 255.0f;
-                                    cfg.accent_color[1] = ((hex_val >> 8) & 0xFF) / 255.0f;
-                                    cfg.accent_color[2] = (hex_val & 0xFF) / 255.0f;
+                                    app.config.saved.accent_color[0] = ((hex_val >> 16) & 0xFF) / 255.0f;
+                                    app.config.saved.accent_color[1] = ((hex_val >> 8) & 0xFF) / 255.0f;
+                                    app.config.saved.accent_color[2] = (hex_val & 0xFF) / 255.0f;
                                     // Update HSV state
-                                    ImGui::ColorConvertRGBtoHSV(cfg.accent_color[0], cfg.accent_color[1], cfg.accent_color[2],
+                                    ImGui::ColorConvertRGBtoHSV(app.config.saved.accent_color[0], app.config.saved.accent_color[1], app.config.saved.accent_color[2],
                                                                picker_h, picker_s, picker_v);
-                                    Config::Save(cfg);
+                                    Config::Save(app.config.saved);
                                     GUI::UpdateAccentColors();
                                 }
                             }
@@ -701,7 +703,7 @@ namespace Tabs {
                         color_minus = color_plus = plusminus_color;
                         color_a = color_b = color_x = color_y = accent;
                         // Calculate luminance for text color
-                        float luminance = 0.299f * cfg.accent_color[0] + 0.587f * cfg.accent_color[1] + 0.114f * cfg.accent_color[2];
+                        float luminance = 0.299f * app.config.saved.accent_color[0] + 0.587f * app.config.saved.accent_color[1] + 0.114f * app.config.saved.accent_color[2];
                         text_color = luminance > 0.5f ? IM_COL32(30, 30, 30, 255) : IM_COL32(255, 255, 255, 255);
                     }
                     ImDrawList* draw_list = ImGui::GetWindowDrawList();
@@ -764,8 +766,8 @@ namespace Tabs {
                     ImVec2 row_start_screen = ImGui::GetCursorScreenPos();
                     
                     // Draw the standard radio button with label
-                    if (ImGui::RadioButton(strings[lang][Lang::SettingsButtonStyleColored], &cfg.button_style, ButtonStyle_Colored)) {
-                        Config::Save(cfg);
+                    if (ImGui::RadioButton(strings[lang][Lang::SettingsButtonStyleColored], &app.config.saved.button_style, ButtonStyle_Colored)) {
+                        Config::Save(app.config.saved);
                     }
                     float row_height = ImGui::GetItemRectSize().y;
                     
@@ -780,8 +782,8 @@ namespace Tabs {
                     // Add invisible button over the button preview area to extend click area
                     ImGui::SetCursorScreenPos(ImVec2(row_start_screen.x + buttons_offset, row_start_screen.y));
                     if (ImGui::InvisibleButton("##colored_ext", ImVec2(total_buttons_width, row_height))) {
-                        cfg.button_style = ButtonStyle_Colored;
-                        Config::Save(cfg);
+                        app.config.saved.button_style = ButtonStyle_Colored;
+                        Config::Save(app.config.saved);
                     }
                 }
                 
@@ -793,8 +795,8 @@ namespace Tabs {
                     ImVec2 row_start_screen = ImGui::GetCursorScreenPos();
                     
                     // Draw the standard radio button with label
-                    if (ImGui::RadioButton(strings[lang][Lang::SettingsButtonStyleMono], &cfg.button_style, ButtonStyle_Mono)) {
-                        Config::Save(cfg);
+                    if (ImGui::RadioButton(strings[lang][Lang::SettingsButtonStyleMono], &app.config.saved.button_style, ButtonStyle_Mono)) {
+                        Config::Save(app.config.saved);
                     }
                     float row_height = ImGui::GetItemRectSize().y;
                     
@@ -809,8 +811,8 @@ namespace Tabs {
                     // Add invisible button over the button preview area to extend click area
                     ImGui::SetCursorScreenPos(ImVec2(row_start_screen.x + buttons_offset, row_start_screen.y));
                     if (ImGui::InvisibleButton("##mono_ext", ImVec2(total_buttons_width, row_height))) {
-                        cfg.button_style = ButtonStyle_Mono;
-                        Config::Save(cfg);
+                        app.config.saved.button_style = ButtonStyle_Mono;
+                        Config::Save(app.config.saved);
                     }
                 }
                 
@@ -822,8 +824,8 @@ namespace Tabs {
                     ImVec2 row_start_screen = ImGui::GetCursorScreenPos();
                     
                     // Draw the standard radio button with label
-                    if (ImGui::RadioButton(strings[lang][Lang::SettingsButtonStyleAccent], &cfg.button_style, ButtonStyle_Accent)) {
-                        Config::Save(cfg);
+                    if (ImGui::RadioButton(strings[lang][Lang::SettingsButtonStyleAccent], &app.config.saved.button_style, ButtonStyle_Accent)) {
+                        Config::Save(app.config.saved);
                     }
                     float row_height = ImGui::GetItemRectSize().y;
                     
@@ -838,8 +840,8 @@ namespace Tabs {
                     // Add invisible button over the button preview area to extend click area
                     ImGui::SetCursorScreenPos(ImVec2(row_start_screen.x + buttons_offset, row_start_screen.y));
                     if (ImGui::InvisibleButton("##accent_ext", ImVec2(total_buttons_width, row_height))) {
-                        cfg.button_style = ButtonStyle_Accent;
-                        Config::Save(cfg);
+                        app.config.saved.button_style = ButtonStyle_Accent;
+                        Config::Save(app.config.saved);
                     }
                 }
             }
@@ -882,8 +884,8 @@ namespace Tabs {
                 
                 if (ImGui::Button(strings[lang][Lang::HintConfirm], ImVec2(120, 0))) {
                     // Reset all settings to defaults
-                    cfg = config_t{};
-                    Config::Save(cfg);
+                    app.config.saved = config_t{};
+                    Config::Save(app.config.saved);
                     
                     // Reset ImGui settings (table column widths, etc.)
                     GUI::ResetImGuiSettings();

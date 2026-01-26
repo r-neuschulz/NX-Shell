@@ -8,6 +8,7 @@
 #include "imgui.h"
 #include "log.hpp"
 #include "net.hpp"
+#include "services.hpp"
 #include "tabs.hpp"
 #include "textures.hpp"
 #include "windows.hpp"
@@ -74,36 +75,39 @@ namespace Services {
         Result ret = 0;
         u64 phase_tick;
         
+        // Get App instance for initialization
+        App& app = GetApp();
+        
         // Filesystem setup
         phase_tick = armGetSystemTick();
-        devices[FileSystemSDMC] = *fsdevGetDeviceFileSystem("sdmc");
-        fs = std::addressof(devices[FileSystemSDMC]);
+        app.fs.devices[FileSystemSDMC] = *fsdevGetDeviceFileSystem("sdmc");
+        app.fs.current_fs = std::addressof(app.fs.devices[FileSystemSDMC]);
 
         // Open BIS filesystems and track success for proper cleanup
-        if (R_SUCCEEDED(fsOpenBisFileSystem(std::addressof(devices[FileSystemSafe]), FsBisPartitionId_SafeMode, ""))) {
-            fsdevMountDevice("safe", devices[FileSystemSafe]);
+        if (R_SUCCEEDED(fsOpenBisFileSystem(std::addressof(app.fs.devices[FileSystemSafe]), FsBisPartitionId_SafeMode, ""))) {
+            fsdevMountDevice("safe", app.fs.devices[FileSystemSafe]);
             bis_safe_opened = true;
         }
 
-        if (R_SUCCEEDED(fsOpenBisFileSystem(std::addressof(devices[FileSystemUser]), FsBisPartitionId_User, ""))) {
-            fsdevMountDevice("user", devices[FileSystemUser]);
+        if (R_SUCCEEDED(fsOpenBisFileSystem(std::addressof(app.fs.devices[FileSystemUser]), FsBisPartitionId_User, ""))) {
+            fsdevMountDevice("user", app.fs.devices[FileSystemUser]);
             bis_user_opened = true;
         }
 
-        if (R_SUCCEEDED(fsOpenBisFileSystem(std::addressof(devices[FileSystemSystem]), FsBisPartitionId_System, ""))) {
-            fsdevMountDevice("system", devices[FileSystemSystem]);
+        if (R_SUCCEEDED(fsOpenBisFileSystem(std::addressof(app.fs.devices[FileSystemSystem]), FsBisPartitionId_System, ""))) {
+            fsdevMountDevice("system", app.fs.devices[FileSystemSystem]);
             bis_system_opened = true;
         }
         LogTiming("Filesystem setup", phase_tick);
         
         // Config and logging
         phase_tick = armGetSystemTick();
-        Config::Load();
+        Config::Load(app.config, app.fs);
         Log::Init();
         
         // Socket/nxlink only if logging enabled (for console output via nxlink)
         // Normal users skip this entirely - saves ~60-70ms
-        if (eff.dev_options) {
+        if (app.config.effective.dev_options) {
             Net::InitSocketWithNxlink();
         }
         LogTiming("Config/Log/Socket init", phase_tick);
@@ -210,8 +214,11 @@ namespace Services {
         // Remove crash marker - we're exiting cleanly
         RemoveCrashMarker();
         
+        // Get App instance for cleanup
+        App& app = GetApp();
+        
         // Save config before any cleanup to preserve current path
-        Config::Save(cfg);
+        Config::Save(app.config, app.fs);
         
         // Clean up textures first (requires valid GL context)
         Textures::Exit();
@@ -241,15 +248,15 @@ namespace Services {
         // Unmount and close BIS filesystems (only those that were successfully opened)
         if (bis_system_opened) {
             fsdevUnmountDevice("system");
-            fsFsClose(std::addressof(devices[FileSystemSystem]));
+            fsFsClose(std::addressof(app.fs.devices[FileSystemSystem]));
         }
         if (bis_user_opened) {
             fsdevUnmountDevice("user");
-            fsFsClose(std::addressof(devices[FileSystemUser]));
+            fsFsClose(std::addressof(app.fs.devices[FileSystemUser]));
         }
         if (bis_safe_opened) {
             fsdevUnmountDevice("safe");
-            fsFsClose(std::addressof(devices[FileSystemSafe]));
+            fsFsClose(std::addressof(app.fs.devices[FileSystemSafe]));
         }
     }
 }
@@ -269,15 +276,18 @@ int main(int argc, char* argv[]) {
     Services::Init();
     LogTiming("Services::Init (total)", phase_tick);
     
+    // Get App instance
+    App& app = GetApp();
+    
     // Check for crash recovery - if marker exists, previous run crashed
     phase_tick = armGetSystemTick();
     bool previous_crash = CheckCrashMarker();
     if (previous_crash) {
         // Previous run crashed - reset to safe defaults
         Log::Error("Crash marker detected - previous run crashed. Resetting to safe defaults.\n");
-        Config::SetLastDevice("");  // Reset to partition root
-        Config::SetLastCwd("/");
-        Config::Save(cfg);
+        Config::SetLastDevice(app.config, "", GUI::IsAppletMode());  // Reset to partition root
+        Config::SetLastCwd(app.config, "/", GUI::IsAppletMode());
+        Config::Save(app.config, app.fs);
     }
     
     // Create crash marker - will be removed on clean exit
@@ -286,18 +296,18 @@ int main(int argc, char* argv[]) {
 
     // Restore saved path from config, or fall back to partition root if invalid
     phase_tick = armGetSystemTick();
-    FS::RestoreSavedPath(data.entries);
+    FS::RestoreSavedPath(app.fs, app.device_registry, app.config, app.window.entries);
     LogTiming("FS::RestoreSavedPath", phase_tick);
     
     // Only populate metadata cache and storage info if we're not at partition root
     phase_tick = armGetSystemTick();
-    if (!FS::IsAtPartitionRoot()) {
-        FS::PopulateMetadataCache(data.entries, data.metadata_cache);
-        FS::GetUsedStorageSpace(data.used_storage);
-        FS::GetTotalStorageSpace(data.total_storage);
+    if (!FS::IsAtPartitionRoot(app.fs)) {
+        FS::PopulateMetadataCache(app.fs, app.window.entries, app.window.metadata_cache);
+        FS::GetUsedStorageSpace(app.fs, app.window.used_storage);
+        FS::GetTotalStorageSpace(app.fs, app.window.total_storage);
     } else {
-        data.used_storage = 0;
-        data.total_storage = 0;
+        app.window.used_storage = 0;
+        app.window.total_storage = 0;
     }
     LogTiming("Metadata cache/storage info", phase_tick);
     
@@ -309,12 +319,12 @@ int main(int argc, char* argv[]) {
     LogTiming("Total startup time", s_startup_begin_tick);
     
     while (GUI::Loop(key)) {
-        Windows::MainWindow(data, key, false);
+        Windows::MainWindow(app.window, key, false);
         GUI::RenderStatsOverlay();
         GUI::Render();
     }
 
-    data.entries.clear();
+    app.window.entries.clear();
     Services::Exit();
     return 0;
 }

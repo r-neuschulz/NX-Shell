@@ -3,16 +3,17 @@
 #include <glad/glad.h>
 #include <switch.h>
 #include <vector>
+#include <string>
+#include "services.hpp"
 
-typedef struct {
-    GLuint id = 0;
-    int width = 0;
-    int height = 0;
-    int delay = 0;
-} Tex;
-
-extern std::vector<Tex> file_icons;
-extern Tex folder_icon, check_icon, uncheck_icon, partcheck_icon, drive_icon, settings_icon;
+// Legacy extern declarations - forward to App instance
+extern std::vector<Tex>& file_icons;
+extern Tex& folder_icon;
+extern Tex& check_icon;
+extern Tex& uncheck_icon;
+extern Tex& partcheck_icon;
+extern Tex& drive_icon;
+extern Tex& settings_icon;
 
 namespace Textures {
     bool LoadImageFile(const std::string &path, std::vector<Tex> &textures);

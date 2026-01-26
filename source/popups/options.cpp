@@ -4,6 +4,7 @@
 #include "config.hpp"
 #include "fs.hpp"
 #include "imgui_internal.h"
+#include "services.hpp"
 #include "keyboard.hpp"
 #include "language.hpp"
 #include "log.hpp"
@@ -16,7 +17,8 @@ namespace Options {
     static bool pending_multi_move = false;
     
     static void RefreshEntries(bool clear_selection) {
-        if (!FS::RefreshDirectory(data.entries, data.metadata_cache, clear_selection)) {
+        App& app = GetApp();
+        if (!FS::RefreshDirectory(app.window.entries, app.window.metadata_cache, clear_selection)) {
             // Log but continue - stale data is better than nothing in popup context
             Log::Error("Options::RefreshEntries() failed to refresh directory\n");
         }
@@ -80,8 +82,9 @@ namespace Options {
         // Clear conflict handling mode after operation completes
         FS::ClearConflictHandling();
         
+        App& app = GetApp();
         Options::RefreshEntries(true);
-        sort = -1;
+        app.window.sort = -1;
     }
 }
 
@@ -95,22 +98,23 @@ namespace Popups {
     static size_t multi_total_count = 0;
 
     void OptionsPopup(WindowData &data) {
+        App& app = GetApp();
         const int lang = Config::GetLang();
         
         // Check if we're returning from multi-replace popup with a chosen action
         if (FS::GetConflictHandling() != ConflictHandling_Ask) {
             if (Options::pending_multi_copy) {
                 Options::pending_multi_copy = false;
-                Options::HandleMultipleCopy(data, std::addressof(FS::Paste), false);
+                Options::HandleMultipleCopy(data, static_cast<bool(*)()>(&FS::Paste), false);
                 copy = false;
-                data.state = WINDOW_STATE_FILEBROWSER;
+                app.window.state = WINDOW_STATE_FILEBROWSER;
                 return;
             }
             else if (Options::pending_multi_move) {
                 Options::pending_multi_move = false;
-                Options::HandleMultipleCopy(data, std::addressof(FS::Move), true);
+                Options::HandleMultipleCopy(data, static_cast<bool(*)()>(&FS::Move), true);
                 move = false;
-                data.state = WINDOW_STATE_FILEBROWSER;
+                app.window.state = WINDOW_STATE_FILEBROWSER;
                 return;
             }
         }
@@ -121,8 +125,8 @@ namespace Popups {
             if (ImGui::Button(strings[lang][Lang::OptionsSelectAll], ImVec2(200, 50))) {
                 // Clear any previous selections and select all in current directory
                 g_selection.Clear();
-                std::string base_path = device + cwd;
-                g_selection.SelectAll(base_path, data.entries);
+                std::string base_path = app.fs.device + app.fs.cwd;
+                g_selection.SelectAll(base_path, app.window.entries);
             }
 
             ImGui::SameLine(0.0f, 15.0f);
@@ -137,21 +141,21 @@ namespace Popups {
 
             if (ImGui::Button(strings[lang][Lang::OptionsProperties], ImVec2(200, 50))) {
                 ImGui::CloseCurrentPopup();
-                data.state = WINDOW_STATE_PROPERTIES;
+                app.window.state = WINDOW_STATE_PROPERTIES;
             }
 
             ImGui::SameLine(0.0f, 15.0f);
 
             if (ImGui::Button(strings[lang][Lang::OptionsRename], ImVec2(200, 50))) {
-                std::string path = Keyboard::GetText(strings[lang][Lang::OptionsRenamePrompt], data.entries[data.selected].name);
+                std::string path = Keyboard::GetText(strings[lang][Lang::OptionsRenamePrompt], app.window.entries[app.window.selected].name);
                 
-                if (FS::Rename(data.entries[data.selected], path.c_str())) {
+                if (FS::Rename(app.window.entries[app.window.selected], path.c_str())) {
                     Options::RefreshEntries(false);
-                    sort = -1;
+                    app.window.sort = -1;
                 }
                 
                 ImGui::CloseCurrentPopup();
-                data.state = WINDOW_STATE_FILEBROWSER;
+                app.window.state = WINDOW_STATE_FILEBROWSER;
             }
             
             ImGui::Dummy(ImVec2(0.0f, 5.0f)); // Spacing
@@ -162,11 +166,11 @@ namespace Popups {
 
                 if (R_SUCCEEDED(mkdir(path.c_str(), 0700))) {
                     Options::RefreshEntries(true);
-                    sort = -1;
+                    app.window.sort = -1;
                 }
                 
                 ImGui::CloseCurrentPopup();
-                data.state = WINDOW_STATE_FILEBROWSER;
+                app.window.state = WINDOW_STATE_FILEBROWSER;
             }
             
             ImGui::SameLine(0.0f, 15.0f);
@@ -181,11 +185,11 @@ namespace Popups {
                 
                 if (FS::FileExists(path)) {
                     Options::RefreshEntries(true);
-                    sort = -1;
+                    app.window.sort = -1;
                 }
                 
                 ImGui::CloseCurrentPopup();
-                data.state = WINDOW_STATE_FILEBROWSER;
+                app.window.state = WINDOW_STATE_FILEBROWSER;
             }
             
             ImGui::Dummy(ImVec2(0.0f, 5.0f)); // Spacing
@@ -194,12 +198,12 @@ namespace Popups {
                 if (!copy) {
                     // If no selections, copy the currently focused item
                     if (g_selection.Count() == 0) {
-                        std::string path = device + cwd;
-                        FS::Copy(data.entries[data.selected], path);
+                        std::string path = app.fs.device + app.fs.cwd;
+                        FS::Copy(app.window.entries[app.window.selected], path);
                     }
                         
                     copy = !copy;
-                    data.state = WINDOW_STATE_FILEBROWSER;
+                    app.window.state = WINDOW_STATE_FILEBROWSER;
                 }
                 else {
                     // Check for recursive copy before attempting paste
@@ -210,7 +214,7 @@ namespace Popups {
                     else if (g_selection.Count() <= 1 && FS::DestinationExists()) {
                         pending_replace_is_move = false;
                         ImGui::CloseCurrentPopup();
-                        data.state = WINDOW_STATE_REPLACE;
+                        app.window.state = WINDOW_STATE_REPLACE;
                     }
                     // Multiple files - check for conflicts
                     else if (g_selection.Count() > 1) {
@@ -220,7 +224,7 @@ namespace Popups {
                             multi_total_count = g_selection.Count();
                             Options::pending_multi_copy = true;
                             ImGui::CloseCurrentPopup();
-                            data.state = WINDOW_STATE_MULTI_REPLACE;
+                            app.window.state = WINDOW_STATE_MULTI_REPLACE;
                         }
                         else {
                             // No conflicts - proceed with copy
@@ -228,9 +232,9 @@ namespace Popups {
                             ImGui::PopStyleVar();
                             ImGui::Render();
                             
-                            Options::HandleMultipleCopy(data, std::addressof(FS::Paste), false);
+                            Options::HandleMultipleCopy(data, static_cast<bool(*)()>(&FS::Paste), false);
                             copy = !copy;
-                            data.state = WINDOW_STATE_FILEBROWSER;
+                            app.window.state = WINDOW_STATE_FILEBROWSER;
                             return;
                         }
                     }
@@ -241,11 +245,11 @@ namespace Popups {
 
                         if (FS::Paste()) {
                             Options::RefreshEntries(true);
-                            sort = -1;
+                            app.window.sort = -1;
                         }
 
                         copy = !copy;
-                        data.state = WINDOW_STATE_FILEBROWSER;
+                        app.window.state = WINDOW_STATE_FILEBROWSER;
                         return;
                     }
                 }
@@ -257,13 +261,13 @@ namespace Popups {
                 if (!move) {
                     // If no selections, copy the currently focused item
                     if (g_selection.Count() == 0) {
-                        std::string path = device + cwd;
-                        FS::Copy(data.entries[data.selected], path);
+                        std::string path = app.fs.device + app.fs.cwd;
+                        FS::Copy(app.window.entries[app.window.selected], path);
                     }
                     
                     move = !move;
                     ImGui::CloseCurrentPopup();
-                    data.state = WINDOW_STATE_FILEBROWSER;
+                    app.window.state = WINDOW_STATE_FILEBROWSER;
                 }
                 else {
                     // Check for recursive move before attempting
@@ -274,7 +278,7 @@ namespace Popups {
                     else if (g_selection.Count() <= 1 && FS::DestinationExists()) {
                         pending_replace_is_move = true;
                         ImGui::CloseCurrentPopup();
-                        data.state = WINDOW_STATE_REPLACE;
+                        app.window.state = WINDOW_STATE_REPLACE;
                     }
                     // Multiple files - check for conflicts
                     else if (g_selection.Count() > 1) {
@@ -285,25 +289,25 @@ namespace Popups {
                             Options::pending_multi_move = true;
                             pending_replace_is_move = true;
                             ImGui::CloseCurrentPopup();
-                            data.state = WINDOW_STATE_MULTI_REPLACE;
+                            app.window.state = WINDOW_STATE_MULTI_REPLACE;
                         }
                         else {
                             // No conflicts - proceed with move
-                            Options::HandleMultipleCopy(data, std::addressof(FS::Move), true);
+                            Options::HandleMultipleCopy(data, static_cast<bool(*)()>(&FS::Move), true);
                             move = !move;
                             ImGui::CloseCurrentPopup();
-                            data.state = WINDOW_STATE_FILEBROWSER;
+                            app.window.state = WINDOW_STATE_FILEBROWSER;
                         }
                     }
                     else {
                         if (FS::Move()) {
                             Options::RefreshEntries(true);
-                            sort = -1;
+                            app.window.sort = -1;
                         }
                         
                         move = !move;
                         ImGui::CloseCurrentPopup();
-                        data.state = WINDOW_STATE_FILEBROWSER;
+                        app.window.state = WINDOW_STATE_FILEBROWSER;
                     }
                 }
             }
@@ -312,21 +316,21 @@ namespace Popups {
             
             if (ImGui::Button(strings[lang][Lang::OptionsDelete], ImVec2(200, 50))) {
                 ImGui::CloseCurrentPopup();
-                data.state = WINDOW_STATE_DELETE;
+                app.window.state = WINDOW_STATE_DELETE;
             }
             
             ImGui::SameLine(0.0f, 15.0f);
             
             if (ImGui::Button(strings[lang][Lang::OptionsSetArchiveBit], ImVec2(200, 50))) {
-                std::string path = FS::BuildPath(data.entries[data.selected]);
+                std::string path = FS::BuildPath(app.window.entries[app.window.selected]);
                 
                 if (FS::SetArchiveBit(path)) {
                     Options::RefreshEntries(true);
-                    sort = -1;
+                    app.window.sort = -1;
                 }
-                    
+                
                 ImGui::CloseCurrentPopup();
-                data.state = WINDOW_STATE_FILEBROWSER;
+                app.window.state = WINDOW_STATE_FILEBROWSER;
             }
         }
         

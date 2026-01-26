@@ -1,8 +1,11 @@
 #include <cstdio>
 
+#include "services.hpp"
 #include "usb.hpp"
 #include "usbhsfs.h"
 #include "windows.hpp"
+
+// Use the extern declarations from windows.hpp (which forward to App)
 
 namespace USB {
     static UEvent *status_change_event = nullptr, exit_event = {0};

@@ -10,6 +10,7 @@
 #include "fs.hpp"
 #include "gui.hpp"
 #include "language.hpp"
+#include "services.hpp"
 #include "imgui.h"
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui_internal.h"
@@ -49,9 +50,7 @@ namespace GUI {
     // Track when surface is recreated to reapply vsync setting after swap
     static bool s_surface_recreated = false;
     
-    // Display dimensions - exported for use by other modules
-    int display_width = 1280;
-    int display_height = 720;
+    // Display dimensions are defined in legacy.cpp, accessed via GetApp().gui
     
     bool IsDocked(void) {
         return s_operation_mode == AppletOperationMode_Console;
@@ -66,6 +65,7 @@ namespace GUI {
     
     // Recreate the EGL surface for new dimensions (needed for runtime resolution changes)
     static bool RecreateSurface(void) {
+        App& app = GetApp();
         if (!s_display || !s_window || !s_config)
             return false;
         
@@ -79,7 +79,7 @@ namespace GUI {
         }
         
         // Update native window dimensions
-        nwindowSetDimensions(s_window, display_width, display_height);
+        nwindowSetDimensions(s_window, app.gui.display_width, app.gui.display_height);
         
         // Create new surface with updated dimensions
         s_surface = eglCreateWindowSurface(s_display, s_config, s_window, nullptr);
@@ -99,12 +99,13 @@ namespace GUI {
         s_surface_recreated = true;
         
         // Update the GL viewport to match new dimensions
-        glViewport(0, 0, display_width, display_height);
+        glViewport(0, 0, app.gui.display_width, app.gui.display_height);
         
         return true;
     }
     
     void UpdateDisplayDimensions(void) {
+        App& app = GetApp();
         AppletOperationMode mode = appletGetOperationMode();
         s_operation_mode = mode;
         
@@ -112,7 +113,7 @@ namespace GUI {
         int target_width = 1280;
         int target_height = 720;
         
-        switch (eff.resolution_mode) {
+        switch (app.config.effective.resolution_mode) {
             case ResolutionMode_Auto:
                 // Auto-detect based on dock state
                 if (IsDocked()) {
@@ -137,9 +138,9 @@ namespace GUI {
         }
         
         // Only update if dimensions changed
-        if (display_width != target_width || display_height != target_height) {
-            display_width = target_width;
-            display_height = target_height;
+        if (app.gui.display_width != target_width || app.gui.display_height != target_height) {
+            app.gui.display_width = target_width;
+            app.gui.display_height = target_height;
             
             // Recreate the EGL surface for the new resolution
             RecreateSurface();
@@ -147,20 +148,21 @@ namespace GUI {
     }
     
     static bool InitEGL(NWindow* win) {
+        App& app = GetApp();
         s_window = win;
         
         // Check initial dock state and set dimensions accordingly
         s_operation_mode = appletGetOperationMode();
         if (IsDocked()) {
-            display_width = 1920;
-            display_height = 1080;
+            app.gui.display_width = 1920;
+            app.gui.display_height = 1080;
         } else {
-            display_width = 1280;
-            display_height = 720;
+            app.gui.display_width = 1280;
+            app.gui.display_height = 720;
         }
         
         // Set native window dimensions to match current mode
-        nwindowSetDimensions(win, display_width, display_height);
+        nwindowSetDimensions(win, app.gui.display_width, app.gui.display_height);
         
         s_display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
         
@@ -263,7 +265,8 @@ namespace GUI {
     }
 
     bool IsCurrentThemeDark(void) {
-        switch (eff.theme_mode) {
+        App& app = GetApp();
+        switch (app.config.effective.theme_mode) {
             case ThemeMode_Auto:
                 return IsSystemThemeDark();
             case ThemeMode_Dark:
@@ -390,7 +393,8 @@ namespace GUI {
     }
     
     void UpdateAccentColors(void) {
-        ImVec4 accent = ImVec4(eff.accent_color[0], eff.accent_color[1], eff.accent_color[2], 1.0f);
+        App& app = GetApp();
+        ImVec4 accent = ImVec4(app.config.effective.accent_color[0], app.config.effective.accent_color[1], app.config.effective.accent_color[2], 1.0f);
         ImVec4 *colors = ImGui::GetStyle().Colors;
         
         colors[ImGuiCol_CheckMark] = accent;
@@ -406,19 +410,21 @@ namespace GUI {
     }
     
     ImU32 GetAccentColorU32(void) {
+        App& app = GetApp();
         return IM_COL32(
-            static_cast<int>(eff.accent_color[0] * 255),
-            static_cast<int>(eff.accent_color[1] * 255),
-            static_cast<int>(eff.accent_color[2] * 255),
+            static_cast<int>(app.config.effective.accent_color[0] * 255),
+            static_cast<int>(app.config.effective.accent_color[1] * 255),
+            static_cast<int>(app.config.effective.accent_color[2] * 255),
             255
         );
     }
     
     ImU32 GetAccentColorU32WithAlpha(int alpha) {
+        App& app = GetApp();
         return IM_COL32(
-            static_cast<int>(eff.accent_color[0] * 255),
-            static_cast<int>(eff.accent_color[1] * 255),
-            static_cast<int>(eff.accent_color[2] * 255),
+            static_cast<int>(app.config.effective.accent_color[0] * 255),
+            static_cast<int>(app.config.effective.accent_color[1] * 255),
+            static_cast<int>(app.config.effective.accent_color[2] * 255),
             alpha
         );
     }
@@ -434,7 +440,8 @@ namespace GUI {
     
     // Button color functions - returns colors based on effective button style
     ImU32 GetButtonColorA(void) {
-        int style = eff.button_style;
+        App& app = GetApp();
+        int style = app.config.effective.button_style;
         if (style == ButtonStyle_Accent) {
             return GetAccentColorU32();
         }
@@ -447,7 +454,8 @@ namespace GUI {
     }
     
     ImU32 GetButtonColorB(void) {
-        int style = eff.button_style;
+        App& app = GetApp();
+        int style = app.config.effective.button_style;
         if (style == ButtonStyle_Accent) {
             return GetAccentColorU32();
         }
@@ -460,7 +468,8 @@ namespace GUI {
     }
     
     ImU32 GetButtonColorX(void) {
-        int style = eff.button_style;
+        App& app = GetApp();
+        int style = app.config.effective.button_style;
         if (style == ButtonStyle_Accent) {
             return GetAccentColorU32();
         }
@@ -473,7 +482,8 @@ namespace GUI {
     }
     
     ImU32 GetButtonColorY(void) {
-        int style = eff.button_style;
+        App& app = GetApp();
+        int style = app.config.effective.button_style;
         if (style == ButtonStyle_Accent) {
             return GetAccentColorU32();
         }
@@ -500,7 +510,8 @@ namespace GUI {
     }
     
     ImU32 GetButtonTextColor(void) {
-        int style = eff.button_style;
+        App& app = GetApp();
+        int style = app.config.effective.button_style;
         // Text on buttons - white for colored/accent style, contrasting for mono
         if (style == ButtonStyle_Mono) {
             return IsCurrentThemeDark() 
@@ -509,7 +520,7 @@ namespace GUI {
         }
         if (style == ButtonStyle_Accent) {
             // Calculate luminance of accent color to determine text color
-            float luminance = 0.299f * eff.accent_color[0] + 0.587f * eff.accent_color[1] + 0.114f * eff.accent_color[2];
+            float luminance = 0.299f * app.config.effective.accent_color[0] + 0.587f * app.config.effective.accent_color[1] + 0.114f * app.config.effective.accent_color[2];
             return luminance > 0.5f 
                 ? IM_COL32(30, 30, 30, 255)      // Dark text on light accent
                 : IM_COL32(255, 255, 255, 255);  // White text on dark accent
@@ -808,9 +819,10 @@ namespace GUI {
     }
     
     void ResetUIState(void) {
+        App& app = GetApp();
         // Called after language change - the overlay will re-assert its z-order
         // in RenderStatsOverlay via BringWindowToDisplayFront
-        Log::Debug("ResetUIState called - cfg.show_stats=%d, cfg.lang=%d\n", cfg.show_stats, cfg.lang);
+        Log::Debug("ResetUIState called - cfg.show_stats=%d, cfg.lang=%d\n", app.config.saved.show_stats, app.config.saved.lang);
     }
     
     void SetRightStickScrollSuppressed(bool suppress) {
@@ -818,12 +830,13 @@ namespace GUI {
     }
     
     void ResetImGuiSettings(void) {
+        App& app = GetApp();
         // Clear in-memory ImGui settings (table column widths, window positions, etc.)
         ImGui::ClearIniSettings();
         
         // Delete the ini file from disk so it won't be reloaded
         static const char* imgui_ini_path = "/switch/NX-Shell/imgui.ini";
-        fsFsDeleteFile(std::addressof(devices[FileSystemSDMC]), imgui_ini_path);
+        fsFsDeleteFile(std::addressof(app.fs.devices[FileSystemSDMC]), imgui_ini_path);
         
         Log::Debug("ResetImGuiSettings - cleared in-memory settings and deleted %s\n", imgui_ini_path);
     }
@@ -849,7 +862,8 @@ namespace GUI {
     }
 
     void RenderStatsOverlay(void) {
-        if (!eff.show_stats) {
+        App& app = GetApp();
+        if (!app.config.effective.show_stats) {
             return;
         }
         
@@ -891,7 +905,7 @@ namespace GUI {
             }
             
             // Resolution
-            ImGui::Text(strings[lang][Lang::StatsResolution], display_width, display_height);
+            ImGui::Text(strings[lang][Lang::StatsResolution], app.gui.display_width, app.gui.display_height);
             
             // Framerate and frame time
             ImGui::Text(strings[lang][Lang::StatsFPS], io.Framerate, 1000.0f / io.Framerate);
@@ -993,10 +1007,11 @@ namespace Toast {
     }
     
     void DrawCentered(const char* text, float alpha) {
+        App& app = GetApp();
         ImDrawList *draw_list = ImGui::GetForegroundDrawList();
         
-        const float display_w = static_cast<float>(GUI::display_width);
-        const float display_h = static_cast<float>(GUI::display_height);
+        const float display_w = static_cast<float>(app.gui.display_width);
+        const float display_h = static_cast<float>(app.gui.display_height);
         
         ImVec2 text_size = ImGui::CalcTextSize(text);
         

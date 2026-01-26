@@ -5,6 +5,7 @@
 #include "config.hpp"
 #include "fs.hpp"
 #include "gui.hpp"
+#include "services.hpp"
 #include "imgui.h"
 #define IMGUI_DEFINE_MATH_OPERATORS
 #include "imgui_internal.h"
@@ -12,8 +13,6 @@
 #include "selection.hpp"
 #include "tabs.hpp"
 #include "windows.hpp"
-
-WindowData data;
 
 namespace Windows {
     static bool image_properties = false, text_properties = false, file_stat = false;
@@ -32,8 +31,9 @@ namespace Windows {
     }
 
     void SetupWindow(void) {
+        App& app = GetApp();
         ImGui::SetNextWindowPos(ImVec2(0.0f, 0.0f), ImGuiCond_Always);
-        ImGui::SetNextWindowSize(ImVec2(static_cast<float>(GUI::display_width), static_cast<float>(GUI::display_height)), ImGuiCond_Always);
+        ImGui::SetNextWindowSize(ImVec2(static_cast<float>(app.gui.display_width), static_cast<float>(app.gui.display_height)), ImGuiCond_Always);
         ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
     };
     
@@ -377,18 +377,19 @@ namespace Windows {
             }
         }
         
+        App& app = GetApp();
         // Check actual display resolution (not just dock state, as user may have forced a resolution)
-        bool is_1080p = (GUI::display_height >= 1080);
+        bool is_1080p = (app.gui.display_height >= 1080);
         
         // Check if resolution is forced (overriding what auto would detect)
         // Auto mode follows dock state: docked = 1080p, handheld = 720p
         bool is_docked = GUI::IsDocked();
         bool auto_would_be_1080p = is_docked;
         bool is_resolution_forced = false;
-        if (eff.resolution_mode == ResolutionMode_1080p && !auto_would_be_1080p) {
+        if (app.config.effective.resolution_mode == ResolutionMode_1080p && !auto_would_be_1080p) {
             // User forced 1080p while handheld (auto would be 720p)
             is_resolution_forced = true;
-        } else if (eff.resolution_mode == ResolutionMode_720p && auto_would_be_1080p) {
+        } else if (app.config.effective.resolution_mode == ResolutionMode_720p && auto_would_be_1080p) {
             // User forced 720p while docked (auto would be 1080p)
             is_resolution_forced = true;
         }
@@ -424,8 +425,9 @@ namespace Windows {
             // Use GetForegroundDrawList() because the title bar is outside the window's
             // InnerClipRect that gets pushed after Begin() - window draw list would be clipped
             // Skip drawing when in fullscreen image viewer mode (user wants distraction-free viewing)
+            App& app = GetApp();
             ImGuiWindow* window = ImGui::GetCurrentWindow();
-            if (window && !(data.state == WINDOW_STATE_IMAGEVIEWER && data.image_fullscreen)) {
+            if (window && !(app.window.state == WINDOW_STATE_IMAGEVIEWER && app.window.image_fullscreen)) {
                 ImVec2 title_bar_min = ImVec2(window->Pos.x, window->Pos.y);
                 ImVec2 title_bar_max = ImVec2(window->Pos.x + window->Size.x, window->Pos.y + ImGui::GetFrameHeight());
                 DrawStatusBar(ImGui::GetForegroundDrawList(), title_bar_max);
@@ -479,8 +481,9 @@ namespace Windows {
         }
         Windows::ExitWindow();
         
+        App& app = GetApp();
         // Handle L/R button tab switching - only when in file browser (not image viewer, text reader, etc.)
-        if (data.state == WINDOW_STATE_FILEBROWSER) {
+        if (app.window.state == WINDOW_STATE_FILEBROWSER) {
             if (key & HidNpadButton_L) {
                 int new_tab = (active_tab - 1 + TAB_COUNT) % TAB_COUNT;
                 current_tab = new_tab;
@@ -506,17 +509,17 @@ namespace Windows {
         if (progress)
             return;
 
-        switch (data.state) {
+        switch (app.window.state) {
             case WINDOW_STATE_OPTIONS:
-                Popups::OptionsPopup(data);
+                Popups::OptionsPopup(app.window);
                 break;
 
             case WINDOW_STATE_PROPERTIES:
-                Popups::FilePropertiesPopup(data, file_stat);
+                Popups::FilePropertiesPopup(app.window, file_stat);
                 break;
             
             case WINDOW_STATE_DELETE:
-                Popups::DeletePopup(data);
+                Popups::DeletePopup(app.window);
                 break;
 
             case WINDOW_STATE_ARCHIVEEXTRACT:
@@ -524,11 +527,11 @@ namespace Windows {
                 break;
 
             case WINDOW_STATE_REPLACE:
-                Popups::ReplacePopup(data, Popups::IsPendingReplaceMove());
+                Popups::ReplacePopup(app.window, Popups::IsPendingReplaceMove());
                 break;
 
             case WINDOW_STATE_MULTI_REPLACE:
-                Popups::MultiReplacePopup(data, Popups::IsPendingReplaceMove(), 
+                Popups::MultiReplacePopup(app.window, Popups::IsPendingReplaceMove(), 
                                           Popups::GetMultiConflictCount(), 
                                           Popups::GetMultiTotalCount());
                 break;
@@ -550,27 +553,27 @@ namespace Windows {
                     
                     if (mode_result == 1) {
                         // Open as text
-                        std::string path = FS::BuildPath(data.entries[data.selected]);
+                        std::string path = FS::BuildPath(app.window.entries[app.window.selected]);
                         if (TextReader::LoadFile(path)) {
                             TextReader::SetHexMode(false);
-                            data.state = WINDOW_STATE_TEXTREADER;
+                            app.window.state = WINDOW_STATE_TEXTREADER;
                         } else {
-                            data.state = WINDOW_STATE_FILEBROWSER;
+                            app.window.state = WINDOW_STATE_FILEBROWSER;
                         }
                         show_openmode_popup = true;  // Reset for next time
                     } else if (mode_result == 2) {
                         // Open as hex
-                        std::string path = FS::BuildPath(data.entries[data.selected]);
+                        std::string path = FS::BuildPath(app.window.entries[app.window.selected]);
                         if (TextReader::LoadFile(path)) {
                             TextReader::SetHexMode(true);
-                            data.state = WINDOW_STATE_TEXTREADER;
+                            app.window.state = WINDOW_STATE_TEXTREADER;
                         } else {
-                            data.state = WINDOW_STATE_FILEBROWSER;
+                            app.window.state = WINDOW_STATE_FILEBROWSER;
                         }
                         show_openmode_popup = true;  // Reset for next time
                     } else if (!show_openmode_popup) {
                         // Cancelled
-                        data.state = WINDOW_STATE_FILEBROWSER;
+                        app.window.state = WINDOW_STATE_FILEBROWSER;
                         show_openmode_popup = true;  // Reset for next time
                     }
                 }
@@ -580,28 +583,28 @@ namespace Windows {
                 break;
         }
 
-        if ((key & HidNpadButton_X) && (data.state == WINDOW_STATE_FILEBROWSER) && (active_tab == 0) && !FS::IsAtPartitionRoot())
-            data.state = WINDOW_STATE_OPTIONS;
+        if ((key & HidNpadButton_X) && (app.window.state == WINDOW_STATE_FILEBROWSER) && (active_tab == 0) && !FS::IsAtPartitionRoot())
+            app.window.state = WINDOW_STATE_OPTIONS;
         
         // Plus button opens the device selector when in file browser
-        if ((key & HidNpadButton_Plus) && (data.state == WINDOW_STATE_FILEBROWSER) && (active_tab == 0))
+        if ((key & HidNpadButton_Plus) && (app.window.state == WINDOW_STATE_FILEBROWSER) && (active_tab == 0))
             Tabs::RequestDeviceCombo();
         
         // ZR button toggles details view (size, date modified columns)
-        if ((key & HidNpadButton_ZR) && (data.state == WINDOW_STATE_FILEBROWSER) && (active_tab == 0))
+        if ((key & HidNpadButton_ZR) && (app.window.state == WINDOW_STATE_FILEBROWSER) && (active_tab == 0))
             Tabs::ToggleDetails();
 
-        if ((key & HidNpadButton_Y) && (data.state == WINDOW_STATE_FILEBROWSER) && (active_tab == 0)) {
+        if ((key & HidNpadButton_Y) && (app.window.state == WINDOW_STATE_FILEBROWSER) && (active_tab == 0)) {
             // Toggle selection using SelectionStore
-            if ((std::strncmp(data.entries[data.selected].name, "..", 2)) != 0) {
-                std::string selected_path = device + cwd;
+            if ((std::strncmp(app.window.entries[app.window.selected].name, "..", 2)) != 0) {
+                std::string selected_path = app.fs.device + app.fs.cwd;
                 if (!selected_path.empty() && selected_path.back() != '/')
                     selected_path += "/";
-                selected_path += data.entries[data.selected].name;
+                selected_path += app.window.entries[app.window.selected].name;
                 
                 // For folders, use recursive selection/deselection
                 // This allows users to later unselect individual items within
-                if (data.entries[data.selected].type == FsDirEntryType_Dir) {
+                if (app.window.entries[app.window.selected].type == FsDirEntryType_Dir) {
                     g_selection.ToggleFolder(selected_path);
                 } else {
                     g_selection.Toggle(selected_path);
@@ -614,7 +617,7 @@ namespace Windows {
             // (ImGui already used B to close that popup, so we shouldn't also switch tabs)
             bool popup_was_open = GUI::WasPopupOpenOnBPress();
             
-            switch(data.state) {
+            switch(app.window.state) {
                 case WINDOW_STATE_FILEBROWSER:
                     // B button navigates to parent directory when in file browser tab
                     // or jumps back to file browser from Settings/About tabs
@@ -628,33 +631,33 @@ namespace Windows {
                     break;
                 
                 case WINDOW_STATE_OPTIONS:
-                    data.state = WINDOW_STATE_FILEBROWSER;
+                    app.window.state = WINDOW_STATE_FILEBROWSER;
                     break;
 
                 case WINDOW_STATE_PROPERTIES:
-                    data.state = WINDOW_STATE_OPTIONS;
+                    app.window.state = WINDOW_STATE_OPTIONS;
                     file_stat = false;
                     break;
                 
                 case WINDOW_STATE_DELETE:
-                    data.state = WINDOW_STATE_OPTIONS;
+                    app.window.state = WINDOW_STATE_OPTIONS;
                     break;
 
                 case WINDOW_STATE_REPLACE:
-                    data.state = WINDOW_STATE_OPTIONS;
+                    app.window.state = WINDOW_STATE_OPTIONS;
                     break;
 
                 case WINDOW_STATE_MULTI_REPLACE:
                     Popups::ClearPendingMultiOperation();
-                    data.state = WINDOW_STATE_OPTIONS;
+                    app.window.state = WINDOW_STATE_OPTIONS;
                     break;
 
                 case WINDOW_STATE_ARCHIVEEXTRACT:
-                    data.state = WINDOW_STATE_FILEBROWSER;
+                    app.window.state = WINDOW_STATE_FILEBROWSER;
                     break;
 
                 case WINDOW_STATE_OPENMODE:
-                    data.state = WINDOW_STATE_FILEBROWSER;
+                    app.window.state = WINDOW_STATE_FILEBROWSER;
                     break;
 
                 case WINDOW_STATE_IMAGEVIEWER:
@@ -664,7 +667,7 @@ namespace Windows {
                     }
                     else {
                         ImageViewer::ClearTextures();
-                        data.state = WINDOW_STATE_FILEBROWSER;
+                        app.window.state = WINDOW_STATE_FILEBROWSER;
                     }
                     
                     break;
@@ -676,7 +679,7 @@ namespace Windows {
                     }
                     else {
                         TextReader::Clear();
-                        data.state = WINDOW_STATE_FILEBROWSER;
+                        app.window.state = WINDOW_STATE_FILEBROWSER;
                     }
                     
                     break;

@@ -5,6 +5,7 @@
 #include "bottombar.hpp"
 #include "config.hpp"
 #include "fs.hpp"
+#include "services.hpp"
 #include "gui.hpp"
 #include "imgui.h"
 #include "imgui_internal.h"
@@ -16,9 +17,6 @@
 #include "utils.hpp"
 #include "windows.hpp"
 
-int sort = 0;
-std::vector<std::string> devices_list = { "sdmc:", "safe:", "user:", "system:" };
-std::recursive_mutex devices_list_mutex;
 static std::string pending_focus_name;  // Name of entry to focus after navigation (empty = none)
 static std::string current_focused_name;  // Track current focused entry name for table ID transitions
 static bool go_to_partition_root = false;
@@ -44,9 +42,10 @@ namespace Tabs {
     }
     
     void ToggleDetails(void) {
+        App& app = GetApp();
         if (!GUI::IsAppletMode()) {  // No-op in applet mode
-            cfg.show_details = !cfg.show_details;
-            Config::Save(cfg);
+            app.config.saved.show_details = !app.config.saved.show_details;
+            Config::Save(app.config.saved);
         }
         // Preserve current focus when toggling details (table ID changes)
         if (!current_focused_name.empty()) {
@@ -55,13 +54,15 @@ namespace Tabs {
     }
     
     bool IsShowingDetails(void) {
-        return eff.show_details;
+        App& app = GetApp();
+        return app.config.effective.show_details;
     }
 }
 
 namespace FileBrowser {
     // Sort without using ImGuiTableSortSpecs
     bool Sort(const FsDirectoryEntry &entryA, const FsDirectoryEntry &entryB) {
+        App& app = GetApp();
         // Make sure ".." stays at the top regardless of sort direction
         if (strcasecmp(entryA.name, "..") == 0)
             return true;
@@ -74,7 +75,7 @@ namespace FileBrowser {
         else if (!(entryA.type == FsDirEntryType_Dir) && (entryB.type == FsDirEntryType_Dir))
             return false;
 
-        switch(sort) {
+        switch(app.window.sort) {
             case FS_SORT_ALPHA_ASC:
                 return (strcasecmp(entryA.name, entryB.name) < 0);
                 break;
@@ -130,6 +131,7 @@ namespace Tabs {
     }
     
     void FileBrowser(WindowData &data, int &current_tab, int &active_tab) {
+        App& app = GetApp();
         ImGuiTabItemFlags flags = (current_tab == 0) ? ImGuiTabItemFlags_SetSelected : 0;
         if (current_tab == 0) current_tab = -1; // Reset after applying
         
@@ -159,7 +161,7 @@ namespace Tabs {
                 data.used_storage = 0;
                 data.total_storage = 0;
                 pending_focus_name = "sdmc:";  // Default to SD card
-                sort = -1;
+                app.window.sort = -1;
             }
             
             // Handle B button request to go to parent directory
@@ -172,7 +174,7 @@ namespace Tabs {
                 else if (FS::ChangeDirPrev(data.entries)) {
                     FS::PopulateMetadataCache(data.entries, data.metadata_cache);
                     pending_focus_name = "..";  // Focus ".." when going back
-                    sort = -1;
+                    app.window.sort = -1;
                 }
                 else {
                     // At device root - go to partition root
@@ -181,7 +183,7 @@ namespace Tabs {
                     data.used_storage = 0;
                     data.total_storage = 0;
                     pending_focus_name = "sdmc:";  // Default to SD card
-                    sort = -1;
+                    app.window.sort = -1;
                 }
             }
 
@@ -211,7 +213,7 @@ namespace Tabs {
             
             // Column setup depends on whether we're at partition root or in a directory
             bool at_partition_root_for_columns = FS::IsAtPartitionRoot();
-            bool show_details = eff.show_details;
+            bool show_details = app.config.effective.show_details;
             bool show_details_columns = show_details && !at_partition_root_for_columns;
             bool show_usage_column = show_details && at_partition_root_for_columns;
             // At partition root: 2 or 3 columns depending on details (checkbox + device [+ usage bar])
@@ -277,7 +279,7 @@ namespace Tabs {
                 //   Directory view: column 2 = size, column 3 = modified, column 4 = archive
                 if (ImGuiTableSortSpecs *sorts_specs = ImGui::TableGetSortSpecs()) {
                     bool is_at_partition_root = FS::IsAtPartitionRoot();
-                    bool reset_to_default = (sort == -1);
+                    bool reset_to_default = (app.window.sort == -1);
                     if (reset_to_default) {
                         // Reset visual sort indicator to device/filename column (column 1), ascending
                         ImGui::TableSetColumnSortDirection(1, ImGuiSortDirection_Ascending, false);
@@ -302,7 +304,7 @@ namespace Tabs {
                         
                         // Update global sort variable for filename sorting
                         if (sort_column == 1) {
-                            sort = descending ? FS_SORT_ALPHA_DESC : FS_SORT_ALPHA_ASC;
+                            app.window.sort = descending ? FS_SORT_ALPHA_DESC : FS_SORT_ALPHA_ASC;
                         }
                         
                         // Sort indices using cached metadata
@@ -314,12 +316,12 @@ namespace Tabs {
                         std::vector<float> usage_ratios;
                         if (is_at_partition_root && sort_column == 2) {
                             usage_ratios.resize(entries.size(), 0.0f);
-                            std::scoped_lock lock(::devices_list_mutex);
+                            std::scoped_lock lock(app.device_registry.mutex);
                             for (size_t i = 0; i < entries.size(); i++) {
                                 std::string partition_name = entries[i].name;
-                                for (std::size_t pi = 0; pi < ::devices_list.size(); pi++) {
-                                    if (::devices_list[pi] == partition_name) {
-                                        FsFileSystem *part_fs = std::addressof(devices[pi]);
+                                for (std::size_t pi = 0; pi < app.device_registry.devices.size(); pi++) {
+                                    if (app.device_registry.devices[pi] == partition_name) {
+                                        FsFileSystem *part_fs = std::addressof(app.fs.devices[pi]);
                                         s64 free_space = 0, total_space = 0;
                                         if (R_SUCCEEDED(fsFsGetFreeSpace(part_fs, "/", &free_space)) &&
                                             R_SUCCEEDED(fsFsGetTotalSpace(part_fs, "/", &total_space)) && total_space > 0) {
@@ -332,7 +334,7 @@ namespace Tabs {
                         }
                         
                         std::sort(index_map.begin(), index_map.end(), 
-                            [&entries, &cache, &usage_ratios, sort_column, descending, is_at_partition_root](const std::pair<size_t, size_t> &a, const std::pair<size_t, size_t> &b) {
+                            [&entries, &cache, &usage_ratios, sort_column, descending, is_at_partition_root, &app](const std::pair<size_t, size_t> &a, const std::pair<size_t, size_t> &b) {
                                 const FsDirectoryEntry &entryA = entries[a.first];
                                 const FsDirectoryEntry &entryB = entries[b.first];
                                 
@@ -376,7 +378,7 @@ namespace Tabs {
                                 
                                 // Handle directory view sorting (col 0 = checkbox, col 1 = filename, etc.)
                                 // Build base path for selection lookups
-                                std::string base_path = device + cwd;
+                                std::string base_path = app.fs.device + app.fs.cwd;
                                 if (!base_path.empty() && base_path.back() != '/')
                                     base_path += "/";
                                 
@@ -467,7 +469,7 @@ namespace Tabs {
                 bool at_partition_root = FS::IsAtPartitionRoot();
                 
                 // Pre-compute base path for selection lookups
-                std::string base_path = device + cwd;
+                std::string base_path = app.fs.device + app.fs.cwd;
                 if (!base_path.empty() && base_path.back() != '/')
                     base_path += "/";
                 
@@ -512,11 +514,11 @@ namespace Tabs {
                     }
                     
                     if (is_checked)
-                        TintedImage(check_icon.id, tex_size, accent_tint);
+                        TintedImage(app.textures.check_icon.id, tex_size, accent_tint);
                     else if (is_partchecked)
-                        TintedImage(partcheck_icon.id, tex_size, accent_tint);
+                        TintedImage(app.textures.partcheck_icon.id, tex_size, accent_tint);
                     else
-                        TintedImage(uncheck_icon.id, tex_size, accent_tint);
+                        TintedImage(app.textures.uncheck_icon.id, tex_size, accent_tint);
                     
                     ImGui::PopID();
 
@@ -527,11 +529,11 @@ namespace Tabs {
                     // Use drive icon at partition root, otherwise folder/file icons
                     // All icons tinted with accent color
                     if (at_partition_root)
-                        TintedImage(drive_icon.id, tex_size, accent_tint);
+                        TintedImage(app.textures.drive_icon.id, tex_size, accent_tint);
                     else if (data.entries[i].type == FsDirEntryType_Dir)
-                        TintedImage(folder_icon.id, tex_size, accent_tint);
+                        TintedImage(app.textures.folder_icon.id, tex_size, accent_tint);
                     else
-                        TintedImage(file_icons[file_type].id, tex_size, accent_tint);
+                        TintedImage(app.textures.file_icons[file_type].id, tex_size, accent_tint);
                     
                     ImGui::SameLine();
 
@@ -605,7 +607,7 @@ namespace Tabs {
                                 case FileTypeImage:
                                     if (Textures::LoadImageFile(path, data.textures)) {
                                         data.selected = i;  // Set selected to the actual image being opened
-                                        data.image_fullscreen = eff.enter_images_fullscreen;
+                                        data.image_fullscreen = app.config.effective.enter_images_fullscreen;
                                         data.state = WINDOW_STATE_IMAGEVIEWER;
                                     }
                                     break;
@@ -699,11 +701,11 @@ namespace Tabs {
                         std::string partition_name = data.entries[i].name;
                         
                         // Find the partition index and get its storage info
-                        std::scoped_lock lock(::devices_list_mutex);
-                        for (std::size_t pi = 0; pi < ::devices_list.size(); pi++) {
-                            if (::devices_list[pi] == partition_name) {
+                        std::scoped_lock lock(app.device_registry.mutex);
+                        for (std::size_t pi = 0; pi < app.device_registry.devices.size(); pi++) {
+                            if (app.device_registry.devices[pi] == partition_name) {
                                 // Temporarily query this partition's storage
-                                FsFileSystem *part_fs = std::addressof(devices[pi]);
+                                FsFileSystem *part_fs = std::addressof(app.fs.devices[pi]);
                                 s64 free_space = 0, total_space = 0;
                                 if (R_SUCCEEDED(fsFsGetFreeSpace(part_fs, "/", &free_space)) &&
                                     R_SUCCEEDED(fsFsGetTotalSpace(part_fs, "/", &total_space))) {
@@ -791,7 +793,7 @@ namespace Tabs {
                 is_at_partition_root});  // active = true triggers refresh animation at partition root
             
             // ZR button for details toggle
-            right_items.push_back({BottomBar::ButtonType::ShoulderZR, strings[lang][Lang::HintDetails], eff.show_details});
+            right_items.push_back({BottomBar::ButtonType::ShoulderZR, strings[lang][Lang::HintDetails], app.config.effective.show_details});
             
             BottomBar::Config config;
             config.use_foreground_draw_list = false;  // Within window

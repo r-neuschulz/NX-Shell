@@ -1,16 +1,14 @@
 #include <cstdio>
 #include <cstring>
+#include <sys/stat.h>
 #include <jansson.h>
 
 #include "config.hpp"
-#include "fs.hpp"
 #include "gui.hpp"
 #include "log.hpp"
+#include "services.hpp"
 
 #define CONFIG_VERSION 16
-
-config_t cfg;
-config_t eff;  // Effective config - read from this!
 
 namespace Config {
     static const char *config_path = "/switch/NX-Shell/config.json";
@@ -34,9 +32,11 @@ namespace Config {
         return (val && json_is_string(val)) ? json_string_value(val) : fallback;
     }
     
-    static inline void EnsureDirExists(const char *path) {
-        if (!FS::DirExists(path))
-            fsFsCreateDirectory(std::addressof(devices[FileSystemSDMC]), path);
+    static inline void EnsureDirExists(FsFileSystem *sdmc_fs, const char *path) {
+        struct stat dir_stat = { 0 };
+        if (stat(path, &dir_stat) != 0) {
+            fsFsCreateDirectory(sdmc_fs, path);
+        }
     }
     
     // Resolve LANG_AUTO to actual language index
@@ -54,33 +54,36 @@ namespace Config {
         return 1;  // English fallback
     }
     
-    void UpdateEffective(void) {
-        if (GUI::IsAppletMode()) {
-            // Applet mode: forced defaults, only logging and navigation from cfg
-            eff.lang = 1;  // English
-            eff.dev_options = cfg.applet_dev_options;
-            eff.image_filename = false;
-            eff.enter_images_fullscreen = false;
-            eff.resolution_mode = ResolutionMode_720p;
-            eff.theme_mode = ThemeMode_Dark;
-            eff.show_details = false;
-            eff.show_stats = false;
-            eff.last_device = cfg.applet_last_device;
-            eff.last_cwd = cfg.applet_last_cwd;
-            eff.accent_color[0] = 0.0f;
-            eff.accent_color[1] = 0.50f;
-            eff.accent_color[2] = 0.50f;
-            eff.button_style = ButtonStyle_Mono;
+    void UpdateEffective(ConfigService &config_svc, bool is_applet_mode) {
+        if (is_applet_mode) {
+            // Applet mode: forced defaults, only logging and navigation from saved
+            config_svc.effective.lang = 1;  // English
+            config_svc.effective.dev_options = config_svc.saved.applet_dev_options;
+            config_svc.effective.image_filename = false;
+            config_svc.effective.enter_images_fullscreen = false;
+            config_svc.effective.resolution_mode = ResolutionMode_720p;
+            config_svc.effective.theme_mode = ThemeMode_Dark;
+            config_svc.effective.show_details = false;
+            config_svc.effective.show_stats = false;
+            config_svc.effective.last_device = config_svc.saved.applet_last_device;
+            config_svc.effective.last_cwd = config_svc.saved.applet_last_cwd;
+            config_svc.effective.accent_color[0] = 0.0f;
+            config_svc.effective.accent_color[1] = 0.50f;
+            config_svc.effective.accent_color[2] = 0.50f;
+            config_svc.effective.button_style = ButtonStyle_Mono;
         } else {
             // Title mode: use saved config (resolve LANG_AUTO)
-            eff = cfg;
-            eff.lang = ResolveLang(cfg.lang);
-            eff.last_device = cfg.last_device;
-            eff.last_cwd = cfg.last_cwd;
+            config_svc.effective = config_svc.saved;
+            config_svc.effective.lang = ResolveLang(config_svc.saved.lang);
+            config_svc.effective.last_device = config_svc.saved.last_device;
+            config_svc.effective.last_cwd = config_svc.saved.last_cwd;
         }
     }
     
-    int Save(config_t &config) {
+    int Save(ConfigService &config_svc, FileSystemService &fs_svc) {
+        ConfigData &config = config_svc.saved;
+        FsFileSystem *sdmc_fs = &fs_svc.devices[FileSystemSDMC];
+        
         json_t *root = json_object();
         SetInt(root, "config_version", CONFIG_VERSION);
         SetInt(root, "language", config.lang);
@@ -110,12 +113,12 @@ namespace Config {
         if (!buf) return -1;
         
         u64 len = std::strlen(buf);
-        fsFsDeleteFile(std::addressof(devices[FileSystemSDMC]), config_path);
-        fsFsCreateFile(std::addressof(devices[FileSystemSDMC]), config_path, len, 0);
+        fsFsDeleteFile(sdmc_fs, config_path);
+        fsFsCreateFile(sdmc_fs, config_path, len, 0);
         
         FsFile file;
         Result ret;
-        if (R_FAILED(ret = fsFsOpenFile(std::addressof(devices[FileSystemSDMC]), config_path, FsOpenMode_Write, std::addressof(file)))) {
+        if (R_FAILED(ret = fsFsOpenFile(sdmc_fs, config_path, FsOpenMode_Write, std::addressof(file)))) {
             free(buf);
             return ret;
         }
@@ -129,23 +132,27 @@ namespace Config {
         fsFileClose(std::addressof(file));
         free(buf);
         
-        UpdateEffective();  // Keep eff in sync
+        UpdateEffective(config_svc, GUI::IsAppletMode());
         return 0;
     }
     
-    int Load(void) {
-        EnsureDirExists("/switch/");
-        EnsureDirExists("/switch/NX-Shell/");
-            
-        if (!FS::FileExists(config_path)) {
-            cfg = {};
-            UpdateEffective();
-            return Config::Save(cfg);
+    int Load(ConfigService &config_svc, FileSystemService &fs_svc) {
+        FsFileSystem *sdmc_fs = &fs_svc.devices[FileSystemSDMC];
+        
+        EnsureDirExists(sdmc_fs, "/switch/");
+        EnsureDirExists(sdmc_fs, "/switch/NX-Shell/");
+        
+        // Check if file exists
+        struct stat file_stat = { 0 };
+        if (stat(config_path, &file_stat) != 0) {
+            config_svc.saved = ConfigData{};
+            UpdateEffective(config_svc, GUI::IsAppletMode());
+            return Save(config_svc, fs_svc);
         }
         
         FsFile file;
         Result ret;
-        if (R_FAILED(ret = fsFsOpenFile(std::addressof(devices[FileSystemSDMC]), config_path, FsOpenMode_Read, std::addressof(file))))
+        if (R_FAILED(ret = fsFsOpenFile(sdmc_fs, config_path, FsOpenMode_Read, std::addressof(file))))
             return ret;
         
         s64 size = 0;
@@ -173,60 +180,61 @@ namespace Config {
         config_version_holder = GetInt(root, "config_version");
         if (config_version_holder < CONFIG_VERSION) {
             json_decref(root);
-            fsFsDeleteFile(std::addressof(devices[FileSystemSDMC]), config_path);
-            cfg = {};
-            UpdateEffective();
-            return Config::Save(cfg);
+            fsFsDeleteFile(sdmc_fs, config_path);
+            config_svc.saved = ConfigData{};
+            UpdateEffective(config_svc, GUI::IsAppletMode());
+            return Save(config_svc, fs_svc);
         }
 
-        cfg.lang = GetInt(root, "language");
-        cfg.dev_options = GetInt(root, "dev_options");
-        cfg.image_filename = GetInt(root, "image_filename");
-        cfg.enter_images_fullscreen = GetInt(root, "enter_images_fullscreen");
-        cfg.resolution_mode = GetInt(root, "resolution_mode");
-        cfg.theme_mode = GetInt(root, "theme_mode");
-        cfg.show_details = GetInt(root, "show_details");
-        cfg.show_stats = GetInt(root, "show_stats");
-        cfg.button_style = GetInt(root, "button_style");
-        cfg.last_device = GetString(root, "last_device", "sdmc:");
-        cfg.last_cwd = GetString(root, "last_cwd", "/");
+        ConfigData &config = config_svc.saved;
+        config.lang = GetInt(root, "language");
+        config.dev_options = GetInt(root, "dev_options");
+        config.image_filename = GetInt(root, "image_filename");
+        config.enter_images_fullscreen = GetInt(root, "enter_images_fullscreen");
+        config.resolution_mode = GetInt(root, "resolution_mode");
+        config.theme_mode = GetInt(root, "theme_mode");
+        config.show_details = GetInt(root, "show_details");
+        config.show_stats = GetInt(root, "show_stats");
+        config.button_style = GetInt(root, "button_style");
+        config.last_device = GetString(root, "last_device", "sdmc:");
+        config.last_cwd = GetString(root, "last_cwd", "/");
 
         json_t *accent_color = json_object_get(root, "accent_color");
         if (accent_color && json_is_array(accent_color) && json_array_size(accent_color) == 3) {
             for (int i = 0; i < 3; i++)
-                cfg.accent_color[i] = static_cast<float>(json_real_value(json_array_get(accent_color, i)));
+                config.accent_color[i] = static_cast<float>(json_real_value(json_array_get(accent_color, i)));
         }
 
-        cfg.applet_dev_options = GetInt(root, "applet_dev_options");
-        cfg.applet_last_device = GetString(root, "applet_last_device", "sdmc:");
-        cfg.applet_last_cwd = GetString(root, "applet_last_cwd", "/");
+        config.applet_dev_options = GetInt(root, "applet_dev_options");
+        config.applet_last_device = GetString(root, "applet_last_device", "sdmc:");
+        config.applet_last_cwd = GetString(root, "applet_last_cwd", "/");
 
         json_decref(root);
-        UpdateEffective();
+        UpdateEffective(config_svc, GUI::IsAppletMode());
         return 0;
     }
     
-    int GetLang(void) {
-        return eff.lang;
+    int GetLang(ConfigService &config_svc) {
+        return config_svc.effective.lang;
     }
     
-    void SetLastDevice(const std::string& dev) {
-        if (GUI::IsAppletMode()) {
-            cfg.applet_last_device = dev;
-            eff.last_device = dev;
+    void SetLastDevice(ConfigService &config_svc, const std::string& dev, bool is_applet_mode) {
+        if (is_applet_mode) {
+            config_svc.saved.applet_last_device = dev;
+            config_svc.effective.last_device = dev;
         } else {
-            cfg.last_device = dev;
-            eff.last_device = dev;
+            config_svc.saved.last_device = dev;
+            config_svc.effective.last_device = dev;
         }
     }
     
-    void SetLastCwd(const std::string& path) {
-        if (GUI::IsAppletMode()) {
-            cfg.applet_last_cwd = path;
-            eff.last_cwd = path;
+    void SetLastCwd(ConfigService &config_svc, const std::string& path, bool is_applet_mode) {
+        if (is_applet_mode) {
+            config_svc.saved.applet_last_cwd = path;
+            config_svc.effective.last_cwd = path;
         } else {
-            cfg.last_cwd = path;
-            eff.last_cwd = path;
+            config_svc.saved.last_cwd = path;
+            config_svc.effective.last_cwd = path;
         }
     }
 }

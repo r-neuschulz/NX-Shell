@@ -37,14 +37,14 @@
 #include "gui.hpp"
 #include "imgui_impl_switch.hpp"
 #include "log.hpp"
+#include "services.hpp"
 #include "textures.hpp"
 #include "windows.hpp"
 
 #define BYTES_PER_PIXEL 4
 #define MAX_IMAGE_BYTES (48 * 1024 * 1024)
 
-std::vector<Tex> file_icons;
-Tex folder_icon, check_icon, uncheck_icon, partcheck_icon, drive_icon, settings_icon;
+// Legacy globals defined in legacy.cpp
 
 namespace BMP {
     static void *bitmap_create(int width, int height, [[maybe_unused]] unsigned int state) {
