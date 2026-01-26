@@ -23,6 +23,17 @@ NX Shell is a multi-purpose file manager for the Nintendo Switch that aims towar
 - Safe Applet Mode.
 - Self-updating via GitHub.
 
+# Building:
+
+Requires [devkitPro](https://devkitpro.org/) with Switch development packages installed. Dependencies are fetched automatically via CMake's FetchContent.
+
+```bash
+cmake -B build
+cmake --build build
+```
+
+The output `NX-Shell.nro` will be in the project root.
+
 # Credits:
 
 - [PreetiSketch](https://www.youtube.com/channel/UCxg-ATCKERNRSG87bgjhoqA) for the banner.
