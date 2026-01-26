@@ -16,22 +16,31 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+        # Submodules are optional now - CMake FetchContent handles dependencies
         with:
-          submodules: recursive
+          submodules: false
 
       # devkitpro/devkita64:latest already includes all common Switch libraries
       # No need to install packages - this avoids rate limiting from pkg.devkitpro.org
 
-      - name: Clean build directory
-        run: make clean || true
+      - name: Configure CMake
+        run: |
+          cmake -B build -DCMAKE_BUILD_TYPE=Release
 
       - name: Build
-        run: make -j$(nproc)
+        run: cmake --build build -j$(nproc)
+
+      # Copy NRO to root directory for act/deploy.ps1 compatibility
+      # CMakeLists.txt also copies it, but this ensures it's in the right place for act
+      - name: Copy NRO to root (for act/deploy.ps1)
+        run: |
+          cp build/NX-Shell.nro NX-Shell.nro || true
+          ls -lh NX-Shell.nro || echo "NRO file not found in build directory"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         if: ${{ !env.ACT }}
         with:
           name: NX-Shell
-          path: NX-Shell.nro
+          path: build/NX-Shell.nro
           if-no-files-found: error

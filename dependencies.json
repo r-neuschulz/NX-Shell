@@ -1,0 +1,70 @@
+{
+  "version": "1.1.0",
+  "last_updated": "2026-01-26",
+  "description": "NX-Shell dependency manifest - tracks all external dependencies with pinned versions",
+  
+  "git_dependencies": {
+    "imgui": {
+      "url": "https://github.com/ocornut/imgui.git",
+      "version": "v1.92.5",
+      "tag": "v1.92.5",
+      "description": "Dear ImGui - immediate mode GUI library",
+      "managed_by": "FetchContent",
+      "location": "build/_deps/imgui-src"
+    },
+    "libnsbmp": {
+      "url": "https://github.com/netsurf-browser/libnsbmp.git",
+      "commit": "ea063c9f46acb43e90208da14073332b505ef7e7",
+      "description": "NetSurf bitmap decoder library",
+      "managed_by": "FetchContent",
+      "location": "build/_deps/libnsbmp-src",
+      "structure": "Source in src/libnsbmp.c, header in include/libnsbmp.h"
+    },
+    "stb": {
+      "url": "https://github.com/nothings/stb.git",
+      "commit": "f1c79c02822848a9bed4315b12c8c8f3761e1296",
+      "description": "stb single-file public domain libraries (for stb_image.h)",
+      "managed_by": "FetchContent",
+      "location": "build/_deps/stb-src"
+    },
+    "libusbhsfs": {
+      "url": "https://github.com/DarkMatterCore/libusbhsfs/releases",
+      "version": "0.2.10",
+      "commit": "3b897ed",
+      "description": "USB filesystem support library (pre-built release with lwext4 and ntfs-3g)",
+      "managed_by": "FetchContent",
+      "location": "build/_deps/usbhsfs_release-src",
+      "includes": ["libusbhsfs.a", "liblwext4.a", "libntfs-3g.a"]
+    }
+  },
+  
+  "system_packages": {
+    "devkitpro": {
+      "description": "Nintendo Switch development toolchain (provided by devkitpro/devkita64 Docker image)",
+      "packages": [
+        "switch-dev",
+        "switch-freetype",
+        "switch-curl",
+        "switch-libpng",
+        "switch-libjpeg-turbo",
+        "switch-libwebp",
+        "switch-libgif",
+        "switch-jansson",
+        "switch-glad",
+        "switch-minizip"
+      ]
+    }
+  },
+  
+  "update_instructions": {
+    "git_dependencies": "Update version/commit in this file (dependencies.json), then clean rebuild. CMake reads from here.",
+    "system_packages": "Update devkitpro Docker image or run 'dkp-pacman -Syu' locally"
+  },
+  
+  "notes": [
+    "This file is the SINGLE SOURCE OF TRUTH for dependency versions",
+    "CMake reads this file at configure time to set FetchContent tags and compile definitions",
+    "The About screen displays versions directly from this file via CMake definitions",
+    "To update: modify version/commit here, delete build/, reconfigure"
+  ]
+}

@@ -32,12 +32,9 @@
 *.app
 *.ps1
 
-# NX-Shell
+# NX-Shell build artifacts
 *.nro
 *.elf
 *.nacp
 build/
 res/shaders
-!libs/lib/liblwext4.a
-!libs/lib/libntfs-3g.a
-!libs/lib/libusbhsfs.a
