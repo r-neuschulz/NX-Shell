@@ -22,7 +22,7 @@ set(CMAKE_AR ${DEVKITA64}/bin/aarch64-none-elf-ar)
 set(CMAKE_STRIP ${DEVKITA64}/bin/aarch64-none-elf-strip)
 set(CMAKE_RANLIB ${DEVKITA64}/bin/aarch64-none-elf-ranlib)
 
-project(NX-Shell VERSION 4.0.1 LANGUAGES C CXX)
+project(NX-Shell VERSION 5.0.0 LANGUAGES C CXX)
 
 #---------------------------------------------------------------------------------
 # Project Configuration

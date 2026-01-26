@@ -3,39 +3,52 @@ name: Build NX-Shell
 on:
   push:
     branches: [master, main]
+    tags:
+      - 'v*.*.*'
   pull_request:
     branches: [master, main]
   workflow_dispatch:
+    inputs:
+      release:
+        description: 'Create a release'
+        required: false
+        type: boolean
+        default: false
+      version:
+        description: 'Release version (required if creating release, e.g., 5.0.0)'
+        required: false
+        type: string
+      prerelease:
+        description: 'Mark as pre-release'
+        required: false
+        type: boolean
+        default: false
 
 jobs:
   build:
     runs-on: ubuntu-latest
     container:
       image: devkitpro/devkita64:latest
+    
+    permissions:
+      contents: write  # Required for creating releases
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
-        # Submodules are optional now - CMake FetchContent handles dependencies
         with:
-          submodules: false
-
-      # devkitpro/devkita64:latest already includes all common Switch libraries
-      # No need to install packages - this avoids rate limiting from pkg.devkitpro.org
+          fetch-depth: 0  # Full history for changelog generation
 
       - name: Configure CMake
-        run: |
-          cmake -B build -DCMAKE_BUILD_TYPE=Release
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release
 
       - name: Build
         run: cmake --build build -j$(nproc)
 
-      # Copy NRO to root directory for act/deploy.ps1 compatibility
-      # CMakeLists.txt also copies it, but this ensures it's in the right place for act
       - name: Copy NRO to root (for act/deploy.ps1)
         run: |
           cp build/NX-Shell.nro NX-Shell.nro || true
-          ls -lh NX-Shell.nro || echo "NRO file not found in build directory"
+          ls -lh NX-Shell.nro
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
@@ -44,3 +57,56 @@ jobs:
           name: NX-Shell
           path: build/NX-Shell.nro
           if-no-files-found: error
+
+      # === Release steps (only on tags or manual release) ===
+      
+      - name: Determine version
+        id: version
+        if: startsWith(github.ref, 'refs/tags/v') || github.event.inputs.release == 'true'
+        run: |
+          if [ "${{ github.event.inputs.release }}" == "true" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+            TAG="v${VERSION}"
+          else
+            TAG="${GITHUB_REF#refs/tags/}"
+            VERSION="${TAG#v}"
+          fi
+          echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "tag=${TAG}" >> $GITHUB_OUTPUT
+          echo "Building release: ${VERSION} (tag: ${TAG})"
+
+      - name: Generate changelog
+        if: startsWith(github.ref, 'refs/tags/v') || github.event.inputs.release == 'true'
+        run: |
+          echo "## What's New in v${{ steps.version.outputs.version }}" > RELEASE_NOTES.md
+          echo "" >> RELEASE_NOTES.md
+          
+          # Get commits since last tag (if any)
+          PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+          if [ -n "$PREV_TAG" ]; then
+            echo "### Changes since ${PREV_TAG}:" >> RELEASE_NOTES.md
+            echo "" >> RELEASE_NOTES.md
+            git log ${PREV_TAG}..HEAD --pretty=format:"- %s" --no-merges >> RELEASE_NOTES.md || true
+          else
+            echo "Initial release." >> RELEASE_NOTES.md
+          fi
+          
+          echo "" >> RELEASE_NOTES.md
+          echo "" >> RELEASE_NOTES.md
+          echo "---" >> RELEASE_NOTES.md
+          echo "### Installation" >> RELEASE_NOTES.md
+          echo "1. Download \`NX-Shell.nro\`" >> RELEASE_NOTES.md
+          echo "2. Copy to \`/switch/NX-Shell/\` on your SD card" >> RELEASE_NOTES.md
+          echo "3. Launch from the Homebrew Menu" >> RELEASE_NOTES.md
+
+      - name: Create Release
+        if: startsWith(github.ref, 'refs/tags/v') || github.event.inputs.release == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: NX-Shell ${{ steps.version.outputs.version }}
+          body_path: RELEASE_NOTES.md
+          draft: false
+          prerelease: ${{ github.event.inputs.prerelease || false }}
+          files: build/NX-Shell.nro
+          fail_on_unmatched_files: true
