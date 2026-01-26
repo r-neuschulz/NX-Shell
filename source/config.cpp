@@ -1,5 +1,6 @@
 #include <cstdio>
 #include <cstring>
+#include <memory>
 #include <sys/stat.h>
 #include <jansson.h>
 
@@ -93,30 +94,28 @@ namespace Config {
         SetString(applet, "last_cwd", config_svc.applet.last_cwd);
         json_object_set_new(root, "applet", applet);
         
-        char *buf = json_dumps(root, JSON_INDENT(2));
+        // Use unique_ptr with custom deleter for json_dumps result (freed with free())
+        std::unique_ptr<char, decltype(&std::free)> buf(json_dumps(root, JSON_INDENT(2)), std::free);
         json_decref(root);
         
         if (!buf) return -1;
         
-        u64 len = std::strlen(buf);
+        u64 len = std::strlen(buf.get());
         fsFsDeleteFile(sdmc_fs, config_path);
         fsFsCreateFile(sdmc_fs, config_path, len, 0);
         
         FsFile file;
         Result ret;
         if (R_FAILED(ret = fsFsOpenFile(sdmc_fs, config_path, FsOpenMode_Write, std::addressof(file)))) {
-            free(buf);
             return ret;
         }
         
-        if (R_FAILED(ret = fsFileWrite(std::addressof(file), 0, buf, len, FsWriteOption_Flush))) {
-            free(buf);
+        if (R_FAILED(ret = fsFileWrite(std::addressof(file), 0, buf.get(), len, FsWriteOption_Flush))) {
             fsFileClose(std::addressof(file));
             return ret;
         }
         
         fsFileClose(std::addressof(file));
-        free(buf);
         return 0;
     }
     
@@ -148,9 +147,8 @@ namespace Config {
             return ret;
         }
 
-        char *buf = new char[size + 1];
-        if (R_FAILED(ret = fsFileRead(std::addressof(file), 0, buf, static_cast<u64>(size) + 1, FsReadOption_None, nullptr))) {
-            delete[] buf;
+        auto buf = std::make_unique<char[]>(size + 1);
+        if (R_FAILED(ret = fsFileRead(std::addressof(file), 0, buf.get(), static_cast<u64>(size) + 1, FsReadOption_None, nullptr))) {
             fsFileClose(std::addressof(file));
             return ret;
         }
@@ -159,8 +157,7 @@ namespace Config {
         
         json_t *root;
         json_error_t error;
-        root = json_loads(buf, 0, std::addressof(error));
-        delete[] buf;
+        root = json_loads(buf.get(), 0, std::addressof(error));
         
         if (!root) return -1;
         

@@ -1,5 +1,6 @@
 #include <cstring>
 #include <filesystem>
+#include <memory>
 #include <minizip/unzip.h>
 
 #include "archive.hpp"
@@ -90,7 +91,7 @@ namespace Archive {
         }
         
         const std::size_t buf_size = 0x10000;  // 64KB buffer
-        unsigned char *buffer = new unsigned char[buf_size];
+        auto buffer = std::make_unique<unsigned char[]>(buf_size);
         
         u64 files_extracted = 0;
         int ret = unzGoToFirstFile(zip);
@@ -134,13 +135,13 @@ namespace Archive {
                 
                 int bytes_read;
                 do {
-                    bytes_read = unzReadCurrentFile(zip, buffer, buf_size);
+                    bytes_read = unzReadCurrentFile(zip, buffer.get(), buf_size);
                     if (bytes_read < 0) {
                         Log::Error("Archive::ExtractZip - Error reading file: %s\n", filename);
                         break;
                     }
                     if (bytes_read > 0) {
-                        fwrite(buffer, 1, bytes_read, out_file);
+                        fwrite(buffer.get(), 1, bytes_read, out_file);
                     }
                 } while (bytes_read > 0);
                 
@@ -161,7 +162,6 @@ namespace Archive {
             ret = unzGoToNextFile(zip);
         }
         
-        delete[] buffer;
         unzClose(zip);
         
         Log::Debug("Archive::ExtractZip - Extracted %lu files to %s\n", files_extracted, base_dest.c_str());

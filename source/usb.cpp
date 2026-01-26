@@ -1,4 +1,5 @@
 #include <cstdio>
+#include <memory>
 
 #include "services.hpp"
 #include "usb.hpp"
@@ -8,7 +9,7 @@
 namespace USB {
     static UEvent *status_change_event = nullptr, exit_event = {0};
     static u32 usb_device_count = 0;
-    static UsbHsFsDevice *usb_devices = nullptr;
+    static std::unique_ptr<UsbHsFsDevice[]> usb_devices;
     static Thread thread = {0};
     static u32 listed_device_count = 0;
     static bool thread_created = false;
@@ -49,14 +50,13 @@ namespace USB {
                     continue;
 
                 /* Allocate mounted devices buffer. */
-                usb_devices = new UsbHsFsDevice[usb_device_count];
+                usb_devices = std::make_unique<UsbHsFsDevice[]>(usb_device_count);
                 if (!usb_devices)
                     continue;
 
                 /* List mounted devices. */
-                if (!(listed_device_count = usbHsFsListMountedDevices(usb_devices, usb_device_count))) {
-                    delete[] usb_devices;
-                    usb_devices = nullptr;
+                if (!(listed_device_count = usbHsFsListMountedDevices(usb_devices.get(), usb_device_count))) {
+                    usb_devices.reset();
                     continue;
                 }
 
@@ -135,8 +135,7 @@ namespace USB {
                 usbHsFsUnmountDevice(device, false);
             }
 
-            delete[] usb_devices;
-            usb_devices = nullptr;
+            usb_devices.reset();
         }
 
         listed_device_count = 0;

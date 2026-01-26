@@ -207,6 +207,9 @@ namespace Tabs {
             prev_at_partition_root = at_partition_root_for_columns;
             prev_show_details = show_details;
             
+            // NOTE: Direct ImGui internal access is required for gamepad/keyboard navigation focus.
+            // Public APIs (SetItemDefaultFocus, SetKeyboardFocusHere) don't work for nav focus.
+            // Review this code if ImGui is updated - internal struct layout may change.
             ImGuiContext& g = *GImGui;
             
             // Use different table IDs for each distinct column configuration to prevent

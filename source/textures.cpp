@@ -81,7 +81,7 @@ namespace Textures {
         ImageTypeOther
     } ImageType;
     
-    static bool ReadFile(const std::string &path, unsigned char **buffer, std::size_t &size) {
+    static bool ReadFile(const std::string &path, std::unique_ptr<unsigned char[]> &buffer, std::size_t &size) {
         FILE *file = fopen(path.c_str(), "rb");
         if (!file) {
             Log::Error("Textures::ReadFile (%s) failed to open file.\n", path.c_str());
@@ -91,12 +91,13 @@ namespace Textures {
         struct stat file_stat = { 0 };
         if (stat(path.c_str(), std::addressof(file_stat)) != 0) {
             Log::Error("Textures::ReadFile (%s) failed to get file size.\n", path.c_str());
+            fclose(file);
             return false;
         }
 
         size = file_stat.st_size;
-        *buffer = new unsigned char[size + 1];
-        std::size_t bytes_read = fread(*buffer, sizeof(unsigned char), size, file);
+        buffer = std::make_unique<unsigned char[]>(size + 1);
+        std::size_t bytes_read = fread(buffer.get(), sizeof(unsigned char), size, file);
 
         if (bytes_read != size) {
             Log::Error("Textures::ReadFile (%s) failed to read file.\n", path.c_str());
@@ -132,29 +133,25 @@ namespace Textures {
         image.version = PNG_IMAGE_VERSION;
 
         if (png_image_begin_read_from_file(std::addressof(image), path.c_str()) != 0) {
-            png_bytep buffer;
             image.format = PNG_FORMAT_RGBA;
-            buffer = new png_byte[PNG_IMAGE_SIZE(image)];
+            auto buffer = std::make_unique<png_byte[]>(PNG_IMAGE_SIZE(image));
 
-            if (buffer != nullptr && png_image_finish_read(std::addressof(image), nullptr, buffer, 0, nullptr) != 0) {
+            if (buffer && png_image_finish_read(std::addressof(image), nullptr, buffer.get(), 0, nullptr) != 0) {
                 texture.width = image.width;
                 texture.height = image.height;
-                ret = Textures::Create(buffer, GL_RGBA, texture);
-                delete[] buffer;
+                ret = Textures::Create(buffer.get(), GL_RGBA, texture);
                 png_image_free(std::addressof(image));
             }
             else {
-                if (buffer == nullptr)
+                if (!buffer)
                     png_image_free(std::addressof(image));
-                else
-                    delete[] buffer;
             }
         }
 
         return ret;
     }
     
-    static bool LoadImageBMP(unsigned char **data, std::size_t &size, Tex &texture) {
+    static bool LoadImageBMP(const std::unique_ptr<unsigned char[]> &data, std::size_t size, Tex &texture) {
         bmp_bitmap_callback_vt bitmap_callbacks = {
             BMP::bitmap_create,
             BMP::bitmap_destroy,
@@ -165,7 +162,7 @@ namespace Textures {
         bmp_image bmp;
         bmp_create(std::addressof(bmp), std::addressof(bitmap_callbacks));
         
-        code = bmp_analyse(std::addressof(bmp), size, *data);
+        code = bmp_analyse(std::addressof(bmp), size, data.get());
         if (code != BMP_OK) {
             bmp_finalise(std::addressof(bmp));
             return false;
@@ -289,15 +286,14 @@ namespace Textures {
         return true;
     }
     
-    static bool LoadImageJPEG(unsigned char **data, std::size_t &size, Tex &texture) {
+    static bool LoadImageJPEG(const std::unique_ptr<unsigned char[]> &data, std::size_t size, Tex &texture) {
         tjhandle jpeg = tjInitDecompress();
         int jpegsubsamp = 0;
-        tjDecompressHeader2(jpeg, *data, size, std::addressof(texture.width), std::addressof(texture.height), std::addressof(jpegsubsamp));
-        unsigned char *buffer = new unsigned char[texture.width * texture.height * 4];
-        tjDecompress2(jpeg, *data, size, buffer, texture.width, 0, texture.height, TJPF_RGBA, TJFLAG_FASTDCT);
-        bool ret = Textures::Create(buffer, GL_RGBA, texture);
+        tjDecompressHeader2(jpeg, data.get(), size, std::addressof(texture.width), std::addressof(texture.height), std::addressof(jpegsubsamp));
+        auto buffer = std::make_unique<unsigned char[]>(texture.width * texture.height * 4);
+        tjDecompress2(jpeg, data.get(), size, buffer.get(), texture.width, 0, texture.height, TJPF_RGBA, TJFLAG_FASTDCT);
+        bool ret = Textures::Create(buffer.get(), GL_RGBA, texture);
         tjDestroy(jpeg);
-        delete[] buffer;
         return ret;
     }
 
@@ -307,9 +303,11 @@ namespace Textures {
         return ret;
     }
 
-    static bool LoadImageWEBP(unsigned char **data, std::size_t &size, Tex &texture) {
-        *data = WebPDecodeRGBA(*data, size, std::addressof(texture.width), std::addressof(texture.height));
-        bool ret = Textures::Create(*data, GL_RGBA, texture);
+    static bool LoadImageWEBP(const std::unique_ptr<unsigned char[]> &data, std::size_t size, Tex &texture) {
+        // WebPDecodeRGBA allocates and returns new memory that must be freed with WebPFree
+        unsigned char *decoded = WebPDecodeRGBA(data.get(), size, std::addressof(texture.width), std::addressof(texture.height));
+        bool ret = Textures::Create(decoded, GL_RGBA, texture);
+        WebPFree(decoded);
         return ret;
     }
 
@@ -345,32 +343,29 @@ namespace Textures {
         else if (type == ImageTypeOther)
             ret = Textures::LoadImageOther(path, textures[0]);
         else {
-            unsigned char *data = nullptr;
+            std::unique_ptr<unsigned char[]> data;
             std::size_t size = 0;
             
-            if (!Textures::ReadFile(path, std::addressof(data), size)) {
-                delete[] data;
+            if (!Textures::ReadFile(path, data, size)) {
                 return ret;
             }
 
             switch(type) {
                 case ImageTypeBMP:
-                    ret = Textures::LoadImageBMP(std::addressof(data), size, textures[0]);
+                    ret = Textures::LoadImageBMP(data, size, textures[0]);
                     break;
                     
                 case ImageTypeJPEG:
-                    ret = Textures::LoadImageJPEG(std::addressof(data), size, textures[0]);
+                    ret = Textures::LoadImageJPEG(data, size, textures[0]);
                     break;
                     
                 case ImageTypeWEBP:
-                    ret = Textures::LoadImageWEBP(std::addressof(data), size, textures[0]);
+                    ret = Textures::LoadImageWEBP(data, size, textures[0]);
                     break;
                     
                 default:
                     break;
             }
-
-            delete[] data;
         }
         return ret;
     }
