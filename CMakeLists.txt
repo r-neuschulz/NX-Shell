@@ -22,7 +22,13 @@ set(CMAKE_AR ${DEVKITA64}/bin/aarch64-none-elf-ar)
 set(CMAKE_STRIP ${DEVKITA64}/bin/aarch64-none-elf-strip)
 set(CMAKE_RANLIB ${DEVKITA64}/bin/aarch64-none-elf-ranlib)
 
-project(NX-Shell VERSION 5.0.0 LANGUAGES C CXX)
+# Allow version override from CI (e.g., -DPROJECT_VERSION_OVERRIDE=5.1.0)
+if(DEFINED PROJECT_VERSION_OVERRIDE)
+    project(NX-Shell VERSION ${PROJECT_VERSION_OVERRIDE} LANGUAGES C CXX)
+    message(STATUS "Version overridden to: ${PROJECT_VERSION_OVERRIDE}")
+else()
+    project(NX-Shell VERSION 5.0.0 LANGUAGES C CXX)
+endif()
 
 #---------------------------------------------------------------------------------
 # Project Configuration
