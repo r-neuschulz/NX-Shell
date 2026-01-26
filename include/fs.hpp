@@ -37,7 +37,7 @@ namespace FS {
     Result GetFreeStorageSpace(FileSystemService &fs_svc, s64 &size);
     Result GetTotalStorageSpace(FileSystemService &fs_svc, s64 &size);
     Result GetUsedStorageSpace(FileSystemService &fs_svc, s64 &size);
-    std::string BuildPath(FileSystemService &fs_svc, FsDirectoryEntry &entry);
+    std::string BuildPath(FileSystemService &fs_svc, const FsDirectoryEntry &entry);
     std::string BuildPath(FileSystemService &fs_svc, const std::string &path, bool device_name);
     std::string GetFileExt(const std::string &filename);
     

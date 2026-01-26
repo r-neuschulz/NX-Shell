@@ -15,6 +15,7 @@
 #include "tabs.hpp"
 #include "textures.hpp"
 #include "utils.hpp"
+#include "sort_utils.hpp"
 #include "windows.hpp"
 
 static std::string pending_focus_name;  // Name of entry to focus after navigation (empty = none)
@@ -60,29 +61,8 @@ namespace Tabs {
 namespace FileBrowser {
     // Sort without using ImGuiTableSortSpecs
     bool Sort(FileSystemService &fs_svc, WindowService &win_svc, const FsDirectoryEntry &entryA, const FsDirectoryEntry &entryB) {
-        // Make sure ".." stays at the top regardless of sort direction
-        if (strcasecmp(entryA.name, "..") == 0)
-            return true;
-        
-        if (strcasecmp(entryB.name, "..") == 0)
-            return false;
-        
-        if ((entryA.type == FsDirEntryType_Dir) && !(entryB.type == FsDirEntryType_Dir))
-            return true;
-        else if (!(entryA.type == FsDirEntryType_Dir) && (entryB.type == FsDirEntryType_Dir))
-            return false;
-
-        switch(win_svc.sort) {
-            case FS_SORT_ALPHA_ASC:
-                return (strcasecmp(entryA.name, entryB.name) < 0);
-                break;
-
-            case FS_SORT_ALPHA_DESC:
-                return (strcasecmp(entryB.name, entryA.name) < 0);
-                break;
-        }
-
-        return false;
+        bool descending = (win_svc.sort == FS_SORT_ALPHA_DESC);
+        return SortUtils::StandardOrder(entryA, entryB, descending);
     }
 
     // Find alphabetically-first folder name (or first file if no folders)
@@ -92,14 +72,14 @@ namespace FileBrowser {
         const char* best_file = nullptr;
         
         for (const auto &entry : entries) {
-            if (std::strncmp(entry.name, "..", 2) == 0)
+            if (SortUtils::IsParentDir(entry))
                 continue;
             
-            if (entry.type == FsDirEntryType_Dir) {
-                if (!best_folder || strcasecmp(entry.name, best_folder) < 0)
+            if (SortUtils::IsDirectory(entry)) {
+                if (!best_folder || SortUtils::CompareAlpha(entry.name, best_folder) < 0)
                     best_folder = entry.name;
             } else {
-                if (!best_file || strcasecmp(entry.name, best_file) < 0)
+                if (!best_file || SortUtils::CompareAlpha(entry.name, best_file) < 0)
                     best_file = entry.name;
             }
         }
@@ -336,41 +316,33 @@ namespace Tabs {
                                 const FsDirectoryEntry &entryA = entries[a.first];
                                 const FsDirectoryEntry &entryB = entries[b.first];
                                 
-                                // Make sure ".." stays at the top regardless of sort direction (only in directory view)
+                                // Apply standard ordering rules in directory view (parent dir first, then directories)
                                 if (!is_at_partition_root) {
-                                    if (strcasecmp(entryA.name, "..") == 0)
-                                        return true;
-                                    if (strcasecmp(entryB.name, "..") == 0)
-                                        return false;
+                                    int parentPri = SortUtils::ParentDirPriority(entryA, entryB);
+                                    if (parentPri != 0) return parentPri > 0;
                                     
-                                    // Directories before files (only in directory view)
-                                    if ((entryA.type == FsDirEntryType_Dir) && !(entryB.type == FsDirEntryType_Dir))
-                                        return true;
-                                    if (!(entryA.type == FsDirEntryType_Dir) && (entryB.type == FsDirEntryType_Dir))
-                                        return false;
+                                    int dirPri = SortUtils::DirFirstPriority(entryA, entryB);
+                                    if (dirPri != 0) return dirPri > 0;
                                 }
                                 
                                 // Handle partition root sorting (col 0 = checkbox/NoSort, col 1 = device, col 2 = usage)
                                 if (is_at_partition_root) {
                                     switch (sort_column) {
                                         case 1: // Device name
-                                            return descending ? (strcasecmp(entryB.name, entryA.name) < 0) 
-                                                              : (strcasecmp(entryA.name, entryB.name) < 0);
+                                            return SortUtils::AlphaLess(entryA, entryB, descending);
                                         
                                         case 2: // Usage percentage
                                             {
                                                 float ratioA = (a.first < usage_ratios.size()) ? usage_ratios[a.first] : 0.0f;
                                                 float ratioB = (b.first < usage_ratios.size()) ? usage_ratios[b.first] : 0.0f;
                                                 if (ratioA != ratioB)
-                                                    return descending ? (ratioA > ratioB) : (ratioA < ratioB);
+                                                    return SortUtils::NumericLess(ratioA, ratioB, descending);
                                             }
                                             // Fall through to device name for stable sort
-                                            return descending ? (strcasecmp(entryB.name, entryA.name) < 0) 
-                                                              : (strcasecmp(entryA.name, entryB.name) < 0);
+                                            return SortUtils::AlphaLess(entryA, entryB, descending);
                                         
                                         default:
-                                            return descending ? (strcasecmp(entryB.name, entryA.name) < 0) 
-                                                              : (strcasecmp(entryA.name, entryB.name) < 0);
+                                            return SortUtils::AlphaLess(entryA, entryB, descending);
                                     }
                                 }
                                 
@@ -388,26 +360,23 @@ namespace Tabs {
                                             bool checkedA = selection.IsSelected(pathA);
                                             bool checkedB = selection.IsSelected(pathB);
                                             if (checkedA != checkedB)
-                                                return descending ? (checkedA < checkedB) : (checkedA > checkedB);  // Checked items first by default
+                                                return SortUtils::BoolLess(checkedA, checkedB, descending);
                                         }
                                         // Fall through to filename for stable sort
-                                        return descending ? (strcasecmp(entryB.name, entryA.name) < 0) 
-                                                          : (strcasecmp(entryA.name, entryB.name) < 0);
+                                        return SortUtils::AlphaLess(entryA, entryB, descending);
                                     
                                     case 1: // filename
-                                        return descending ? (strcasecmp(entryB.name, entryA.name) < 0) 
-                                                          : (strcasecmp(entryA.name, entryB.name) < 0);
+                                        return SortUtils::AlphaLess(entryA, entryB, descending);
                                     
                                     case 2: // size (only meaningful for files)
-                                        if (entryA.type == FsDirEntryType_File && entryB.type == FsDirEntryType_File) {
+                                        if (!SortUtils::IsDirectory(entryA) && !SortUtils::IsDirectory(entryB)) {
                                             size_t sizeA = (a.first < cache.size() && cache[a.first].valid) ? cache[a.first].file_size : 0;
                                             size_t sizeB = (b.first < cache.size() && cache[b.first].valid) ? cache[b.first].file_size : 0;
                                             if (sizeA != sizeB)
-                                                return descending ? (sizeA > sizeB) : (sizeA < sizeB);
+                                                return SortUtils::NumericLess(sizeA, sizeB, descending);
                                         }
                                         // Fall through to filename for stable sort when sizes are equal or both dirs
-                                        return descending ? (strcasecmp(entryB.name, entryA.name) < 0) 
-                                                          : (strcasecmp(entryA.name, entryB.name) < 0);
+                                        return SortUtils::AlphaLess(entryA, entryB, descending);
                                     
                                     case 3: // modified date
                                         {
@@ -417,31 +386,28 @@ namespace Tabs {
                                                 s64 timeA = cache[a.first].modified_time;
                                                 s64 timeB = cache[b.first].modified_time;
                                                 if (timeA != timeB)
-                                                    return descending ? (timeA > timeB) : (timeA < timeB);
+                                                    return SortUtils::NumericLess(timeA, timeB, descending);
                                             }
                                             else if (validA != validB) {
                                                 return validA;  // Valid entries come first
                                             }
                                         }
                                         // Fall through to filename for stable sort
-                                        return descending ? (strcasecmp(entryB.name, entryA.name) < 0) 
-                                                          : (strcasecmp(entryA.name, entryB.name) < 0);
+                                        return SortUtils::AlphaLess(entryA, entryB, descending);
                                     
                                     case 4: // archive bit (only meaningful for directories)
                                         {
                                             // Files don't have archive bit - treat as false
-                                            bool archiveA = (entryA.type == FsDirEntryType_Dir && a.first < cache.size() && cache[a.first].valid) ? cache[a.first].has_archive_bit : false;
-                                            bool archiveB = (entryB.type == FsDirEntryType_Dir && b.first < cache.size() && cache[b.first].valid) ? cache[b.first].has_archive_bit : false;
+                                            bool archiveA = (SortUtils::IsDirectory(entryA) && a.first < cache.size() && cache[a.first].valid) ? cache[a.first].has_archive_bit : false;
+                                            bool archiveB = (SortUtils::IsDirectory(entryB) && b.first < cache.size() && cache[b.first].valid) ? cache[b.first].has_archive_bit : false;
                                             if (archiveA != archiveB)
-                                                return descending ? (archiveA < archiveB) : (archiveA > archiveB);  // Archive bit set first by default
+                                                return SortUtils::BoolLess(archiveA, archiveB, descending);
                                         }
                                         // Fall through to filename for stable sort
-                                        return descending ? (strcasecmp(entryB.name, entryA.name) < 0) 
-                                                          : (strcasecmp(entryA.name, entryB.name) < 0);
+                                        return SortUtils::AlphaLess(entryA, entryB, descending);
                                     
                                     default:
-                                        return descending ? (strcasecmp(entryB.name, entryA.name) < 0) 
-                                                          : (strcasecmp(entryA.name, entryB.name) < 0);
+                                        return SortUtils::AlphaLess(entryA, entryB, descending);
                                 }
                             });
                         

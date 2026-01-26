@@ -48,6 +48,7 @@ namespace FS {
         struct stat file_stat = { 0 };
         if (stat(src_path.c_str(), std::addressof(file_stat)) != 0) {
             Log::Error("FS::CopyFile (%s) failed to get src file size.\n", src_path.c_str());
+            fclose(src);
             return false;
         }
 
@@ -69,7 +70,7 @@ namespace FS {
             std::fill(buf.begin(), buf.end(), 0);
 
             bytes_read = fread(buf.data(), sizeof(unsigned char), buf_size, src);
-            if (bytes_read < 0) {
+            if (bytes_read == 0 && ferror(src)) {
                 Log::Error("FS::CopyFile (%s) failed to read src file.\n", src_path.c_str());
                 fclose(src);
                 fclose(dest);
@@ -482,7 +483,7 @@ namespace FS {
         return 0;
     }
 
-    std::string BuildPath(FileSystemService &fs_svc, FsDirectoryEntry &entry) {
+    std::string BuildPath(FileSystemService &fs_svc, const FsDirectoryEntry &entry) {
         std::string path_next = fs_svc.device;
         path_next.append(fs_svc.cwd);
         path_next.append((fs_svc.cwd.compare("/") == 0) ? "" : "/");
@@ -517,7 +518,7 @@ namespace FS {
                 continue;
             }
             
-            std::string full_path = BuildPath(fs_svc, const_cast<FsDirectoryEntry&>(entries[i]));
+            std::string full_path = BuildPath(fs_svc, entries[i]);
             struct stat file_stat = { 0 };
             
             if (stat(full_path.c_str(), std::addressof(file_stat)) == 0) {
