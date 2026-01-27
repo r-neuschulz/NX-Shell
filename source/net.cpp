@@ -13,6 +13,7 @@
 #include "net.hpp"
 #include "services.hpp"
 #include "utils.hpp"
+#include "version.hpp"
 
 // Custom deleters for RAII resource management
 namespace {
@@ -85,27 +86,21 @@ namespace Net {
         if (tag.empty())
             return false;
             
-        int current_ver = ((VERSION_MAJOR * 100) + (VERSION_MINOR * 10) + VERSION_MICRO);
+        int current_ver = NX_SHELL_VERSION_INT;
 
         std::string tag_name = tag;
         // Strip 'v' prefix if present (e.g., "v5.0.1" -> "5.0.1")
         if (!tag_name.empty() && (tag_name[0] == 'v' || tag_name[0] == 'V'))
             tag_name.erase(0, 1);
-        // Remove dots (e.g., "5.0.1" -> "501")
-        tag_name.erase(std::remove_if(tag_name.begin(), tag_name.end(), [](char c) { return c == '.'; }), tag_name.end());
         
-        // Safely parse version number (no exceptions - project uses -fno-exceptions)
-        if (tag_name.empty())
-            return false;
-        
-        // Use strtol for safe parsing without exceptions
-        char *end = nullptr;
-        long available_ver = std::strtol(tag_name.c_str(), &end, 10);
-        if (end == tag_name.c_str() || *end != '\0') {
+        // Parse major.minor.micro format using the same formula as NX_SHELL_VERSION_INT
+        int major = 0, minor = 0, micro = 0;
+        if (std::sscanf(tag_name.c_str(), "%d.%d.%d", &major, &minor, &micro) < 1) {
             Log::Error("Failed to parse version tag: %s\n", tag.c_str());
             return false;
         }
         
+        long available_ver = (major * 10000L) + (minor * 100L) + micro;
         return (available_ver > current_ver);
     }
     
@@ -114,11 +109,6 @@ namespace Net {
         reinterpret_cast<std::string *>(userdata)->append(ptr, total_size);
         return total_size;
     }
-    
-    // Stringify macros for compile-time version string
-    #define NET_STRINGIFY(x) #x
-    #define NET_TOSTRING(x) NET_STRINGIFY(x)
-    #define NX_SHELL_USER_AGENT "NX-Shell/" NET_TOSTRING(VERSION_MAJOR) "." NET_TOSTRING(VERSION_MINOR) "." NET_TOSTRING(VERSION_MICRO)
     
     // Configure common CURL options for GitHub API requests
     static void SetupCurlCommon(CURL *handle, const char *url) {

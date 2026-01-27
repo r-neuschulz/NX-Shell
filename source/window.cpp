@@ -11,12 +11,16 @@
 #include "popups.hpp"
 #include "selection.hpp"
 #include "tabs.hpp"
+#include "version.hpp"
 #include "windows.hpp"
 
 namespace Windows {
     static bool image_properties = false, text_properties = false, file_stat = false;
     static int current_tab = -1;  // -1 = no forced selection, 0-2 = force select tab
     static int active_tab = 0;    // Track which tab is currently active
+    
+    // Window title with version (from version.hpp)
+    static constexpr const char* WINDOW_TITLE = NX_SHELL_WINDOW_TITLE;
     
     int GetActiveTab(void) {
         return active_tab;
@@ -417,7 +421,7 @@ namespace Windows {
         SelectionStore selection(app.selection);
         
         Windows::SetupWindow(app.gui);
-        if (ImGui::Begin("NX-Shell", nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse)) {
+        if (ImGui::Begin(WINDOW_TITLE, nullptr, ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoCollapse)) {
             ImDrawList *draw_list = ImGui::GetWindowDrawList();
             
             // Draw status bar (battery, WiFi, dock) in the title bar area

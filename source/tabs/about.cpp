@@ -8,6 +8,7 @@
 #include "tabs.hpp"
 #include "tabs_internal.hpp"
 #include "utils.hpp"
+#include "version.hpp"
 
 static bool need_focus_about = false;
 static bool update_popup = false, network_status = false, update_available = false;
@@ -74,7 +75,7 @@ namespace Tabs {
             // ============================================================
             Internal::Indent(strings[lang][Lang::SettingsAboutTitle]);
             
-            ImGui::Text("NX-Shell %s: v%d.%d.%d", strings[lang][Lang::SettingsAboutVersion], VERSION_MAJOR, VERSION_MINOR, VERSION_MICRO);
+            ImGui::Text("NX-Shell %s: %s", strings[lang][Lang::SettingsAboutVersion], NX_SHELL_VERSION_STR);
             ImGui::Dummy(ImVec2(0.0f, 5.0f));
             ImGui::Text("%s: Joel16", strings[lang][Lang::SettingsAboutAuthor]);
             ImGui::Dummy(ImVec2(0.0f, 5.0f));

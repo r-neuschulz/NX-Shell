@@ -112,6 +112,7 @@ struct NormalConfig {
     std::string last_cwd = "/";
     float accent_color[3] = {0.0f, 0.50f, 0.50f};
     int button_style = ButtonStyle_Colored;
+    std::string last_known_version;  // Tracks last version user ran; used to show welcome popup on updates
 };
 
 // Applet mode: limited settings (most values are forced defaults)
@@ -182,6 +183,10 @@ struct ConfigService {
         if (is_applet_mode) applet.last_cwd = cwd;
         else normal.last_cwd = cwd;
     }
+    
+    // Version tracking (for post-update welcome popup)
+    const std::string& LastKnownVersion() const { return normal.last_known_version; }
+    void SetLastKnownVersion(const std::string& version) { normal.last_known_version = version; }
 };
 
 // ============================================================================

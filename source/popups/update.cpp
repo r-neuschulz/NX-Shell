@@ -133,4 +133,24 @@ namespace Popups {
         
         Popups::ExitPopup();
     }
+    
+    void UpdateWelcomePopup(App &app, bool &state, const std::string &version) {
+        Popups::SetupPopup(app, "Welcome");
+        
+        if (ImGui::BeginPopupModal("Welcome", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+            // Show welcome message with new version
+            std::string welcome_text = "Welcome to NX-Shell " + version + "!";
+            ImGui::Text("%s", welcome_text.c_str());
+            
+            ImGui::Dummy(ImVec2(0.0f, 5.0f)); // Spacing
+            
+            const int lang = app.config.Lang();
+            if (ImGui::Button(strings[lang][Lang::ButtonOK], ImVec2(120, 0))) {
+                ImGui::CloseCurrentPopup();
+                state = false;
+            }
+        }
+        
+        Popups::ExitPopup();
+    }
 }

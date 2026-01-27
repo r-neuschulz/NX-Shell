@@ -9,9 +9,11 @@
 #include "imgui.h"
 #include "log.hpp"
 #include "net.hpp"
+#include "popups.hpp"
 #include "services.hpp"
 #include "tabs.hpp"
 #include "textures.hpp"
+#include "version.hpp"
 #include "windows.hpp"
 #include "usb.hpp"
 
@@ -413,12 +415,43 @@ int main(int argc, char* argv[]) {
     // Set initial focus (sdmc: at partition root, or ".." in directory)
     Tabs::RequestFileBrowserFocus(app.fs);
     
+    // Use compile-time version string for comparison and welcome popup
+    const char* current_version = NX_SHELL_VERSION_STR;
+    
+    // Check if this is a new version compared to last known
+    const std::string& last_known = app.config.LastKnownVersion();
+    bool show_welcome_popup = false;
+    
+    if (last_known.empty()) {
+        // First run ever - just save current version, no popup
+        Log::Debug("First run detected, saving version %s to config\n", current_version);
+        app.config.SetLastKnownVersion(current_version);
+        Config::Save(app.config, app.fs);
+    } else if (last_known != current_version) {
+        // Version changed - show welcome popup
+        Log::Debug("Version changed: %s -> %s, will show welcome popup\n", last_known.c_str(), current_version);
+        show_welcome_popup = true;
+    }
+    
     // Log total startup time
     Log::Debug("[TIMING] ========== STARTUP COMPLETE ==========\n");
     LogTiming("Total startup time", s_startup_begin_tick);
     
     while (GUI::Loop(app, key)) {
         Windows::MainWindow(app, key, false);
+        
+        // Show welcome popup on version change (update from any source)
+        if (show_welcome_popup) {
+            Popups::UpdateWelcomePopup(app, show_welcome_popup, current_version);
+            
+            // When popup closes, save new version to config
+            if (!show_welcome_popup) {
+                app.config.SetLastKnownVersion(current_version);
+                Config::Save(app.config, app.fs);
+                Log::Debug("Welcome popup closed, saved version %s to config\n", current_version);
+            }
+        }
+        
         GUI::RenderStatsOverlay(app);
         GUI::Render();
     }

@@ -85,6 +85,11 @@ namespace Config {
         json_object_set_new(normal, "accent_color", accent_array);
         
         SetInt(normal, "button_style", config_svc.normal.button_style);
+        
+        // Save last known version for welcome popup on updates
+        if (!config_svc.normal.last_known_version.empty())
+            SetString(normal, "last_known_version", config_svc.normal.last_known_version);
+        
         json_object_set_new(root, "normal", normal);
         
         // Applet mode settings (limited)
@@ -191,6 +196,9 @@ namespace Config {
                 for (int i = 0; i < 3; i++)
                     config_svc.normal.accent_color[i] = static_cast<float>(json_real_value(json_array_get(accent_color, i)));
             }
+            
+            // Load last known version for welcome popup on updates
+            config_svc.normal.last_known_version = GetString(normal, "last_known_version", "");
         }
         
         // Load applet mode settings
