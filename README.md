@@ -27,14 +27,34 @@ Inspired by [LineageOS's file manager](https://github.com/LineageOS/android_pack
 
 # Building:
 
-Requires [devkitPro](https://devkitpro.org/) with Switch development packages installed. Dependencies are fetched automatically via CMake's FetchContent.
+## Prerequisites
+
+Follow the [devkitPro Getting Started guide](https://devkitpro.org/wiki/Getting_Started) to install the toolchain for your platform. Then install the required Switch packages:
+
+```bash
+sudo dkp-pacman -S switch-dev switch-freetype switch-curl switch-libpng switch-libjpeg-turbo switch-libwebp switch-libgif switch-jansson switch-glad switch-minizip
+```
+
+> **Note:** `switch-dev` is a meta-package that installs the base toolchain (devkitA64, libnx, switch-tools). The remaining packages are additional libraries required by NX-Shell.
+
+## Build
 
 ```bash
 cmake -B build
 cmake --build build
 ```
 
-The output `NX-Shell-vX.Y.Z.nro` will be in the project root.
+The output `NX-Shell.nro` will be copied to the project root.
+
+## Debug (nxlink)
+
+To deploy and debug on your Switch over the network:
+
+```bash
+nxlink -a <SWITCH_IP> -s NX-Shell.nro
+```
+
+Replace `<SWITCH_IP>` with your Switch's IP address. The IP is shown when using (Y) in homebrew launcher.
 
 # Credits:
 
@@ -44,3 +64,4 @@ The output `NX-Shell-vX.Y.Z.nro` will be in the project root.
 - [DarkMatterCore](https://github.com/DarkMatterCore) for [libusbhsfs](https://github.com/DarkMatterCore/libusbhsfs).
 - [Sean Barrett](https://github.com/nothings) for [stb_image](https://github.com/nothings/stb).
 - [Grzegorz Kostka](https://github.com/gkostka) for [lwext4](https://github.com/gkostka/lwext4) and the [NTFS-3G](https://github.com/tuxera/ntfs-3g) developers.
+- [xfangfang](https://github.com/xfangfang) for [wiliwili](https://github.com/xfangfang/wiliwili) and showing how to install nsps
