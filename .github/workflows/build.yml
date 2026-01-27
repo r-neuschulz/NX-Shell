@@ -153,25 +153,21 @@ jobs:
 
       - name: Generate changelog
         run: |
-          VERSION="${{ needs.build.outputs.version }}"
+          NRO_FILENAME="${{ needs.build.outputs.nro_filename }}"
           
           # Check for previous tag to generate changelog
           PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
           if [ -n "$PREV_TAG" ]; then
-            echo "## What's New in v${VERSION}" > RELEASE_NOTES.md
-            echo "" >> RELEASE_NOTES.md
-            echo "### Changes since ${PREV_TAG}:" >> RELEASE_NOTES.md
+            echo "**Changes since ${PREV_TAG}:**" > RELEASE_NOTES.md
             echo "" >> RELEASE_NOTES.md
             git log ${PREV_TAG}..HEAD --pretty=format:"- %s" --no-merges >> RELEASE_NOTES.md || true
             echo "" >> RELEASE_NOTES.md
             echo "" >> RELEASE_NOTES.md
-            echo "---" >> RELEASE_NOTES.md
           fi
           
-          NRO_FILENAME="${{ needs.build.outputs.nro_filename }}"
-          echo "### Installation" >> RELEASE_NOTES.md
+          echo "**Installation**" >> RELEASE_NOTES.md
           echo "1. Download \`${NRO_FILENAME}\`" >> RELEASE_NOTES.md
-          echo "2. Copy to \`/switch/\` on your SD card (any location works)" >> RELEASE_NOTES.md
+          echo "2. Copy to \`/switch/NX-Shell/\` on your SD card (any location works)" >> RELEASE_NOTES.md
           echo "3. Launch from the Homebrew Menu" >> RELEASE_NOTES.md
           
           cat RELEASE_NOTES.md

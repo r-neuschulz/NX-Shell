@@ -50,6 +50,7 @@ namespace Popups {
             
             if (done && !update_path.empty()) {
                 // After successful download: Restart button launches new version
+                ImGui::SetKeyboardFocusHere();
                 if (ImGui::Button(strings[lang][Lang::ButtonRestart], ImVec2(120, 0))) {
                     // Tell homebrew loader to load the update NRO on exit
                     std::string full_path = "sdmc:" + update_path;

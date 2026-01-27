@@ -91,7 +91,7 @@ static const char *strings_jp[] {
     "アップデートが利用可能です。",
     "NX-Shell バージョン をダウンロードしてインストールしますか ",
     "アップデートが成功しました。",
-    "アプリケーションを終了して再起動してください。",
+    "アプリケーションを再起動してください。",
     "最新バージョンです。",
 
     "接続されているすべてのUSBデバイスを取り外しますか？",
@@ -250,7 +250,7 @@ static const char *strings_en[] {
     "An update is available.",
     "Do you wish to download and install NX-Shell version ",
     "Update was successful.",
-    "Please exit and rerun the application.",
+    "Please restart the application.",
     "You are on the latest version.",
 
     "Do you wish to unmount all the connected USB devices?",
@@ -410,7 +410,7 @@ static const char *strings_fr[] {
     "Une mise à jour est disponible.",
     "Voulez-vous télécharger et installer NX-Shell version ",
     "Mise à jour réussie.",
-    "Veuillez quitter et relancer l'application.",
+    "Veuillez redémarrer l'application.",
     "Vous êtes sur la dernière version.",
 
     "Voulez-vous démonter tous les périphériques USB connectés?",
@@ -569,7 +569,7 @@ static const char *strings_de[] {
     "Ein Update ist verfügbar.",
     "Möchten Sie die folgende NX-Shell-Version herunterladen und installieren:",
     "Update war erfolgreich.",
-    "Bitte beenden Sie die Anwendung und starten Sie sie erneut.",
+    "Bitte starten Sie die Anwendung neu.",
     "Sie sind bereits auf der neusten Version.",
 
     "Möchten Sie alle verbundenen USB-Geräte auswerfen?",
@@ -729,7 +729,7 @@ static const char *strings_it[] {
     "È disponibile un aggiornamento.",
     "Vuoi scaricare e installare NX-Shell versione ",
     "Aggiornamento riuscito.",
-    "Esci e riavvia l'applicazione.",
+    "Per favore riavvia l'applicazione.",
     "Stai utilizzando l'ultima versione.",
 
     "Vuoi smontare tutti i dispositivi USB collegati?",
@@ -889,7 +889,7 @@ static const char *strings_es[] {
     "Una actualización está disponible.",
     "Deseas descargar e instalar la versión de NX-Shell ",
     "Actualización exitosa.",
-    "Por favor cerrar y reiniciar la aplicación.",
+    "Por favor reinicia la aplicación.",
     "Estás en la última versión.",
 
     "¿Quieres desmontar todos los dispositivos USB conectados?",
@@ -1049,7 +1049,7 @@ static const char *strings_sc[] {
     "有新版本的更新可用.",
     "您希望下载并安装NX-Shell版本吗 ",
     "更新成功.",
-    "请退出并重新运行应用程序.",
+    "请重新启动应用程序。",
     "你使用的是最新版本.",
 
     "您想卸载所有连接的 USB 设备吗？",
@@ -1209,7 +1209,7 @@ static const char *strings_ko[] {
     "업데이트가 가능합니다.",
     "NX-Shell 버전을 다운로드하여 설치하시겠습니까 ",
     "업데이트에 성공했습니다.",
-    "애플리케이션을 종료하고 다시 실행해 주세요.",
+    "애플리케이션을 다시 시작해 주세요.",
     "최신 버전을 사용 중입니다.",
 
     "연결된 모든 USB 장치를 마운트 해제하시겠습니까?",
@@ -1369,7 +1369,7 @@ static const char *strings_nl[] {
     "Er is een update beschikbaar.",
     "Wilt u NX-Shell versie downloaden en installeren ",
     "Update is geslaagd.",
-    "Sluit de applicatie af en start deze opnieuw.",
+    "Herstart de applicatie alstublieft.",
     "U gebruikt de nieuwste versie.",
 
     "Wilt u alle aangesloten USB-apparaten ontkoppelen?",
@@ -1529,7 +1529,7 @@ static const char *strings_pt[] {
     "Uma atualização está disponível.",
     "Você deseja baixar e instalar NX-Shell versão ",
     "Atualização feita com sucesso.",
-    "Por favor, saia e reinicie a aplicação.",
+    "Por favor reinicie a aplicação.",
     "Você está na versão mais recente.",
 
     "Você deseja desmontar todos os dispositivos USB conectados?",
@@ -1689,7 +1689,7 @@ static const char *strings_ru[] {
     "Доступно обновление.",
     "Вы хотите загрузить и установить NX-Shell версии ",
     "Обновление выполнено успешно.",
-    "Пожалуйста, выйдите и перезапустите приложение.",
+    "Пожалуйста, перезапустите приложение.",
     "У вас установлена последняя версия.",
 
     "Вы хотите отключить все подключённые USB-устройства?",
@@ -1849,7 +1849,7 @@ static const char *strings_tw[] {
     "有新版本的更新可用.",
     "您希望下載並安裝NX-Shell版本嗎 ",
     "更新成功.",
-    "請退出並重新運行應用程序.",
+    "請重新啟動應用程序。",
     "妳使用的是最新版本.",
 
     "您想卸載所有連接的 USB 設備嗎？",
