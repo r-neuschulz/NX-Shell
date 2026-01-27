@@ -1,13 +1,15 @@
 # NX-Shell ![Github latest downloads](https://img.shields.io/github/downloads/joel16/NX-Shell/total.svg)
 
-NX Shell is a multi-purpose file manager for the Nintendo Switch that aims towards handling various file types while keeping the basic necessities of a standard file manager. Initially, the project was inspired by LineageOS/CyanogenMod's file manager for android, and even had a similar design approach to that of the famous Android file manager. However, it has been re-written from scratch, now using more up to date tools and libraries.
+NX-Shell is a multi-purpose file manager for the Nintendo Switch. It handles image, archive, and text format file types directly.
+
+Inspired by [LineageOS's file manager](https://github.com/LineageOS/android_packages_apps_CMFileManager), NX-Shell uses Dear ImGui on top of OpenGL3 for native 1080p/720p rendering at full vsync-locked 60 fps. It is localized into 12 languages, has custom theming options, and can be used docked or handheld with full touch support.
 
 <p align="center">
-  <img src="NX-Shell_Main.jpg" alt="NX-Shell Main Screenshot" width="640" height="360"/>
+  <img src="NX-Shell_Main.jpg" alt="NX-Shell Main Screenshot rendering in 720p" width="640" height="360"/>
 </p>
 
 <p align="center">
-  <img src="NX-Shell_Settings.png" alt="NX-Shell Settings Screenshot" width="640" height="360"/>
+  <img src="NX-Shell_Settings.png" alt="NX-Shell Settings Screenshot rendering in 1080p" width="640" height="360"/>
 </p>
 
 # Features:
@@ -15,12 +17,13 @@ NX Shell is a multi-purpose file manager for the Nintendo Switch that aims towar
 - File operations: copy, move, delete, rename, create (with Switch keyboard).
 - File properties (size, created/modified/accessed timestamps) and sorting (name, date, size).
 - Image viewer with caching (BMP, GIF, JPG, PGM, PPM, PNG, PSD, TGA, WEBP).
-- File Viewer showing plain and hex.
-- Device browsing: sdmc, safe, user, system, USB.
-- 12 languages: Japanese, English, French, German, Italian, Spanish, Simplified/Traditional Chinese, Korean, Dutch, Portuguese, Russian.
-- Native 1080p/720p rendering with configurable overrides.
+- Archive extraction (only ZIP support).
+- File Preview using hex and plain text (all file types).
+- Device browsing: safe, user, system, USB.
+- Language support: Japanese, English, French, German, Italian, Spanish, Simplified/Traditional Chinese, Korean, Dutch, Portuguese, Russian.
+- Automatic docked (1080p) or handheld (720p) rendering detection with configurable overrides.
 - Themes: Dark/Light mode, accent colors, button styles.
-- Safe Applet Mode and self-updating via GitHub.
+- Safe applet mode and self-updating via GitHub.
 
 # Building:
 
