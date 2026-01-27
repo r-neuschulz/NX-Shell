@@ -159,7 +159,10 @@ static const char *strings_jp[] {
     " アクセント",
 
     // Restart button
-    "再起動"
+    "再起動",
+
+    // Error messages
+    "ファイルが空です (0 KB)"
 };
 
 static const char *strings_en[] {
@@ -318,7 +321,10 @@ static const char *strings_en[] {
     " Accent",
 
     // Restart button
-    "Restart"
+    "Restart",
+
+    // Error messages
+    "File is empty (0 KB)"
 };
 
 // French (need to check and verify)
@@ -478,7 +484,10 @@ static const char *strings_fr[] {
     " Accent",
 
     // Restart button
-    "Redémarrer"
+    "Redémarrer",
+
+    // Error messages
+    "Le fichier est vide (0 Ko)"
 };
 
 static const char *strings_de[] {
@@ -637,7 +646,10 @@ static const char *strings_de[] {
     " Akzent",
 
     // Restart button
-    "Neustart"
+    "Neustart",
+
+    // Error messages
+    "Datei ist leer (0 KB)"
 };
 
 // Italian (need to check and verify)
@@ -797,7 +809,10 @@ static const char *strings_it[] {
     " Accento",
 
     // Restart button
-    "Riavvia"
+    "Riavvia",
+
+    // Error messages
+    "Il file è vuoto (0 KB)"
 };
 
 //  Spanish
@@ -957,7 +972,10 @@ static const char *strings_es[] {
     " Acento",
 
     // Restart button
-    "Reiniciar"
+    "Reiniciar",
+
+    // Error messages
+    "El archivo está vacío (0 KB)"
 };
 
 // Simplified Chinese ("Chinese")
@@ -1117,7 +1135,10 @@ static const char *strings_sc[] {
     " 主题色",
 
     // Restart button
-    "重启"
+    "重启",
+
+    // Error messages
+    "文件为空 (0 KB)"
 };
 
 // Korean (need to check and verify)
@@ -1277,7 +1298,10 @@ static const char *strings_ko[] {
     " 강조색",
 
     // Restart button
-    "다시 시작"
+    "다시 시작",
+
+    // Error messages
+    "파일이 비어 있습니다 (0 KB)"
 };
 
 // Dutch (need to check and verify)
@@ -1437,7 +1461,10 @@ static const char *strings_nl[] {
     " Accent",
 
     // Restart button
-    "Herstarten"
+    "Herstarten",
+
+    // Error messages
+    "Bestand is leeg (0 KB)"
 };
 
 // Portuguese
@@ -1597,7 +1624,10 @@ static const char *strings_pt[] {
     " Destaque",
 
     // Restart button
-    "Reiniciar"
+    "Reiniciar",
+
+    // Error messages
+    "O arquivo está vazio (0 KB)"
 };
 
 // Russian (need to check and verify)
@@ -1757,7 +1787,10 @@ static const char *strings_ru[] {
     " Акцент",
 
     // Restart button
-    "Перезапуск"
+    "Перезапуск",
+
+    // Error messages
+    "Файл пустой (0 КБ)"
 };
 
 // Traditional Chinese ("Taiwanese")
@@ -1917,7 +1950,10 @@ static const char *strings_tw[] {
     " 主題色",
 
     // Restart button
-    "重新啟動"
+    "重新啟動",
+
+    // Error messages
+    "檔案為空 (0 KB)"
 };
 
 const char **strings[Lang::Max] = {

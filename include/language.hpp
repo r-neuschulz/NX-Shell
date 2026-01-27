@@ -175,6 +175,9 @@ namespace Lang {
     // Restart button for update dialog
     ButtonRestart,
 
+    // Error messages
+    ErrorEmptyFile,
+
     // Max
     Max
     } StringID;
