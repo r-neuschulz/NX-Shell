@@ -310,6 +310,7 @@ struct App {
     TextureService textures;
     WindowService window;
     GUIService gui;
+    bool request_exit = false;
     
     static App* instance;
 };

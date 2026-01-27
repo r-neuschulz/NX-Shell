@@ -172,6 +172,9 @@ namespace Lang {
     SettingsButtonStyleMono,
     SettingsButtonStyleAccent,
 
+    // Restart button for update dialog
+    ButtonRestart,
+
     // Max
     Max
     } StringID;

@@ -619,6 +619,10 @@ namespace GUI {
         if (!appletMainLoop())
             return false;
         
+        // Check if exit was requested (e.g., after update)
+        if (app.request_exit)
+            return false;
+        
         // Initialize pad state for hold-to-close detection (once)
         if (!s_pad_initialized) {
             padInitializeDefault(&s_pad);

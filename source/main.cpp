@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 #include <sys/stat.h>
 #include <switch.h>
 
@@ -15,6 +16,99 @@
 #include "usb.hpp"
 
 char __application_path[FS_MAX_PATH];
+
+// Clean up old NX-Shell NRO files in the same directory as the running app
+static void CleanupOldVersions(FsFileSystem *sdmc_fs) {
+    // Get directory from application path (e.g., "sdmc:/switch/NX-Shell.nro" -> "/switch/")
+    std::string app_path(__application_path);
+    
+    // Remove "sdmc:" prefix if present
+    if (app_path.rfind("sdmc:", 0) == 0) {
+        app_path = app_path.substr(5);
+    }
+    
+    // Find directory and current filename
+    size_t last_slash = app_path.rfind('/');
+    if (last_slash == std::string::npos) {
+        return; // No directory separator found
+    }
+    
+    std::string dir_path = app_path.substr(0, last_slash + 1);
+    std::string current_filename = app_path.substr(last_slash + 1);
+    
+    Log::Debug("CleanupOldVersions: dir=%s, current=%s\n", dir_path.c_str(), current_filename.c_str());
+    
+    // Open directory
+    FsDir dir;
+    Result ret = fsFsOpenDirectory(sdmc_fs, dir_path.c_str(), FsDirOpenMode_ReadFiles, &dir);
+    if (R_FAILED(ret)) {
+        Log::Debug("CleanupOldVersions: Failed to open directory: 0x%x\n", ret);
+        return;
+    }
+    
+    // Read directory entries
+    s64 total_entries = 0;
+    FsDirectoryEntry entries[64];
+    
+    while (true) {
+        s64 read_count = 0;
+        ret = fsDirRead(&dir, &read_count, 64, entries);
+        if (R_FAILED(ret) || read_count == 0) {
+            break;
+        }
+        
+        for (s64 i = 0; i < read_count; i++) {
+            // Skip directories
+            if (entries[i].type == FsDirEntryType_Dir) {
+                continue;
+            }
+            
+            std::string filename(entries[i].name);
+            
+            // Check if it's an NX-Shell NRO file (case-insensitive start, .nro extension)
+            if (filename.length() < 12) { // "NX-Shell.nro" is 12 chars minimum
+                continue;
+            }
+            
+            // Check for .nro extension (case-insensitive)
+            std::string ext = filename.substr(filename.length() - 4);
+            if (ext != ".nro" && ext != ".NRO") {
+                continue;
+            }
+            
+            // Check if it starts with "NX-Shell" (case-insensitive)
+            std::string prefix = filename.substr(0, 8);
+            bool is_nxshell = (prefix == "NX-Shell" || prefix == "nx-shell" || prefix == "NX-shell");
+            if (!is_nxshell) {
+                continue;
+            }
+            
+            // Don't delete the currently running file
+            if (filename == current_filename) {
+                Log::Debug("CleanupOldVersions: Skipping current file: %s\n", filename.c_str());
+                continue;
+            }
+            
+            // Delete old NX-Shell NRO
+            std::string full_path = dir_path + filename;
+            Log::Debug("CleanupOldVersions: Deleting old version: %s\n", full_path.c_str());
+            
+            ret = fsFsDeleteFile(sdmc_fs, full_path.c_str());
+            if (R_SUCCEEDED(ret)) {
+                total_entries++;
+                Log::Debug("CleanupOldVersions: Successfully deleted: %s\n", full_path.c_str());
+            } else {
+                Log::Debug("CleanupOldVersions: Failed to delete %s: 0x%x\n", full_path.c_str(), ret);
+            }
+        }
+    }
+    
+    fsDirClose(&dir);
+    
+    if (total_entries > 0) {
+        Log::Debug("CleanupOldVersions: Cleaned up %lld old NRO file(s)\n", total_entries);
+    }
+}
 
 // Track which BIS filesystems were successfully opened
 static bool bis_safe_opened = false;
@@ -278,6 +372,11 @@ int main(int argc, char* argv[]) {
     
     // Get App instance
     App& app = GetApp();
+    
+    // Clean up old NX-Shell versions in the same directory (e.g., after update)
+    phase_tick = armGetSystemTick();
+    CleanupOldVersions(&app.fs.devices[FileSystemSDMC]);
+    LogTiming("CleanupOldVersions", phase_tick);
     
     // Check for crash recovery - if marker exists, previous run crashed
     phase_tick = armGetSystemTick();

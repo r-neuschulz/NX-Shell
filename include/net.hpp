@@ -13,5 +13,5 @@ namespace Net {
     bool GetNetworkStatus(void);
     bool GetAvailableUpdate(const std::string &tag);
     std::string GetLatestReleaseJSON(void);
-    void GetLatestReleaseNRO(FileSystemService &fs_svc, const std::string &tag);
+    std::string GetLatestReleaseNRO(FileSystemService &fs_svc, const std::string &tag);
 }

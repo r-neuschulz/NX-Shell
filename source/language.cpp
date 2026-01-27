@@ -156,7 +156,10 @@ static const char *strings_jp[] {
     "ボタンスタイル",
     " カラー",
     " モノクロ",
-    " アクセント"
+    " アクセント",
+
+    // Restart button
+    "再起動"
 };
 
 static const char *strings_en[] {
@@ -312,7 +315,10 @@ static const char *strings_en[] {
     "Button Style",
     " Colored",
     " Mono",
-    " Accent"
+    " Accent",
+
+    // Restart button
+    "Restart"
 };
 
 // French (need to check and verify)
@@ -469,7 +475,10 @@ static const char *strings_fr[] {
     "Style des boutons",
     " Couleur",
     " Mono",
-    " Accent"
+    " Accent",
+
+    // Restart button
+    "Redémarrer"
 };
 
 static const char *strings_de[] {
@@ -625,7 +634,10 @@ static const char *strings_de[] {
     "Tastenstil",
     " Farbig",
     " Mono",
-    " Akzent"
+    " Akzent",
+
+    // Restart button
+    "Neustart"
 };
 
 // Italian (need to check and verify)
@@ -782,7 +794,10 @@ static const char *strings_it[] {
     "Stile pulsanti",
     " Colorato",
     " Mono",
-    " Accento"
+    " Accento",
+
+    // Restart button
+    "Riavvia"
 };
 
 //  Spanish
@@ -939,7 +954,10 @@ static const char *strings_es[] {
     "Estilo de botones",
     " Color",
     " Mono",
-    " Acento"
+    " Acento",
+
+    // Restart button
+    "Reiniciar"
 };
 
 // Simplified Chinese ("Chinese")
@@ -1096,7 +1114,10 @@ static const char *strings_sc[] {
     "按钮样式",
     " 彩色",
     " 单色",
-    " 主题色"
+    " 主题色",
+
+    // Restart button
+    "重启"
 };
 
 // Korean (need to check and verify)
@@ -1253,7 +1274,10 @@ static const char *strings_ko[] {
     "버튼 스타일",
     " 컬러",
     " 모노",
-    " 강조색"
+    " 강조색",
+
+    // Restart button
+    "다시 시작"
 };
 
 // Dutch (need to check and verify)
@@ -1410,7 +1434,10 @@ static const char *strings_nl[] {
     "Knopstijl",
     " Gekleurd",
     " Mono",
-    " Accent"
+    " Accent",
+
+    // Restart button
+    "Herstarten"
 };
 
 // Portuguese
@@ -1567,7 +1594,10 @@ static const char *strings_pt[] {
     "Estilo dos botões",
     " Colorido",
     " Mono",
-    " Destaque"
+    " Destaque",
+
+    // Restart button
+    "Reiniciar"
 };
 
 // Russian (need to check and verify)
@@ -1724,7 +1754,10 @@ static const char *strings_ru[] {
     "Стиль кнопок",
     " Цветной",
     " Моно",
-    " Акцент"
+    " Акцент",
+
+    // Restart button
+    "Перезапуск"
 };
 
 // Traditional Chinese ("Taiwanese")
@@ -1881,7 +1914,10 @@ static const char *strings_tw[] {
     "按鈕樣式",
     " 彩色",
     " 單色",
-    " 主題色"
+    " 主題色",
+
+    // Restart button
+    "重新啟動"
 };
 
 const char **strings[Lang::Max] = {

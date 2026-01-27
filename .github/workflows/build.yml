@@ -34,6 +34,7 @@ jobs:
       is_release: ${{ steps.version.outputs.is_release }}
       version: ${{ steps.version.outputs.version }}
       tag: ${{ steps.version.outputs.tag }}
+      nro_filename: ${{ steps.version.outputs.nro_filename }}
 
     steps:
       - name: Validate release inputs
@@ -77,8 +78,15 @@ jobs:
             IS_RELEASE="true"
             echo "Tag push detected with version: ${VERSION}"
           else
-            echo "Development build - no release"
+            # Development build - use default version from CMakeLists.txt
+            VERSION="5.0.0"
+            echo "Development build with default version: ${VERSION}"
           fi
+          
+          # Create versioned filename (e.g., NX-Shell-v5-0-1.nro)
+          VERSION_DASHED=$(echo "${VERSION}" | tr '.' '-')
+          NRO_FILENAME="NX-Shell-v${VERSION_DASHED}.nro"
+          echo "NRO filename: ${NRO_FILENAME}"
           
           # Extract repository owner and name for update checks
           # This allows forks to automatically check their own releases
@@ -91,14 +99,10 @@ jobs:
           echo "tag=v${VERSION}" >> $GITHUB_OUTPUT
           echo "repo_owner=${REPO_OWNER}" >> $GITHUB_OUTPUT
           echo "repo_name=${REPO_NAME}" >> $GITHUB_OUTPUT
+          echo "nro_filename=${NRO_FILENAME}" >> $GITHUB_OUTPUT
+          echo "cmake_version_flag=-DPROJECT_VERSION_OVERRIDE=${VERSION}" >> $GITHUB_OUTPUT
           
-          if [ -n "$VERSION" ]; then
-            echo "cmake_version_flag=-DPROJECT_VERSION_OVERRIDE=${VERSION}" >> $GITHUB_OUTPUT
-          else
-            echo "cmake_version_flag=" >> $GITHUB_OUTPUT
-          fi
-          
-          echo "Final: is_release=${IS_RELEASE}, version=${VERSION}"
+          echo "Final: is_release=${IS_RELEASE}, version=${VERSION}, nro=${NRO_FILENAME}"
 
       - name: Configure CMake
         run: |
@@ -110,17 +114,22 @@ jobs:
       - name: Build
         run: cmake --build build -j$(nproc)
 
+      - name: Rename NRO with version
+        run: |
+          mv build/NX-Shell.nro "build/${{ steps.version.outputs.nro_filename }}"
+          ls -lh "build/${{ steps.version.outputs.nro_filename }}"
+
       - name: Copy NRO to root (for act/deploy.ps1)
         run: |
-          cp build/NX-Shell.nro NX-Shell.nro || true
-          ls -lh NX-Shell.nro
+          cp "build/${{ steps.version.outputs.nro_filename }}" "${{ steps.version.outputs.nro_filename }}" || true
+          ls -lh "${{ steps.version.outputs.nro_filename }}"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         if: ${{ !env.ACT }}
         with:
           name: NX-Shell
-          path: build/NX-Shell.nro
+          path: build/${{ steps.version.outputs.nro_filename }}
           if-no-files-found: error
 
   release:
@@ -159,9 +168,10 @@ jobs:
             echo "---" >> RELEASE_NOTES.md
           fi
           
+          NRO_FILENAME="${{ needs.build.outputs.nro_filename }}"
           echo "### Installation" >> RELEASE_NOTES.md
-          echo "1. Download \`NX-Shell.nro\`" >> RELEASE_NOTES.md
-          echo "2. Copy to \`/switch/NX-Shell/\` on your SD card" >> RELEASE_NOTES.md
+          echo "1. Download \`${NRO_FILENAME}\`" >> RELEASE_NOTES.md
+          echo "2. Copy to \`/switch/\` on your SD card (any location works)" >> RELEASE_NOTES.md
           echo "3. Launch from the Homebrew Menu" >> RELEASE_NOTES.md
           
           cat RELEASE_NOTES.md
@@ -175,5 +185,5 @@ jobs:
           body_path: RELEASE_NOTES.md
           draft: false
           prerelease: ${{ github.event.inputs.prerelease || false }}
-          files: dist/NX-Shell.nro
+          files: dist/${{ needs.build.outputs.nro_filename }}
           fail_on_unmatched_files: true
