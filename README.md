@@ -3,25 +3,23 @@
 NX Shell is a multi-purpose file manager for the Nintendo Switch that aims towards handling various file types while keeping the basic necessities of a standard file manager. Initially, the project was inspired by LineageOS/CyanogenMod's file manager for android, and even had a similar design approach to that of the famous Android file manager. However, it has been re-written from scratch, now using more up to date tools and libraries.
 
 <p align="center">
-  <img src="https://i.imgur.com/f43g1ya.jpg" alt="NX-Shell (Next) Screenshot" width="640" height="360"/>
+  <img src="NX-Shell_Main.jpg" alt="NX-Shell Main Screenshot" width="640" height="360"/>
+</p>
+
+<p align="center">
+  <img src="NX-Shell_Settings.png" alt="NX-Shell Settings Screenshot" width="640" height="360"/>
 </p>
 
 # Features:
 
-- Delete files and folders.
-- Copy/Move files and folders.
-- Rename files and folders (standard switch keyboard).
-- Create files and folders (standard switch keyboard).
-- Displays file properties such as size, time created, modified and accessed.
-- Sorting options (Sort by name, date, size).
-- Display various images formats (BMP, GIF, JPG/JPEG, PGM, PPM, PNG, PSD, TGA and WEBP).
-- Browse devices such as safe, user, system and USB.
-- Language support for 12 languages (Japanese, English, French, German, Italian, Spanish, Chinese Simplified, Korean, Dutch, Portuguese, Russian, Chinese Traditional).
-- Native 1080p/720p rendering with user-configurable overrides.
-- Fast image loading through caching.
-- Themable with Dark/Light mode, accent colors, and button styles.
-- Safe Applet Mode.
-- Self-updating via GitHub.
+- File operations: copy, move, delete, rename, create (with Switch keyboard).
+- File properties (size, created/modified/accessed timestamps) and sorting (name, date, size).
+- Image viewer with caching (BMP, GIF, JPG, PGM, PPM, PNG, PSD, TGA, WEBP).
+- Device browsing: safe, user, system, USB.
+- 12 languages: Japanese, English, French, German, Italian, Spanish, Simplified/Traditional Chinese, Korean, Dutch, Portuguese, Russian.
+- Native 1080p/720p rendering with configurable overrides.
+- Themes: Dark/Light mode, accent colors, button styles.
+- Safe Applet Mode and self-updating via GitHub.
 
 # Building:
 
@@ -32,7 +30,7 @@ cmake -B build
 cmake --build build
 ```
 
-The output `NX-Shell.nro` will be in the project root.
+The output `NX-Shell-vX.Y.Z.nro` will be in the project root.
 
 # Credits:
 
