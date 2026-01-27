@@ -453,6 +453,7 @@ int main(int argc, char* argv[]) {
         }
         
         GUI::RenderStatsOverlay(app);
+        Toast::RenderTimed(app);
         GUI::Render();
     }
 

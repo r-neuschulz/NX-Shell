@@ -1,9 +1,13 @@
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
 #include <glad/glad.h>
+#include <png.h>
 #include <cstdio>
 #include <cstring>
+#include <ctime>
 #include <memory>
+#include <vector>
+#include <sys/stat.h>
 #include <switch.h>
 
 #include "config.hpp"
@@ -70,6 +74,9 @@ namespace GUI {
         if (!s_display || !s_window || !s_config)
             return false;
         
+        // Ensure all GPU work is complete before destroying surface
+        glFinish();
+        
         // Unbind current surface
         eglMakeCurrent(s_display, EGL_NO_SURFACE, EGL_NO_SURFACE, s_context);
         
@@ -79,8 +86,10 @@ namespace GUI {
             s_surface = EGL_NO_SURFACE;
         }
         
-        // Update native window dimensions
+        // Update native window dimensions BEFORE creating new surface
+        // Also set crop before surface creation to ensure buffers are allocated correctly
         nwindowSetDimensions(s_window, app.gui.display_width, app.gui.display_height);
+        nwindowSetCrop(s_window, 0, 0, app.gui.display_width, app.gui.display_height);
         
         // Create new surface with updated dimensions
         s_surface = eglCreateWindowSurface(s_display, s_config, s_window, nullptr);
@@ -92,6 +101,9 @@ namespace GUI {
         // Rebind the new surface
         eglMakeCurrent(s_display, s_surface, s_surface, s_context);
         
+        // Set crop region AFTER surface is created and bound (required for proper screenshot capture)
+        nwindowSetCrop(s_window, 0, 0, app.gui.display_width, app.gui.display_height);
+        
         // Re-apply VSync setting for uncapped frame rate (must be done after surface bind)
         eglSwapInterval(s_display, 0);
         
@@ -101,6 +113,12 @@ namespace GUI {
         
         // Update the GL viewport to match new dimensions
         glViewport(0, 0, app.gui.display_width, app.gui.display_height);
+        
+        // Force buffer allocation at new size by doing a clear and swap
+        // This ensures the graphics system allocates buffers at the correct resolution
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
+        eglSwapBuffers(s_display, s_surface);
         
         return true;
     }
@@ -150,14 +168,32 @@ namespace GUI {
     static bool InitEGL(App &app, NWindow* win) {
         s_window = win;
         
-        // Check initial dock state and set dimensions accordingly
+        // Check initial dock state
         s_operation_mode = appletGetOperationMode();
-        if (IsDocked()) {
-            app.gui.display_width = 1920;
-            app.gui.display_height = 1080;
-        } else {
-            app.gui.display_width = 1280;
-            app.gui.display_height = 720;
+        
+        // Determine initial resolution based on config setting (same logic as UpdateDisplayDimensions)
+        switch (app.config.ResolutionMode()) {
+            case ResolutionMode_Auto:
+                // Auto-detect based on dock state
+                if (IsDocked()) {
+                    app.gui.display_width = 1920;
+                    app.gui.display_height = 1080;
+                } else {
+                    app.gui.display_width = 1280;
+                    app.gui.display_height = 720;
+                }
+                break;
+                
+            case ResolutionMode_1080p:
+                app.gui.display_width = 1920;
+                app.gui.display_height = 1080;
+                break;
+                
+            case ResolutionMode_720p:
+            default:
+                app.gui.display_width = 1280;
+                app.gui.display_height = 720;
+                break;
         }
         
         // Set native window dimensions to match current mode
@@ -219,6 +255,9 @@ namespace GUI {
         }
         
         eglMakeCurrent(s_display, s_surface, s_surface, s_context);
+        
+        // Set crop region AFTER EGL initialization (required for proper screenshot capture)
+        nwindowSetCrop(win, 0, 0, app.gui.display_width, app.gui.display_height);
         
         // Disable VSync for uncapped frame rate
         eglSwapInterval(s_display, 0);
@@ -652,6 +691,19 @@ namespace GUI {
             s_minus_hold_start = 0;
         }
         
+        // Check for ZL button - take custom screenshot at native resolution
+        {
+            static bool s_screenshot_pressed = false;
+            if (buttons & HidNpadButton_ZL) {
+                if (!s_screenshot_pressed) {
+                    s_screenshot_pressed = true;
+                    Screenshot::Capture(app);
+                }
+            } else {
+                s_screenshot_pressed = false;
+            }
+        }
+        
         // Check for dock/undock and update resolution if needed
         UpdateDisplayDimensions(app);
         
@@ -945,6 +997,12 @@ namespace GUI {
 }
 
 namespace Toast {
+    // Timed toast state
+    static float s_timer = 0.0f;
+    static bool s_success = true;
+    static char s_message[192] = {0};
+    static constexpr float FADE_DURATION = 0.5f;
+    
     void DrawFilename(ConfigService &config_svc, const char* text) {
         ImDrawList *draw_list = ImGui::GetForegroundDrawList();
         
@@ -1004,5 +1062,167 @@ namespace Toast {
             text_color, 
             text
         );
+    }
+    
+    void Show(const char* message, bool success, float duration) {
+        std::snprintf(s_message, sizeof(s_message), "%s", message);
+        s_success = success;
+        s_timer = duration;
+    }
+    
+    void RenderTimed(App &app) {
+        if (s_timer <= 0.0f)
+            return;
+        
+        // Fade out in last 0.5 seconds
+        float alpha = 1.0f;
+        if (s_timer < FADE_DURATION) {
+            alpha = s_timer / FADE_DURATION;
+        }
+        
+        ImDrawList *draw_list = ImGui::GetForegroundDrawList();
+        ImVec2 text_size = ImGui::CalcTextSize(s_message);
+        
+        const float display_w = static_cast<float>(app.gui.display_width);
+        const float display_h = static_cast<float>(app.gui.display_height);
+        const float padding_x = 20.0f;
+        const float padding_y = 10.0f;
+        const float toast_w = text_size.x + padding_x * 2;
+        const float toast_h = text_size.y + padding_y * 2;
+        const float toast_x = (display_w - toast_w) * 0.5f;
+        const float toast_y = display_h - toast_h - 60.0f;  // Position near bottom (same as DrawCentered)
+        
+        ImU32 bg_color = s_success 
+            ? GUI::GetAccentColorU32WithAlpha(app.config, static_cast<int>(220 * alpha))
+            : IM_COL32(180, 50, 50, static_cast<int>(220 * alpha));
+        ImU32 text_color = IM_COL32(255, 255, 255, static_cast<int>(255 * alpha));
+        
+        draw_list->AddRectFilled(
+            ImVec2(toast_x, toast_y), 
+            ImVec2(toast_x + toast_w, toast_y + toast_h), 
+            bg_color, 8.0f
+        );
+        draw_list->AddText(
+            ImVec2(toast_x + padding_x, toast_y + padding_y), 
+            text_color, 
+            s_message
+        );
+        
+        // Decrement timer
+        s_timer -= ImGui::GetIO().DeltaTime;
+    }
+}
+
+namespace Screenshot {
+    static constexpr float TOAST_DURATION = 3.0f;
+    
+    // Generate timestamp-based filename
+    static void GenerateFilename(char *buf, size_t size) {
+        time_t now = time(nullptr);
+        struct tm *t = localtime(&now);
+        std::snprintf(buf, size, "NX-Shell_%04d%02d%02d_%02d%02d%02d.png",
+            t->tm_year + 1900, t->tm_mon + 1, t->tm_mday,
+            t->tm_hour, t->tm_min, t->tm_sec);
+    }
+    
+    // Save RGBA pixel data to PNG file
+    static bool SavePNG(const char *path, const unsigned char *pixels, int width, int height) {
+        // Create PNG write structures
+        png_structp png = png_create_write_struct(PNG_LIBPNG_VER_STRING, nullptr, nullptr, nullptr);
+        if (!png) return false;
+        
+        png_infop info = png_create_info_struct(png);
+        if (!info) {
+            png_destroy_write_struct(&png, nullptr);
+            return false;
+        }
+        
+        if (setjmp(png_jmpbuf(png))) {
+            png_destroy_write_struct(&png, &info);
+            return false;
+        }
+        
+        // Write to memory buffer first, then save to SD card
+        std::vector<unsigned char> png_data;
+        png_set_write_fn(png, &png_data, 
+            [](png_structp png, png_bytep data, png_size_t length) {
+                auto *vec = static_cast<std::vector<unsigned char>*>(png_get_io_ptr(png));
+                vec->insert(vec->end(), data, data + length);
+            },
+            nullptr);
+        
+        png_set_IHDR(png, info, width, height, 8, PNG_COLOR_TYPE_RGB,
+            PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_DEFAULT, PNG_FILTER_TYPE_DEFAULT);
+        
+        png_write_info(png, info);
+        
+        // GL gives us RGBA bottom-to-top, PNG wants RGB top-to-bottom
+        // Convert and flip in one pass
+        std::vector<unsigned char> row(width * 3);
+        for (int y = height - 1; y >= 0; y--) {
+            const unsigned char *src = pixels + y * width * 4;
+            for (int x = 0; x < width; x++) {
+                row[x * 3 + 0] = src[x * 4 + 0];  // R
+                row[x * 3 + 1] = src[x * 4 + 1];  // G
+                row[x * 3 + 2] = src[x * 4 + 2];  // B
+            }
+            png_write_row(png, row.data());
+        }
+        
+        png_write_end(png, info);
+        png_destroy_write_struct(&png, &info);
+        
+        // Save using standard C file I/O (works through devkitPro's POSIX layer)
+        // Need to use "sdmc:" prefix for standard I/O
+        char sdmc_path[256];
+        std::snprintf(sdmc_path, sizeof(sdmc_path), "sdmc:%s", path);
+        
+        FILE *fp = std::fopen(sdmc_path, "wb");
+        if (!fp)
+            return false;
+        
+        size_t written = std::fwrite(png_data.data(), 1, png_data.size(), fp);
+        std::fclose(fp);
+        
+        return written == png_data.size();
+    }
+    
+    bool Capture(App &app) {
+        int width = app.gui.display_width;
+        int height = app.gui.display_height;
+        
+        // Allocate buffer for pixel data (RGBA)
+        std::vector<unsigned char> pixels(width * height * 4);
+        
+        // Read the framebuffer
+        glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, pixels.data());
+        
+        // Generate filename and path
+        char filename[64];
+        GenerateFilename(filename, sizeof(filename));
+        
+        char path[128];
+        std::snprintf(path, sizeof(path), "/switch/NX-Shell/screenshots/%s", filename);
+        
+        // Ensure screenshots directory exists using POSIX mkdir (with sdmc: prefix)
+        mkdir("sdmc:/switch", 0755);
+        mkdir("sdmc:/switch/NX-Shell", 0755);
+        mkdir("sdmc:/switch/NX-Shell/screenshots", 0755);
+        
+        // Save the PNG
+        bool success = SavePNG(path, pixels.data(), width, height);
+        
+        // Show toast notification via Toast namespace
+        char message[192];
+        if (success) {
+            std::snprintf(message, sizeof(message), "Screenshot saved: %s", path);
+        } else {
+            std::snprintf(message, sizeof(message), "Screenshot failed!");
+        }
+        Toast::Show(message, success, TOAST_DURATION);
+        
+        Log::Debug("Screenshot %s: %s (%dx%d)\n", success ? "saved" : "FAILED", path, width, height);
+        
+        return success;
     }
 }

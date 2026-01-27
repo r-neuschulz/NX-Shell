@@ -61,4 +61,14 @@ namespace GUI {
 namespace Toast {
     void DrawFilename(ConfigService &config_svc, const char* text);
     void DrawCentered(GUIService &gui_svc, const char* text, float alpha = 1.0f);
+    
+    // Timed toast with success/failure state (auto-fades and disappears)
+    void Show(const char* message, bool success = true, float duration = 3.0f);
+    void RenderTimed(App &app);
+}
+
+namespace Screenshot {
+    // Take a screenshot at native resolution and save to SD card
+    // Shows a toast notification on completion
+    bool Capture(App &app);
 }
