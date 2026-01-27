@@ -51,15 +51,17 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Determine version
+      - name: Determine version and repository
         id: version
         env:
           INPUT_RELEASE: ${{ github.event.inputs.release }}
           INPUT_VERSION: ${{ github.event.inputs.version }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
         run: |
           echo "Debug: INPUT_RELEASE='${INPUT_RELEASE}'"
           echo "Debug: INPUT_VERSION='${INPUT_VERSION}'"
           echo "Debug: GITHUB_REF='${GITHUB_REF}'"
+          echo "Debug: GITHUB_REPOSITORY='${GITHUB_REPOSITORY}'"
           
           IS_RELEASE="false"
           VERSION=""
@@ -78,9 +80,17 @@ jobs:
             echo "Development build - no release"
           fi
           
+          # Extract repository owner and name for update checks
+          # This allows forks to automatically check their own releases
+          REPO_OWNER="${GITHUB_REPOSITORY%%/*}"
+          REPO_NAME="${GITHUB_REPOSITORY##*/}"
+          echo "Repository: ${REPO_OWNER}/${REPO_NAME}"
+          
           echo "is_release=${IS_RELEASE}" >> $GITHUB_OUTPUT
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
           echo "tag=v${VERSION}" >> $GITHUB_OUTPUT
+          echo "repo_owner=${REPO_OWNER}" >> $GITHUB_OUTPUT
+          echo "repo_name=${REPO_NAME}" >> $GITHUB_OUTPUT
           
           if [ -n "$VERSION" ]; then
             echo "cmake_version_flag=-DPROJECT_VERSION_OVERRIDE=${VERSION}" >> $GITHUB_OUTPUT
@@ -91,7 +101,11 @@ jobs:
           echo "Final: is_release=${IS_RELEASE}, version=${VERSION}"
 
       - name: Configure CMake
-        run: cmake -B build -DCMAKE_BUILD_TYPE=Release ${{ steps.version.outputs.cmake_version_flag }}
+        run: |
+          cmake -B build -DCMAKE_BUILD_TYPE=Release \
+            ${{ steps.version.outputs.cmake_version_flag }} \
+            -DGITHUB_REPO_OWNER=${{ steps.version.outputs.repo_owner }} \
+            -DGITHUB_REPO_NAME=${{ steps.version.outputs.repo_name }}
 
       - name: Build
         run: cmake --build build -j$(nproc)
@@ -131,21 +145,20 @@ jobs:
       - name: Generate changelog
         run: |
           VERSION="${{ needs.build.outputs.version }}"
-          echo "## What's New in v${VERSION}" > RELEASE_NOTES.md
-          echo "" >> RELEASE_NOTES.md
           
+          # Check for previous tag to generate changelog
           PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
           if [ -n "$PREV_TAG" ]; then
+            echo "## What's New in v${VERSION}" > RELEASE_NOTES.md
+            echo "" >> RELEASE_NOTES.md
             echo "### Changes since ${PREV_TAG}:" >> RELEASE_NOTES.md
             echo "" >> RELEASE_NOTES.md
             git log ${PREV_TAG}..HEAD --pretty=format:"- %s" --no-merges >> RELEASE_NOTES.md || true
-          else
-            echo "Initial release." >> RELEASE_NOTES.md
+            echo "" >> RELEASE_NOTES.md
+            echo "" >> RELEASE_NOTES.md
+            echo "---" >> RELEASE_NOTES.md
           fi
           
-          echo "" >> RELEASE_NOTES.md
-          echo "" >> RELEASE_NOTES.md
-          echo "---" >> RELEASE_NOTES.md
           echo "### Installation" >> RELEASE_NOTES.md
           echo "1. Download \`NX-Shell.nro\`" >> RELEASE_NOTES.md
           echo "2. Copy to \`/switch/NX-Shell/\` on your SD card" >> RELEASE_NOTES.md

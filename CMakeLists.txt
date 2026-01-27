@@ -30,6 +30,16 @@ else()
     project(NX-Shell VERSION 5.0.0 LANGUAGES C CXX)
 endif()
 
+# GitHub repository for update checks (can be overridden via -DGITHUB_REPO_OWNER and -DGITHUB_REPO_NAME)
+# These allow forks to automatically check their own releases when built from their CI
+if(NOT DEFINED GITHUB_REPO_OWNER)
+    set(GITHUB_REPO_OWNER "joel16")
+endif()
+if(NOT DEFINED GITHUB_REPO_NAME)
+    set(GITHUB_REPO_NAME "NX-Shell")
+endif()
+message(STATUS "Update check repository: ${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}")
+
 #---------------------------------------------------------------------------------
 # Project Configuration
 #---------------------------------------------------------------------------------
@@ -162,6 +172,9 @@ target_compile_definitions(${PROJECT_NAME}.elf PRIVATE
     VERSION_MAJOR=${PROJECT_VERSION_MAJOR}
     VERSION_MINOR=${PROJECT_VERSION_MINOR}
     VERSION_MICRO=${PROJECT_VERSION_PATCH}
+    # GitHub repository for update checks (injected at build time)
+    GITHUB_REPO_OWNER="${GITHUB_REPO_OWNER}"
+    GITHUB_REPO_NAME="${GITHUB_REPO_NAME}"
     # 3rd party dependency versions (from dependencies.json)
     DEP_IMGUI_VERSION="${IMGUI_VERSION}"
     DEP_LIBUSBHSFS_VERSION="${USBHSFS_VERSION}"
