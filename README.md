@@ -15,7 +15,7 @@ NX Shell is a multi-purpose file manager for the Nintendo Switch that aims towar
 - File operations: copy, move, delete, rename, create (with Switch keyboard).
 - File properties (size, created/modified/accessed timestamps) and sorting (name, date, size).
 - Image viewer with caching (BMP, GIF, JPG, PGM, PPM, PNG, PSD, TGA, WEBP).
-- Device browsing: safe, user, system, USB.
+- Device browsing: sdmc, safe, user, system, USB.
 - 12 languages: Japanese, English, French, German, Italian, Spanish, Simplified/Traditional Chinese, Korean, Dutch, Portuguese, Russian.
 - Native 1080p/720p rendering with configurable overrides.
 - Themes: Dark/Light mode, accent colors, button styles.
