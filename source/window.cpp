@@ -580,6 +580,10 @@ namespace Windows {
                 }
                 break;
 
+            case WINDOW_STATE_NSP_INSTALL:
+                Popups::NSPInstallPopup(app);
+                break;
+
             default:
                 break;
         }
@@ -658,6 +662,10 @@ namespace Windows {
                     break;
 
                 case WINDOW_STATE_OPENMODE:
+                    app.window.state = WINDOW_STATE_FILEBROWSER;
+                    break;
+
+                case WINDOW_STATE_NSP_INSTALL:
                     app.window.state = WINDOW_STATE_FILEBROWSER;
                     break;
 

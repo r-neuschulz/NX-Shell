@@ -162,7 +162,21 @@ static const char *strings_jp[] {
     "再起動",
 
     // Error messages
-    "ファイルが空です (0 KB)"
+    "ファイルが空です (0 KB)",
+
+    // NSP Installation (Forwarder)
+    "NSPフォワーダーをインストール",
+    "ホームメニューにインストール",
+    "NSPフォワーダーをインストールするとBANされる可能性があります。\nもう一度確認してください。",
+    "NSPフォワーダーのインストールに成功しました。",
+    "NSPフォワーダーのインストールに失敗しました。",
+    "アプレットモードではNSPインストールは利用できません。",
+
+    // NSP File Installation
+    "NSPをインストール",
+    "このNSPファイルをインストールしますか？\n\n警告: NSPをインストールするとBANされる可能性があります。",
+    "NSPのインストールに成功しました。",
+    "NSPのインストールに失敗しました。"
 };
 
 static const char *strings_en[] {
@@ -324,7 +338,21 @@ static const char *strings_en[] {
     "Restart",
 
     // Error messages
-    "File is empty (0 KB)"
+    "File is empty (0 KB)",
+
+    // NSP Installation (Forwarder)
+    "Install NSP Forwarder",
+    "Install to Home Menu",
+    "Installing NSP forwarder may result in a ban.\nPlease confirm again.",
+    "NSP forwarder installed successfully.",
+    "Failed to install NSP forwarder.",
+    "NSP installation not available in applet mode.",
+
+    // NSP File Installation
+    "Install NSP",
+    "Do you want to install this NSP file?\n\nWarning: Installing NSPs may result in a ban.",
+    "NSP installed successfully.",
+    "Failed to install NSP."
 };
 
 // French (need to check and verify)
@@ -487,7 +515,21 @@ static const char *strings_fr[] {
     "Redémarrer",
 
     // Error messages
-    "Le fichier est vide (0 Ko)"
+    "Le fichier est vide (0 Ko)",
+
+    // NSP Installation (Forwarder)
+    "Installer le forwarder NSP",
+    "Installer dans le menu principal",
+    "L'installation du forwarder NSP peut entraîner un bannissement.\nVeuillez confirmer à nouveau.",
+    "Le forwarder NSP a été installé avec succès.",
+    "Échec de l'installation du forwarder NSP.",
+    "L'installation NSP n'est pas disponible en mode applet.",
+
+    // NSP File Installation
+    "Installer NSP",
+    "Voulez-vous installer ce fichier NSP ?\n\nAttention : L'installation de NSP peut entraîner un bannissement.",
+    "NSP installé avec succès.",
+    "Échec de l'installation du NSP."
 };
 
 static const char *strings_de[] {
@@ -649,7 +691,21 @@ static const char *strings_de[] {
     "Neustart",
 
     // Error messages
-    "Datei ist leer (0 KB)"
+    "Datei ist leer (0 KB)",
+
+    // NSP Installation (Forwarder)
+    "NSP-Forwarder installieren",
+    "Im Hauptmenü installieren",
+    "Die Installation des NSP-Forwarders kann zu einem Bann führen.\nBitte erneut bestätigen.",
+    "NSP-Forwarder erfolgreich installiert.",
+    "Installation des NSP-Forwarders fehlgeschlagen.",
+    "NSP-Installation im Applet-Modus nicht verfügbar.",
+
+    // NSP File Installation
+    "NSP installieren",
+    "Möchten Sie diese NSP-Datei installieren?\n\nWarnung: Die Installation von NSPs kann zu einem Bann führen.",
+    "NSP erfolgreich installiert.",
+    "NSP-Installation fehlgeschlagen."
 };
 
 // Italian (need to check and verify)
@@ -812,7 +868,21 @@ static const char *strings_it[] {
     "Riavvia",
 
     // Error messages
-    "Il file è vuoto (0 KB)"
+    "Il file è vuoto (0 KB)",
+
+    // NSP Installation (Forwarder)
+    "Installa NSP Forwarder",
+    "Installa nel menu principale",
+    "L'installazione del forwarder NSP potrebbe causare un ban.\nConferma nuovamente.",
+    "NSP forwarder installato con successo.",
+    "Installazione del forwarder NSP fallita.",
+    "Installazione NSP non disponibile in modalità applet.",
+
+    // NSP File Installation
+    "Installa NSP",
+    "Vuoi installare questo file NSP?\n\nAttenzione: L'installazione di NSP potrebbe causare un ban.",
+    "NSP installato con successo.",
+    "Installazione NSP fallita."
 };
 
 //  Spanish
@@ -975,7 +1045,21 @@ static const char *strings_es[] {
     "Reiniciar",
 
     // Error messages
-    "El archivo está vacío (0 KB)"
+    "El archivo está vacío (0 KB)",
+
+    // NSP Installation (Forwarder)
+    "Instalar NSP Forwarder",
+    "Instalar en menú principal",
+    "Instalar el forwarder NSP puede resultar en un baneo.\nPor favor confirma de nuevo.",
+    "NSP forwarder instalado exitosamente.",
+    "Error al instalar el forwarder NSP.",
+    "Instalación NSP no disponible en modo applet.",
+
+    // NSP File Installation
+    "Instalar NSP",
+    "¿Deseas instalar este archivo NSP?\n\nAdvertencia: Instalar NSPs puede resultar en un baneo.",
+    "NSP instalado exitosamente.",
+    "Error al instalar el NSP."
 };
 
 // Simplified Chinese ("Chinese")
@@ -1138,7 +1222,21 @@ static const char *strings_sc[] {
     "重启",
 
     // Error messages
-    "文件为空 (0 KB)"
+    "文件为空 (0 KB)",
+
+    // NSP Installation (Forwarder)
+    "安装NSP转发器",
+    "安装到主菜单",
+    "安装NSP转发器可能导致被封禁。\n请再次确认。",
+    "NSP转发器安装成功。",
+    "NSP转发器安装失败。",
+    "小程序模式下无法安装NSP。",
+
+    // NSP File Installation
+    "安装NSP",
+    "您要安装此NSP文件吗？\n\n警告：安装NSP可能导致被封禁。",
+    "NSP安装成功。",
+    "NSP安装失败。"
 };
 
 // Korean (need to check and verify)
@@ -1301,7 +1399,21 @@ static const char *strings_ko[] {
     "다시 시작",
 
     // Error messages
-    "파일이 비어 있습니다 (0 KB)"
+    "파일이 비어 있습니다 (0 KB)",
+
+    // NSP Installation (Forwarder)
+    "NSP 포워더 설치",
+    "홈 메뉴에 설치",
+    "NSP 포워더를 설치하면 차단될 수 있습니다.\n다시 확인해 주세요.",
+    "NSP 포워더가 성공적으로 설치되었습니다.",
+    "NSP 포워더 설치에 실패했습니다.",
+    "애플릿 모드에서는 NSP 설치를 사용할 수 없습니다.",
+
+    // NSP File Installation
+    "NSP 설치",
+    "이 NSP 파일을 설치하시겠습니까?\n\n경고: NSP 설치는 차단될 수 있습니다.",
+    "NSP가 성공적으로 설치되었습니다.",
+    "NSP 설치에 실패했습니다."
 };
 
 // Dutch (need to check and verify)
@@ -1464,7 +1576,21 @@ static const char *strings_nl[] {
     "Herstarten",
 
     // Error messages
-    "Bestand is leeg (0 KB)"
+    "Bestand is leeg (0 KB)",
+
+    // NSP Installation (Forwarder)
+    "NSP Forwarder installeren",
+    "Installeren in hoofdmenu",
+    "Het installeren van de NSP forwarder kan leiden tot een ban.\nBevestig alstublieft opnieuw.",
+    "NSP forwarder succesvol geïnstalleerd.",
+    "Installatie van NSP forwarder mislukt.",
+    "NSP-installatie niet beschikbaar in applet-modus.",
+
+    // NSP File Installation
+    "NSP installeren",
+    "Wilt u dit NSP-bestand installeren?\n\nWaarschuwing: Het installeren van NSPs kan leiden tot een ban.",
+    "NSP succesvol geïnstalleerd.",
+    "NSP-installatie mislukt."
 };
 
 // Portuguese
@@ -1627,7 +1753,21 @@ static const char *strings_pt[] {
     "Reiniciar",
 
     // Error messages
-    "O arquivo está vazio (0 KB)"
+    "O arquivo está vazio (0 KB)",
+
+    // NSP Installation (Forwarder)
+    "Instalar NSP Forwarder",
+    "Instalar no menu principal",
+    "Instalar o forwarder NSP pode resultar em banimento.\nPor favor, confirme novamente.",
+    "NSP forwarder instalado com sucesso.",
+    "Falha ao instalar o forwarder NSP.",
+    "Instalação NSP não disponível no modo applet.",
+
+    // NSP File Installation
+    "Instalar NSP",
+    "Deseja instalar este arquivo NSP?\n\nAviso: Instalar NSPs pode resultar em banimento.",
+    "NSP instalado com sucesso.",
+    "Falha ao instalar o NSP."
 };
 
 // Russian (need to check and verify)
@@ -1790,7 +1930,21 @@ static const char *strings_ru[] {
     "Перезапуск",
 
     // Error messages
-    "Файл пустой (0 КБ)"
+    "Файл пустой (0 КБ)",
+
+    // NSP Installation (Forwarder)
+    "Установить NSP форвардер",
+    "Установить в главное меню",
+    "Установка NSP форвардера может привести к бану.\nПожалуйста, подтвердите ещё раз.",
+    "NSP форвардер успешно установлен.",
+    "Не удалось установить NSP форвардер.",
+    "Установка NSP недоступна в режиме апплета.",
+
+    // NSP File Installation
+    "Установить NSP",
+    "Вы хотите установить этот NSP файл?\n\nПредупреждение: Установка NSP может привести к бану.",
+    "NSP успешно установлен.",
+    "Не удалось установить NSP."
 };
 
 // Traditional Chinese ("Taiwanese")
@@ -1953,7 +2107,21 @@ static const char *strings_tw[] {
     "重新啟動",
 
     // Error messages
-    "檔案為空 (0 KB)"
+    "檔案為空 (0 KB)",
+
+    // NSP Installation (Forwarder)
+    "安裝NSP轉發器",
+    "安裝到主選單",
+    "安裝NSP轉發器可能導致被封禁。\n請再次確認。",
+    "NSP轉發器安裝成功。",
+    "NSP轉發器安裝失敗。",
+    "小程式模式下無法安裝NSP。",
+
+    // NSP File Installation
+    "安裝NSP",
+    "您要安裝此NSP檔案嗎？\n\n警告：安裝NSP可能導致被封禁。",
+    "NSP安裝成功。",
+    "NSP安裝失敗。"
 };
 
 const char **strings[Lang::Max] = {

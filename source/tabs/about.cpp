@@ -10,9 +10,16 @@
 #include "utils.hpp"
 #include "version.hpp"
 
+#include <switch.h>
+#include "nspmini.hpp"
+
 static bool need_focus_about = false;
 static bool update_popup = false, network_status = false, update_available = false;
 static std::string tag_name = std::string();
+
+static bool nsp_confirm_popup = false;
+static bool nsp_result_popup = false;
+static bool nsp_install_success = false;
 
 // 3rd party dependency versions - provided by CMake from dependencies.json
 // These are defined as compile definitions: DEP_IMGUI_VERSION, DEP_LIBUSBHSFS_VERSION, etc.
@@ -66,6 +73,38 @@ namespace Tabs {
             if (GUI::IsAppletMode()) {
                 ImGui::PopItemFlag();
                 ImGui::PopStyleVar();
+            }
+            
+            Internal::Separator();
+            
+            // ============================================================
+            // NSP FORWARDER SECTION
+            // ============================================================
+            Internal::Indent(strings[lang][Lang::NSPInstallTitle]);
+            
+            // Disable in applet mode (limited permissions)
+            if (GUI::IsAppletMode()) {
+                ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
+                ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
+            }
+            
+            const char* nsp_text = strings[lang][Lang::NSPInstallButton];
+            float nsp_button_width = std::max(250.0f, ImGui::CalcTextSize(nsp_text).x + 40.0f);
+            if (ImGui::Button(nsp_text, ImVec2(nsp_button_width, 50))) {
+                if (GUI::IsAppletMode()) {
+                    // Show not available message
+                    nsp_install_success = false;
+                    nsp_result_popup = true;
+                } else {
+                    // Show confirmation dialog
+                    nsp_confirm_popup = true;
+                }
+            }
+            
+            if (GUI::IsAppletMode()) {
+                ImGui::PopItemFlag();
+                ImGui::PopStyleVar();
+                ImGui::TextWrapped("%s", strings[lang][Lang::NSPInstallNotAvailable]);
             }
             
             Internal::Separator();
@@ -125,5 +164,73 @@ namespace Tabs {
         
         if (update_popup)
             Popups::UpdatePopup(app, update_popup, network_status, update_available, tag_name);
+        
+        // NSP Confirmation Popup
+        if (nsp_confirm_popup) {
+            const int lang = app.config.Lang();
+            ImGui::OpenPopup("NSP Install Confirm");
+            
+            ImVec2 center = ImGui::GetMainViewport()->GetCenter();
+            ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+            ImGui::SetNextWindowSize(ImVec2(600, 200));
+            
+            if (ImGui::BeginPopupModal("NSP Install Confirm", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove)) {
+                ImGui::TextWrapped("%s", strings[lang][Lang::NSPInstallConfirm]);
+                ImGui::Dummy(ImVec2(0.0f, 20.0f));
+                
+                float button_width = 150.0f;
+                float spacing = 20.0f;
+                float total_width = button_width * 2 + spacing;
+                ImGui::SetCursorPosX((600 - total_width) / 2);
+                
+                if (ImGui::Button(strings[lang][Lang::ButtonCancel], ImVec2(button_width, 40))) {
+                    nsp_confirm_popup = false;
+                    ImGui::CloseCurrentPopup();
+                }
+                
+                ImGui::SameLine(0, spacing);
+                
+                if (ImGui::Button(strings[lang][Lang::ButtonOK], ImVec2(button_width, 40))) {
+                    nsp_confirm_popup = false;
+                    ImGui::CloseCurrentPopup();
+                    
+                    // Perform NSP installation
+                    mini::InstallSD("romfs:/nsp_forwarder.nsp");
+                    nsp_install_success = true;
+                    nsp_result_popup = true;
+                }
+                
+                ImGui::EndPopup();
+            }
+        }
+        
+        // NSP Result Popup
+        if (nsp_result_popup) {
+            const int lang = app.config.Lang();
+            ImGui::OpenPopup("NSP Install Result");
+            
+            ImVec2 center = ImGui::GetMainViewport()->GetCenter();
+            ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+            ImGui::SetNextWindowSize(ImVec2(500, 150));
+            
+            if (ImGui::BeginPopupModal("NSP Install Result", nullptr, ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove)) {
+                const char* message = nsp_install_success 
+                    ? strings[lang][Lang::NSPInstallSuccess] 
+                    : (GUI::IsAppletMode() ? strings[lang][Lang::NSPInstallNotAvailable] : strings[lang][Lang::NSPInstallError]);
+                
+                ImGui::TextWrapped("%s", message);
+                ImGui::Dummy(ImVec2(0.0f, 20.0f));
+                
+                float button_width = 150.0f;
+                ImGui::SetCursorPosX((500 - button_width) / 2);
+                
+                if (ImGui::Button(strings[lang][Lang::ButtonOK], ImVec2(button_width, 40))) {
+                    nsp_result_popup = false;
+                    ImGui::CloseCurrentPopup();
+                }
+                
+                ImGui::EndPopup();
+            }
+        }
     }
 }

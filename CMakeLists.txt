@@ -70,16 +70,21 @@ string(JSON LIBNSBMP_COMMIT GET ${DEPS_JSON} "git_dependencies" "libnsbmp" "comm
 string(JSON STB_COMMIT GET ${DEPS_JSON} "git_dependencies" "stb" "commit")
 string(JSON USBHSFS_VERSION GET ${DEPS_JSON} "git_dependencies" "libusbhsfs" "version")
 string(JSON USBHSFS_COMMIT GET ${DEPS_JSON} "git_dependencies" "libusbhsfs" "commit")
+string(JSON NSPMINI_COMMIT GET ${DEPS_JSON} "git_dependencies" "nspmini" "commit")
+string(JSON HACBREWPACK_COMMIT GET ${DEPS_JSON} "git_dependencies" "hacbrewpack" "commit")
+string(JSON HACBREWPACK_VERSION GET ${DEPS_JSON} "git_dependencies" "hacbrewpack" "version")
 
 # Shorten commit hashes for display (first 7 chars)
 string(SUBSTRING "${LIBNSBMP_COMMIT}" 0 7 LIBNSBMP_COMMIT_SHORT)
 string(SUBSTRING "${STB_COMMIT}" 0 7 STB_COMMIT_SHORT)
+string(SUBSTRING "${HACBREWPACK_COMMIT}" 0 7 HACBREWPACK_COMMIT_SHORT)
 
 message(STATUS "Dependency versions from dependencies.json:")
 message(STATUS "  Dear ImGui: ${IMGUI_VERSION}")
 message(STATUS "  libusbhsfs: ${USBHSFS_VERSION}")
 message(STATUS "  libnsbmp: ${LIBNSBMP_COMMIT_SHORT}")
 message(STATUS "  stb: ${STB_COMMIT_SHORT}")
+message(STATUS "  hacbrewpack: ${HACBREWPACK_VERSION} (${HACBREWPACK_COMMIT_SHORT})")
 
 #---------------------------------------------------------------------------------
 # Fetch Dependencies
@@ -109,6 +114,26 @@ FetchContent_Declare(usbhsfs_release
 )
 
 FetchContent_MakeAvailable(imgui libnsbmp stb usbhsfs_release)
+
+# nspmini library for NSP installation
+FetchContent_Declare(nspmini
+    GIT_REPOSITORY https://github.com/StarDustCFW/nspmini.git
+    GIT_TAG        ${NSPMINI_COMMIT}
+)
+FetchContent_MakeAvailable(nspmini)
+
+# Build nspmini library (produces lib/libnsp.a)
+set(NSPMINI_LIB "${nspmini_SOURCE_DIR}/lib/libnsp.a")
+add_custom_command(
+    OUTPUT ${NSPMINI_LIB}
+    COMMAND make
+    WORKING_DIRECTORY ${nspmini_SOURCE_DIR}
+    COMMENT "Building nspmini library"
+)
+add_custom_target(nspmini_build DEPENDS ${NSPMINI_LIB})
+
+# NSP forwarder for home menu installation
+add_subdirectory(scripts/switch-forwarder)
 
 #---------------------------------------------------------------------------------
 # Find devkitPro Tools & Libraries
@@ -165,6 +190,9 @@ add_executable(${PROJECT_NAME}.elf
     ${libnsbmp_SOURCE_DIR}/src/libnsbmp.c
 )
 
+# Ensure nspmini is built before linking
+add_dependencies(${PROJECT_NAME}.elf nspmini_build)
+
 set_source_files_properties(${libnsbmp_SOURCE_DIR}/src/libnsbmp.c PROPERTIES LANGUAGE C)
 
 target_compile_definitions(${PROJECT_NAME}.elf PRIVATE
@@ -202,12 +230,14 @@ target_include_directories(${PROJECT_NAME}.elf PRIVATE
     ${libnsbmp_SOURCE_DIR}/include
     ${stb_SOURCE_DIR}
     ${usbhsfs_release_SOURCE_DIR}/include
+    ${nspmini_SOURCE_DIR}/include
     ${PORTLIBS}/include
     ${LIBNX}/include
 )
 
 target_link_directories(${PROJECT_NAME}.elf PRIVATE
     ${usbhsfs_release_SOURCE_DIR}/lib
+    ${nspmini_SOURCE_DIR}/lib
     ${PORTLIBS}/lib
     ${LIBNX}/lib
 )
@@ -218,6 +248,7 @@ target_link_libraries(${PROJECT_NAME}.elf PRIVATE
     gif turbojpeg jpeg png webp jansson
     glad EGL glapi drm_nouveau
     usbhsfs lwext4 ntfs-3g
+    nsp
     minizip nx m z
 )
 
@@ -241,15 +272,22 @@ add_custom_command(OUTPUT ${NACP_FILE}
     COMMENT "Creating NACP file"
 )
 
+# Copy the NSP forwarder to romfs before creating NRO
+set(NSP_FORWARDER_FILE ${CMAKE_CURRENT_BINARY_DIR}/scripts/switch-forwarder/nsp_forwarder.nsp)
+
 add_custom_command(OUTPUT ${NRO_FILE}
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${NSP_FORWARDER_FILE} ${ROMFS_DIR}/nsp_forwarder.nsp
     COMMAND ${ELF2NRO_EXECUTABLE}
         ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.elf ${NRO_FILE}
         --icon=${ICON_FILE} --nacp=${NACP_FILE} --romfsdir=${ROMFS_DIR}
-    DEPENDS ${PROJECT_NAME}.elf ${NACP_FILE}
-    COMMENT "Creating NRO file"
+    DEPENDS ${PROJECT_NAME}.elf ${NACP_FILE} ${NSP_FORWARDER_FILE}
+    COMMENT "Creating NRO file with embedded NSP forwarder"
 )
 
 add_custom_target(nro ALL DEPENDS ${NRO_FILE})
+
+# Ensure the NSP forwarder is built before the NRO (target dependency)
+add_dependencies(nro nsp_forwarder.nsp)
 
 # Copy NRO to source directory for convenience
 add_custom_command(TARGET nro POST_BUILD

@@ -51,7 +51,9 @@ enum FileType {
     FileTypeArchive,
     FileTypeImage,
     FileTypeText,
-    FileTypeBinary
+    FileTypeBinary,
+    FileTypeSwitch,
+    FileTypeSwitchInstallable  // NSP files that can be installed
 };
 
 enum ConflictHandling {
@@ -254,7 +256,8 @@ enum WindowState {
     WINDOW_STATE_TEXTREADER,
     WINDOW_STATE_REPLACE,
     WINDOW_STATE_MULTI_REPLACE,
-    WINDOW_STATE_OPENMODE
+    WINDOW_STATE_OPENMODE,
+    WINDOW_STATE_NSP_INSTALL
 };
 
 enum SortState {

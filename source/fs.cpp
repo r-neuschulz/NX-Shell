@@ -150,9 +150,11 @@ namespace FS {
         
         // Binary/Executable formats
         {".BIN", FileTypeBinary}, {".DAT", FileTypeBinary}, {".ROM", FileTypeBinary},
-        {".NRO", FileTypeBinary}, {".NSO", FileTypeBinary}, {".NCA", FileTypeBinary},
-        {".NSP", FileTypeBinary}, {".XCI", FileTypeBinary},
         {".EXE", FileTypeBinary}, {".DLL", FileTypeBinary}, {".SYS", FileTypeBinary},
+        
+        // Nintendo Switch formats
+        {".NRO", FileTypeSwitch}, {".NSO", FileTypeSwitch}, {".NCA", FileTypeSwitch},
+        {".NSP", FileTypeSwitchInstallable}, {".XCI", FileTypeSwitch}, {".NACP", FileTypeSwitch},
         {".SO", FileTypeBinary}, {".DYLIB", FileTypeBinary}, {".A", FileTypeBinary},
         {".O", FileTypeBinary}, {".ELF", FileTypeBinary}, {".AXF", FileTypeBinary},
         {".FW", FileTypeBinary}, {".BIOS", FileTypeBinary},

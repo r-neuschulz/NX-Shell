@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <cstring>
+#include <strings.h>
 
 #include "archive.hpp"
 #include "bottombar.hpp"
@@ -16,7 +17,9 @@
 #include "textures.hpp"
 #include "utils.hpp"
 #include "sort_utils.hpp"
+#include "popups.hpp"
 #include "windows.hpp"
+
 
 static std::string pending_focus_name;  // Name of entry to focus after navigation (empty = none)
 static std::string current_focused_name;  // Track current focused entry name for table ID transitions
@@ -564,58 +567,60 @@ namespace Tabs {
                                                   data.metadata_cache[i].valid && 
                                                   data.metadata_cache[i].file_size == 0);
                             
-                            switch (file_type) {
-                                case FileTypeArchive:
-                                    if (is_empty_file) {
-                                        Toast::Show(strings[app.config.Lang()][Lang::ErrorEmptyFile], false, 3.0f);
-                                    } else {
+                            if (is_empty_file) {
+                                Toast::Show(strings[app.config.Lang()][Lang::ErrorEmptyFile], false, 3.0f);
+                            } else {
+                                switch (file_type) {
+                                    case FileTypeArchive:
                                         Archive::SetArchivePath(app.fs, path);
                                         data.selected = i;
                                         data.state = WINDOW_STATE_ARCHIVEEXTRACT;
-                                    }
-                                    break;
+                                        break;
 
-                                case FileTypeImage:
-                                    if (is_empty_file) {
-                                        Toast::Show(strings[app.config.Lang()][Lang::ErrorEmptyFile], false, 3.0f);
-                                    } else if (Textures::LoadImageFile(path, data.textures)) {
-                                        data.selected = i;  // Set selected to the actual image being opened
-                                        data.image_fullscreen = app.config.EnterImagesFullscreen();
-                                        data.state = WINDOW_STATE_IMAGEVIEWER;
-                                    }
-                                    break;
+                                    case FileTypeImage:
+                                        if (Textures::LoadImageFile(path, data.textures)) {
+                                            data.selected = i;
+                                            data.image_fullscreen = app.config.EnterImagesFullscreen();
+                                            data.state = WINDOW_STATE_IMAGEVIEWER;
+                                        }
+                                        break;
 
-                                case FileTypeText:
-                                    if (is_empty_file) {
-                                        Toast::Show(strings[app.config.Lang()][Lang::ErrorEmptyFile], false, 3.0f);
-                                    } else if (TextReader::LoadFile(app, path)) {
-                                        data.selected = i;  // Set selected to the actual text file being opened
-                                        TextReader::SetHexMode(false);  // Text files open in text mode
-                                        data.state = WINDOW_STATE_TEXTREADER;
-                                    }
-                                    break;
+                                    case FileTypeText:
+                                        if (TextReader::LoadFile(app, path)) {
+                                            data.selected = i;
+                                            TextReader::SetHexMode(false);
+                                            data.state = WINDOW_STATE_TEXTREADER;
+                                        }
+                                        break;
 
-                                case FileTypeBinary:
-                                    // Binary files open directly in hex mode
-                                    if (is_empty_file) {
-                                        Toast::Show(strings[app.config.Lang()][Lang::ErrorEmptyFile], false, 3.0f);
-                                    } else if (TextReader::LoadFile(app, path)) {
+                                    case FileTypeBinary:
+                                        if (TextReader::LoadFile(app, path)) {
+                                            data.selected = i;
+                                            TextReader::SetHexMode(true);
+                                            data.state = WINDOW_STATE_TEXTREADER;
+                                        }
+                                        break;
+
+                                    case FileTypeSwitchInstallable:
+                                        Popups::SetNSPInstallPath(path);
                                         data.selected = i;
-                                        TextReader::SetHexMode(true);  // Binary files open in hex mode
-                                        data.state = WINDOW_STATE_TEXTREADER;
-                                    }
-                                    break;
+                                        data.state = WINDOW_STATE_NSP_INSTALL;
+                                        break;
 
-                                case FileTypeNone:
-                                default:
-                                    // Unknown files - show popup to choose mode
-                                    if (is_empty_file) {
-                                        Toast::Show(strings[app.config.Lang()][Lang::ErrorEmptyFile], false, 3.0f);
-                                    } else {
+                                    case FileTypeSwitch:
+                                        if (TextReader::LoadFile(app, path)) {
+                                            data.selected = i;
+                                            TextReader::SetHexMode(true);
+                                            data.state = WINDOW_STATE_TEXTREADER;
+                                        }
+                                        break;
+
+                                    case FileTypeNone:
+                                    default:
                                         data.selected = i;
                                         data.state = WINDOW_STATE_OPENMODE;
-                                    }
-                                    break;
+                                        break;
+                                }
                             }
                         }
                     }

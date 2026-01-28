@@ -44,4 +44,8 @@ namespace Popups {
     // Open mode popup for unknown/binary files
     // Returns: 0 = cancelled/pending, 1 = open as text, 2 = open as hex
     int OpenModePopup(App &app, bool &show);
+    
+    // NSP file installation popup
+    void SetNSPInstallPath(const std::string &path);
+    void NSPInstallPopup(App &app);
 }
