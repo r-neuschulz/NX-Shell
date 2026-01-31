@@ -178,19 +178,12 @@ namespace Lang {
     // Error messages
     ErrorEmptyFile,
 
-    // NSP Installation (Forwarder)
-    NSPInstallTitle,
-    NSPInstallButton,
-    NSPInstallConfirm,
-    NSPInstallSuccess,
-    NSPInstallError,
-    NSPInstallNotAvailable,
-
     // NSP File Installation (from file browser)
     NSPFileInstallTitle,
     NSPFileInstallConfirm,
     NSPFileInstallSuccess,
     NSPFileInstallError,
+    NSPInstallNotAvailable,
 
     // Max
     Max

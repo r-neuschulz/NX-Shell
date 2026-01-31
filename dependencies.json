@@ -42,14 +42,6 @@
       "description": "Minimal NSP installation library for Nintendo Switch",
       "managed_by": "FetchContent",
       "location": "build/_deps/nspmini-src"
-    },
-    "hacbrewpack": {
-      "url": "https://github.com/gayhearts/hacBrewPack.git",
-      "version": "3.05",
-      "commit": "745b16ecfc9ce055743067d200572204cb2aac6c",
-      "description": "NSP/NCA packaging tool for Nintendo Switch homebrew (patched with --nostartupuser support)",
-      "managed_by": "FetchContent",
-      "location": "build/_deps/hacbrewpack-src"
     }
   },
   

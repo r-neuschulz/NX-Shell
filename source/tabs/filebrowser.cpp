@@ -563,7 +563,7 @@ namespace Tabs {
                             std::string path = FS::BuildPath(app.fs, data.entries[i]);
                             
                             // Check for empty file (0 KB) before attempting to open
-                            bool is_empty_file = (i < static_cast<int>(data.metadata_cache.size()) && 
+                            bool is_empty_file = (i < data.metadata_cache.size() && 
                                                   data.metadata_cache[i].valid && 
                                                   data.metadata_cache[i].file_size == 0);
                             
