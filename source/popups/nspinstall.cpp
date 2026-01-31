@@ -7,6 +7,7 @@
 #include "popups.hpp"
 
 #include <switch.h>
+#include <stdexcept>
 #include "nspmini.hpp"
 
 namespace {
@@ -94,18 +95,42 @@ namespace Popups {
                 nsp_confirm_shown = false;
                 ImGui::CloseCurrentPopup();
                 
-                // Perform NSP installation and show toast result
-                // Note: mini::InstallSD returns void; errors are not propagated
-                // (exceptions disabled in this codebase)
-                mini::InstallSD(nsp_file_path.c_str());
-                bool success = true;  // Assume success if no crash
-                Log::Debug("NSP install requested: %s\n", nsp_file_path.c_str());
+                // Perform NSP installation with proper error handling.
+                // nspmini uses exceptions for error reporting (THROW_FORMAT, ASSERT_OK macros).
+                // The library handles its own service init/deinit internally with cleanup
+                // in both success and caught-exception paths. Our outer try-catch here
+                // ensures any escaping exceptions are caught and reported to the user.
+                bool success = false;
+                std::string error_message;
+                
+                try {
+                    Log::Debug("NSP install starting: %s\n", nsp_file_path.c_str());
+                    success = mini::InstallSD(nsp_file_path);
+                    if (!success) {
+                        error_message = "Installation failed";
+                    }
+                    Log::Debug("NSP install completed: %s (success=%d)\n", nsp_file_path.c_str(), success);
+                } catch (const std::exception& e) {
+                    success = false;
+                    error_message = e.what();
+                    Log::Debug("NSP install exception: %s\n", e.what());
+                } catch (...) {
+                    success = false;
+                    error_message = "Unknown error occurred";
+                    Log::Debug("NSP install unknown exception\n");
+                }
                 
                 // Show toast notification with result
-                const char* message = success 
-                    ? strings[lang][Lang::NSPFileInstallSuccess] 
-                    : strings[lang][Lang::NSPFileInstallError];
-                Toast::Show(message, success, 3.0f);
+                if (success) {
+                    Toast::Show(strings[lang][Lang::NSPFileInstallSuccess], true, 3.0f);
+                } else {
+                    // Show error message if available, otherwise generic error
+                    if (!error_message.empty()) {
+                        Toast::Show(error_message.c_str(), false, 5.0f);
+                    } else {
+                        Toast::Show(strings[lang][Lang::NSPFileInstallError], false, 3.0f);
+                    }
+                }
                 
                 nsp_file_path.clear();
                 nsp_filename.clear();

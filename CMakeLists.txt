@@ -55,7 +55,8 @@ set(ARCH_FLAGS "-march=armv8-a+crc+crypto -mtune=cortex-a57 -mtp=soft -fPIE")
 set(COMMON_FLAGS "-g -Wall -O3 -ffunction-sections -Wno-restrict ${ARCH_FLAGS} -D__SWITCH__")
 
 set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${COMMON_FLAGS}")
-set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMMON_FLAGS} -std=gnu++20 -fno-exceptions -fno-rtti")
+# Note: Exceptions enabled for nspmini compatibility (uses throw/catch for error handling)
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${COMMON_FLAGS} -std=gnu++20 -fno-rtti")
 set(CMAKE_ASM_FLAGS "${CMAKE_ASM_FLAGS} -g ${ARCH_FLAGS}")
 set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -specs=${DEVKITPRO}/libnx/switch.specs -g ${ARCH_FLAGS}")
 
