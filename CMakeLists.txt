@@ -24,10 +24,10 @@ set(CMAKE_RANLIB ${DEVKITA64}/bin/aarch64-none-elf-ranlib)
 
 # Allow version override from CI (e.g., -DPROJECT_VERSION_OVERRIDE=5.1.0)
 if(DEFINED PROJECT_VERSION_OVERRIDE)
-    project(NX-Shell VERSION ${PROJECT_VERSION_OVERRIDE} LANGUAGES C CXX)
+    project(NX-Shell VERSION ${PROJECT_VERSION_OVERRIDE} LANGUAGES C CXX ASM)
     message(STATUS "Version overridden to: ${PROJECT_VERSION_OVERRIDE}")
 else()
-    project(NX-Shell VERSION 5.0.0 LANGUAGES C CXX)
+    project(NX-Shell VERSION 5.0.0 LANGUAGES C CXX ASM)
 endif()
 
 # GitHub repository for update checks (can be overridden via -DGITHUB_REPO_OWNER and -DGITHUB_REPO_NAME)
@@ -144,6 +144,12 @@ find_program(ELF2NRO_EXECUTABLE NAMES elf2nro
 find_program(NACPTOOL_EXECUTABLE NAMES nacptool
     PATHS ${DEVKITPRO}/tools/bin NO_DEFAULT_PATH REQUIRED)
 
+find_program(ELF2NSO_EXECUTABLE NAMES elf2nso
+    PATHS ${DEVKITPRO}/tools/bin NO_DEFAULT_PATH REQUIRED)
+
+find_program(NPDMTOOL_EXECUTABLE NAMES npdmtool
+    PATHS ${DEVKITPRO}/tools/bin NO_DEFAULT_PATH REQUIRED)
+
 execute_process(
     COMMAND ${PKG_CONFIG_EXECUTABLE} --cflags freetype2
     OUTPUT_VARIABLE FREETYPE_CFLAGS OUTPUT_STRIP_TRAILING_WHITESPACE)
@@ -162,6 +168,88 @@ set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} ${FREETYPE_CFLAGS}")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${FREETYPE_CFLAGS}")
 
 #---------------------------------------------------------------------------------
+# Forwarder Build (built first, then bundled into main app's romfs)
+#---------------------------------------------------------------------------------
+set(FORWARDER_DIR ${CMAKE_CURRENT_SOURCE_DIR}/source/forwarder)
+set(FORWARDER_ELF ${CMAKE_CURRENT_BINARY_DIR}/forwarder.elf)
+set(FORWARDER_NSO ${CMAKE_CURRENT_BINARY_DIR}/forwarder.nso)
+set(FORWARDER_NPDM ${CMAKE_CURRENT_BINARY_DIR}/forwarder.npdm)
+
+# Compile forwarder main.c
+add_custom_command(
+    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/forwarder_main.o
+    COMMAND ${CMAKE_C_COMPILER}
+        -g -Wall -O2 -ffunction-sections
+        -march=armv8-a+crc+crypto -mtune=cortex-a57 -mtp=soft -fPIE
+        -D__SWITCH__
+        -I${LIBNX}/include
+        -c ${FORWARDER_DIR}/main.c
+        -o ${CMAKE_CURRENT_BINARY_DIR}/forwarder_main.o
+    DEPENDS ${FORWARDER_DIR}/main.c
+    COMMENT "Compiling forwarder main.c"
+)
+
+# Compile forwarder trampoline.s
+add_custom_command(
+    OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/forwarder_trampoline.o
+    COMMAND ${CMAKE_ASM_COMPILER}
+        -g -march=armv8-a+crc+crypto -mtune=cortex-a57 -mtp=soft -fPIE
+        -c ${FORWARDER_DIR}/trampoline.s
+        -o ${CMAKE_CURRENT_BINARY_DIR}/forwarder_trampoline.o
+    DEPENDS ${FORWARDER_DIR}/trampoline.s
+    COMMENT "Compiling forwarder trampoline.s"
+)
+
+# Link forwarder ELF
+add_custom_command(
+    OUTPUT ${FORWARDER_ELF}
+    COMMAND ${CMAKE_C_COMPILER}
+        -specs=${DEVKITPRO}/libnx/switch.specs
+        -g -march=armv8-a+crc+crypto -mtune=cortex-a57 -mtp=soft -fPIE
+        -Wl,-Map,${CMAKE_CURRENT_BINARY_DIR}/forwarder.map
+        ${CMAKE_CURRENT_BINARY_DIR}/forwarder_main.o
+        ${CMAKE_CURRENT_BINARY_DIR}/forwarder_trampoline.o
+        -L${LIBNX}/lib -lnx
+        -o ${FORWARDER_ELF}
+    DEPENDS
+        ${CMAKE_CURRENT_BINARY_DIR}/forwarder_main.o
+        ${CMAKE_CURRENT_BINARY_DIR}/forwarder_trampoline.o
+    COMMENT "Linking forwarder ELF"
+)
+
+# Convert ELF to NSO
+add_custom_command(
+    OUTPUT ${FORWARDER_NSO}
+    COMMAND ${ELF2NSO_EXECUTABLE} ${FORWARDER_ELF} ${FORWARDER_NSO}
+    DEPENDS ${FORWARDER_ELF}
+    COMMENT "Creating forwarder NSO"
+)
+
+# Generate NPDM from JSON
+add_custom_command(
+    OUTPUT ${FORWARDER_NPDM}
+    COMMAND ${NPDMTOOL_EXECUTABLE} ${FORWARDER_DIR}/forwarder.json ${FORWARDER_NPDM}
+    DEPENDS ${FORWARDER_DIR}/forwarder.json
+    COMMENT "Creating forwarder NPDM"
+)
+
+# Copy forwarder binaries to res/ directory for bundling into romfs
+add_custom_command(
+    OUTPUT ${ROMFS_DIR}/forwarder.nso ${ROMFS_DIR}/forwarder.npdm
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${FORWARDER_NSO} ${ROMFS_DIR}/forwarder.nso
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${FORWARDER_NPDM} ${ROMFS_DIR}/forwarder.npdm
+    DEPENDS ${FORWARDER_NSO} ${FORWARDER_NPDM}
+    COMMENT "Copying forwarder binaries to romfs directory"
+)
+
+# Forwarder build target
+add_custom_target(forwarder_build ALL
+    DEPENDS ${ROMFS_DIR}/forwarder.nso ${ROMFS_DIR}/forwarder.npdm
+)
+
+message(STATUS "Forwarder will be built from source: ${FORWARDER_DIR}")
+
+#---------------------------------------------------------------------------------
 # Source Files
 #---------------------------------------------------------------------------------
 set(IMGUI_SOURCES
@@ -173,7 +261,9 @@ set(IMGUI_SOURCES
     ${imgui_SOURCE_DIR}/misc/freetype/imgui_freetype.cpp
 )
 
+# Get all source files, excluding the forwarder directory (built separately)
 file(GLOB_RECURSE PROJECT_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/source/*.cpp")
+list(FILTER PROJECT_SOURCES EXCLUDE REGEX ".*/forwarder/.*")
 
 #---------------------------------------------------------------------------------
 # Executable Target
@@ -184,8 +274,8 @@ add_executable(${PROJECT_NAME}.elf
     ${libnsbmp_SOURCE_DIR}/src/libnsbmp.c
 )
 
-# Ensure nspmini is built before linking
-add_dependencies(${PROJECT_NAME}.elf nspmini_build)
+# Ensure dependencies are built before linking
+add_dependencies(${PROJECT_NAME}.elf nspmini_build forwarder_build)
 
 set_source_files_properties(${libnsbmp_SOURCE_DIR}/src/libnsbmp.c PROPERTIES LANGUAGE C)
 

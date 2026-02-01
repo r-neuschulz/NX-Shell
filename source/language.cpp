@@ -169,7 +169,16 @@ static const char *strings_jp[] {
     "このNSPファイルをインストールしますか？\n\n警告: NSPをインストールするとBANされる可能性があります。",
     "NSPのインストールに成功しました。",
     "NSPのインストールに失敗しました。",
-    "アプレットモードではNSPインストールは利用できません。"
+    "アプレットモードではNSPインストールは利用できません。",
+
+    // NRO Forwarder NSP Creation
+    "Create Forwarder NSP",
+    "Create a forwarder NSP for this NRO?\n\nThis will generate an installable NSP that launches this homebrew.",
+    "Forwarder NSP created successfully.",
+    "Failed to create forwarder NSP.",
+    "Keys file not found at sdmc:/switch/prod.keys",
+    "Building forwarder NSP...",
+    "Create Forwarder"
 };
 
 static const char *strings_en[] {
@@ -338,7 +347,16 @@ static const char *strings_en[] {
     "Do you want to install this NSP file?\n\nWarning: Installing NSPs may result in a ban.",
     "NSP installed successfully.",
     "Failed to install NSP.",
-    "NSP installation not available in applet mode."
+    "NSP installation not available in applet mode.",
+
+    // NRO Forwarder NSP Creation
+    "Create Forwarder NSP",
+    "Create a forwarder NSP for this NRO?\n\nThis will generate an installable NSP that launches this homebrew.",
+    "Forwarder NSP created successfully.",
+    "Failed to create forwarder NSP.",
+    "Keys file not found at sdmc:/switch/prod.keys",
+    "Building forwarder NSP...",
+    "Create Forwarder"
 };
 
 // French (need to check and verify)
@@ -508,7 +526,16 @@ static const char *strings_fr[] {
     "Voulez-vous installer ce fichier NSP ?\n\nAttention : L'installation de NSP peut entraîner un bannissement.",
     "NSP installé avec succès.",
     "Échec de l'installation du NSP.",
-    "L'installation NSP n'est pas disponible en mode applet."
+    "L'installation NSP n'est pas disponible en mode applet.",
+
+    // NRO Forwarder NSP Creation
+    "Créer un NSP de redirection",
+    "Créer un NSP de redirection pour ce NRO ?\n\nCela générera un NSP installable qui lance ce homebrew.",
+    "NSP de redirection créé avec succès.",
+    "Échec de la création du NSP de redirection.",
+    "Fichier de clés introuvable à sdmc:/switch/prod.keys",
+    "Création du NSP de redirection...",
+    "Créer redirection"
 };
 
 static const char *strings_de[] {
@@ -677,7 +704,16 @@ static const char *strings_de[] {
     "Möchten Sie diese NSP-Datei installieren?\n\nWarnung: Die Installation von NSPs kann zu einem Bann führen.",
     "NSP erfolgreich installiert.",
     "NSP-Installation fehlgeschlagen.",
-    "NSP-Installation im Applet-Modus nicht verfügbar."
+    "NSP-Installation im Applet-Modus nicht verfügbar.",
+
+    // NRO Forwarder NSP Creation
+    "Forwarder-NSP erstellen",
+    "Forwarder-NSP für dieses NRO erstellen?\n\nDies generiert ein installierbares NSP, das diese Homebrew startet.",
+    "Forwarder-NSP erfolgreich erstellt.",
+    "Forwarder-NSP konnte nicht erstellt werden.",
+    "Schlüsseldatei nicht gefunden unter sdmc:/switch/prod.keys",
+    "Erstelle Forwarder-NSP...",
+    "Forwarder erstellen"
 };
 
 // Italian (need to check and verify)
@@ -847,7 +883,16 @@ static const char *strings_it[] {
     "Vuoi installare questo file NSP?\n\nAttenzione: L'installazione di NSP potrebbe causare un ban.",
     "NSP installato con successo.",
     "Installazione NSP fallita.",
-    "Installazione NSP non disponibile in modalità applet."
+    "Installazione NSP non disponibile in modalità applet.",
+
+    // NRO Forwarder NSP Creation
+    "Crea NSP forwarder",
+    "Creare un NSP forwarder per questo NRO?\n\nQuesto genererà un NSP installabile che avvia questo homebrew.",
+    "NSP forwarder creato con successo.",
+    "Impossibile creare NSP forwarder.",
+    "File delle chiavi non trovato in sdmc:/switch/prod.keys",
+    "Creazione NSP forwarder...",
+    "Crea forwarder"
 };
 
 //  Spanish
@@ -1017,7 +1062,16 @@ static const char *strings_es[] {
     "¿Deseas instalar este archivo NSP?\n\nAdvertencia: Instalar NSPs puede resultar en un baneo.",
     "NSP instalado exitosamente.",
     "Error al instalar el NSP.",
-    "Instalación NSP no disponible en modo applet."
+    "Instalación NSP no disponible en modo applet.",
+
+    // NRO Forwarder NSP Creation
+    "Crear NSP forwarder",
+    "¿Crear un NSP forwarder para este NRO?\n\nEsto generará un NSP instalable que lanza este homebrew.",
+    "NSP forwarder creado exitosamente.",
+    "Error al crear NSP forwarder.",
+    "Archivo de claves no encontrado en sdmc:/switch/prod.keys",
+    "Creando NSP forwarder...",
+    "Crear forwarder"
 };
 
 // Simplified Chinese ("Chinese")
@@ -1187,7 +1241,16 @@ static const char *strings_sc[] {
     "您要安装此NSP文件吗？\n\n警告：安装NSP可能导致被封禁。",
     "NSP安装成功。",
     "NSP安装失败。",
-    "小程序模式下无法安装NSP。"
+    "小程序模式下无法安装NSP。",
+
+    // NRO Forwarder NSP Creation
+    "创建转发NSP",
+    "为此NRO创建转发NSP？\n\n这将生成一个可安装的NSP来启动此自制软件。",
+    "转发NSP创建成功。",
+    "转发NSP创建失败。",
+    "密钥文件未找到：sdmc:/switch/prod.keys",
+    "正在创建转发NSP...",
+    "创建转发"
 };
 
 // Korean (need to check and verify)
@@ -1357,7 +1420,16 @@ static const char *strings_ko[] {
     "이 NSP 파일을 설치하시겠습니까?\n\n경고: NSP 설치는 차단될 수 있습니다.",
     "NSP가 성공적으로 설치되었습니다.",
     "NSP 설치에 실패했습니다.",
-    "애플릿 모드에서는 NSP 설치를 사용할 수 없습니다."
+    "애플릿 모드에서는 NSP 설치를 사용할 수 없습니다.",
+
+    // NRO Forwarder NSP Creation
+    "포워더 NSP 생성",
+    "이 NRO에 대한 포워더 NSP를 생성하시겠습니까?\n\n이 홈브류를 실행하는 설치 가능한 NSP가 생성됩니다.",
+    "포워더 NSP가 성공적으로 생성되었습니다.",
+    "포워더 NSP 생성에 실패했습니다.",
+    "키 파일을 찾을 수 없습니다: sdmc:/switch/prod.keys",
+    "포워더 NSP 생성 중...",
+    "포워더 생성"
 };
 
 // Dutch (need to check and verify)
@@ -1527,7 +1599,16 @@ static const char *strings_nl[] {
     "Wilt u dit NSP-bestand installeren?\n\nWaarschuwing: Het installeren van NSPs kan leiden tot een ban.",
     "NSP succesvol geïnstalleerd.",
     "NSP-installatie mislukt.",
-    "NSP-installatie niet beschikbaar in applet-modus."
+    "NSP-installatie niet beschikbaar in applet-modus.",
+
+    // NRO Forwarder NSP Creation
+    "Forwarder NSP maken",
+    "Forwarder NSP maken voor deze NRO?\n\nDit genereert een installeerbare NSP die deze homebrew start.",
+    "Forwarder NSP succesvol gemaakt.",
+    "Forwarder NSP maken mislukt.",
+    "Sleutelbestand niet gevonden op sdmc:/switch/prod.keys",
+    "Forwarder NSP maken...",
+    "Forwarder maken"
 };
 
 // Portuguese
@@ -1697,7 +1778,16 @@ static const char *strings_pt[] {
     "Deseja instalar este arquivo NSP?\n\nAviso: Instalar NSPs pode resultar em banimento.",
     "NSP instalado com sucesso.",
     "Falha ao instalar o NSP.",
-    "Instalação NSP não disponível no modo applet."
+    "Instalação NSP não disponível no modo applet.",
+
+    // NRO Forwarder NSP Creation
+    "Criar NSP Forwarder",
+    "Criar um NSP forwarder para este NRO?\n\nIsso gerará um NSP instalável que inicia este homebrew.",
+    "NSP forwarder criado com sucesso.",
+    "Falha ao criar NSP forwarder.",
+    "Arquivo de chaves não encontrado em sdmc:/switch/prod.keys",
+    "Criando NSP forwarder...",
+    "Criar forwarder"
 };
 
 // Russian (need to check and verify)
@@ -1867,7 +1957,16 @@ static const char *strings_ru[] {
     "Вы хотите установить этот NSP файл?\n\nПредупреждение: Установка NSP может привести к бану.",
     "NSP успешно установлен.",
     "Не удалось установить NSP.",
-    "Установка NSP недоступна в режиме апплета."
+    "Установка NSP недоступна в режиме апплета.",
+
+    // NRO Forwarder NSP Creation
+    "Создать NSP-форвардер",
+    "Создать NSP-форвардер для этого NRO?\n\nБудет создан устанавливаемый NSP для запуска этого хомбрю.",
+    "NSP-форвардер успешно создан.",
+    "Не удалось создать NSP-форвардер.",
+    "Файл ключей не найден: sdmc:/switch/prod.keys",
+    "Создание NSP-форвардера...",
+    "Создать форвардер"
 };
 
 // Traditional Chinese ("Taiwanese")
@@ -2037,7 +2136,16 @@ static const char *strings_tw[] {
     "您要安裝此NSP檔案嗎？\n\n警告：安裝NSP可能導致被封禁。",
     "NSP安裝成功。",
     "NSP安裝失敗。",
-    "小程式模式下無法安裝NSP。"
+    "小程式模式下無法安裝NSP。",
+
+    // NRO Forwarder NSP Creation
+    "建立轉發NSP",
+    "為此NRO建立轉發NSP？\n\n這將產生一個可安裝的NSP來啟動此自製軟體。",
+    "轉發NSP建立成功。",
+    "轉發NSP建立失敗。",
+    "密鑰檔案未找到：sdmc:/switch/prod.keys",
+    "正在建立轉發NSP...",
+    "建立轉發"
 };
 
 const char **strings[Lang::Max] = {

@@ -185,6 +185,15 @@ namespace Lang {
     NSPFileInstallError,
     NSPInstallNotAvailable,
 
+    // NRO Forwarder NSP Creation
+    NROForwarderTitle,
+    NROForwarderConfirm,
+    NROForwarderSuccess,
+    NROForwarderError,
+    NROForwarderNoKeys,
+    NROForwarderBuilding,
+    OptionsCreateForwarder,
+
     // Max
     Max
     } StringID;

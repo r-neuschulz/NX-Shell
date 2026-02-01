@@ -32,9 +32,15 @@
 *.app
 *.ps1
 
+
+
+
 # NX-Shell build artifacts
 *.nro
 *.elf
 *.nacp
+*.tar.gz
 build/
 res/shaders
+res/forwarder.nso
+res/forwarder.npdm

@@ -48,4 +48,8 @@ namespace Popups {
     // NSP file installation popup
     void SetNSPInstallPath(const std::string &path);
     void NSPInstallPopup(App &app);
+    
+    // NRO to NSP forwarder popup
+    void SetNROForwarderPath(const std::string &path);
+    void NROForwarderPopup(App &app);
 }

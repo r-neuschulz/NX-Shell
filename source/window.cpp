@@ -584,6 +584,10 @@ namespace Windows {
                 Popups::NSPInstallPopup(app);
                 break;
 
+            case WINDOW_STATE_NRO_FORWARDER:
+                Popups::NROForwarderPopup(app);
+                break;
+
             default:
                 break;
         }
@@ -666,6 +670,10 @@ namespace Windows {
                     break;
 
                 case WINDOW_STATE_NSP_INSTALL:
+                    app.window.state = WINDOW_STATE_FILEBROWSER;
+                    break;
+
+                case WINDOW_STATE_NRO_FORWARDER:
                     app.window.state = WINDOW_STATE_FILEBROWSER;
                     break;
 

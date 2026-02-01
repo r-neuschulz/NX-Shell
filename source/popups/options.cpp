@@ -1,3 +1,4 @@
+#include <cctype>
 #include <cstring>
 #include <sys/stat.h>
 
@@ -330,6 +331,29 @@ namespace Popups {
                 
                 ImGui::CloseCurrentPopup();
                 app.window.state = WINDOW_STATE_FILEBROWSER;
+            }
+            
+            // Show "Create NRO Forwarder" button only for NRO files
+            {
+                std::string selected_name = app.window.entries[app.window.selected].name;
+                std::string ext;
+                size_t dot_pos = selected_name.find_last_of('.');
+                if (dot_pos != std::string::npos) {
+                    ext = selected_name.substr(dot_pos);
+                    // Convert to uppercase for comparison
+                    for (auto &c : ext) c = std::toupper(c);
+                }
+                
+                if (ext == ".NRO" && app.window.entries[app.window.selected].type == FsDirEntryType_File) {
+                    ImGui::Dummy(ImVec2(0.0f, 5.0f)); // Spacing
+                    
+                    if (ImGui::Button(strings[lang][Lang::OptionsCreateForwarder], ImVec2(415, 50))) {
+                        std::string path = FS::BuildPath(app.fs, app.window.entries[app.window.selected]);
+                        Popups::SetNROForwarderPath(path);
+                        ImGui::CloseCurrentPopup();
+                        app.window.state = WINDOW_STATE_NRO_FORWARDER;
+                    }
+                }
             }
         }
         
