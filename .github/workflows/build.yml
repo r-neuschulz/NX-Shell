@@ -122,6 +122,7 @@ jobs:
           ls -lh "${{ steps.version.outputs.nro_filename }}"
 
       - name: Create source archive
+        if: ${{ !env.ACT || env.CREATE_BUNDLE == 'true' }}
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           VERSION_DASHED=$(echo "${VERSION}" | tr '.' '-')
@@ -146,6 +147,7 @@ jobs:
         id: source_archive
 
       - name: Create build archive
+        if: ${{ !env.ACT || env.CREATE_BUNDLE == 'true' }}
         run: |
           VERSION="${{ steps.version.outputs.version }}"
           VERSION_DASHED=$(echo "${VERSION}" | tr '.' '-')
