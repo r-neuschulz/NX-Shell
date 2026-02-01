@@ -374,9 +374,10 @@ namespace Popups {
             float window_width = ImGui::GetWindowSize().x;
             ImGui::SetCursorPosX((window_width - button_width) * 0.5f);
             
-            if (ImGui::Button(strings[lang][Lang::ButtonOK], ImVec2(button_width, 0))) {
+            if (ImGui::Button(strings[lang][Lang::ButtonOK], ImVec2(button_width, 36))) {
                 ImGui::CloseCurrentPopup();
             }
+            ImGui::SetItemDefaultFocus();
             ImGui::EndPopup();
         }
     }

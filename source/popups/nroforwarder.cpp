@@ -48,13 +48,13 @@ namespace Popups {
         
         // If building, show progress
         if (nro_building) {
-            ImGui::OpenPopup("Building Forwarder NSP");
+            ImGui::OpenPopup(strings[lang][Lang::NROForwarderBuilding]);
             
             ImVec2 center = ImGui::GetMainViewport()->GetCenter();
             ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
             ImGui::SetNextWindowSize(ImVec2(400, 120));
             
-            if (ImGui::BeginPopupModal("Building Forwarder NSP", nullptr, 
+            if (ImGui::BeginPopupModal(strings[lang][Lang::NROForwarderBuilding], nullptr, 
                     ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove)) {
                 ImGui::TextUnformatted(strings[lang][Lang::NROForwarderBuilding]);
                 ImGui::Dummy(ImVec2(0.0f, 10.0f));
@@ -105,13 +105,13 @@ namespace Popups {
         }
         
         // NRO Forwarder Confirmation Popup
-        ImGui::OpenPopup("NRO Forwarder");
+        ImGui::OpenPopup(strings[lang][Lang::NROForwarderTitle]);
         
         ImVec2 center = ImGui::GetMainViewport()->GetCenter();
         ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
         ImGui::SetNextWindowSize(ImVec2(650, 380));
         
-        if (ImGui::BeginPopupModal("NRO Forwarder", nullptr, 
+        if (ImGui::BeginPopupModal(strings[lang][Lang::NROForwarderTitle], nullptr, 
                 ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove)) {
             // Title
             ImGui::TextUnformatted(strings[lang][Lang::NROForwarderTitle]);
@@ -152,21 +152,10 @@ namespace Popups {
                 ImGui::Dummy(ImVec2(0.0f, 10.0f));
             }
             
-            float button_width = 150.0f;
-            float spacing = 20.0f;
+            float button_width = 120.0f;
+            float spacing = 15.0f;
             float total_width = button_width * 2 + spacing;
             ImGui::SetCursorPosX((650 - total_width) / 2);
-            
-            if (ImGui::Button(strings[lang][Lang::ButtonCancel], ImVec2(button_width, 40))) {
-                nro_confirm_shown = false;
-                nro_file_path.clear();
-                nro_filename.clear();
-                nro_metadata = NSPBuild::NroMetadata();
-                ImGui::CloseCurrentPopup();
-                app.window.state = WINDOW_STATE_FILEBROWSER;
-            }
-            
-            ImGui::SameLine(0, spacing);
             
             // Disable build button if invalid metadata
             bool can_build = nro_metadata.valid;
@@ -175,14 +164,29 @@ namespace Popups {
                 ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
             }
             
-            if (ImGui::Button(strings[lang][Lang::ButtonOK], ImVec2(button_width, 40))) {
+            if (ImGui::Button(strings[lang][Lang::ButtonOK], ImVec2(button_width, 36))) {
                 ImGui::CloseCurrentPopup();
                 nro_building = true;
+            }
+            
+            if (can_build) {
+                ImGui::SetItemDefaultFocus();
             }
             
             if (!can_build) {
                 ImGui::PopItemFlag();
                 ImGui::PopStyleVar();
+            }
+            
+            ImGui::SameLine(0, spacing);
+            
+            if (ImGui::Button(strings[lang][Lang::ButtonCancel], ImVec2(button_width, 36))) {
+                nro_confirm_shown = false;
+                nro_file_path.clear();
+                nro_filename.clear();
+                nro_metadata = NSPBuild::NroMetadata();
+                ImGui::CloseCurrentPopup();
+                app.window.state = WINDOW_STATE_FILEBROWSER;
             }
             
             ImGui::EndPopup();

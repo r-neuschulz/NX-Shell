@@ -50,8 +50,7 @@ namespace Popups {
             
             if (done && !update_path.empty()) {
                 // After successful download: Restart button launches new version
-                ImGui::SetKeyboardFocusHere();
-                if (ImGui::Button(strings[lang][Lang::ButtonRestart], ImVec2(120, 0))) {
+                if (ImGui::Button(strings[lang][Lang::ButtonRestart], ImVec2(120, 36))) {
                     // Tell homebrew loader to load the update NRO on exit
                     std::string full_path = "sdmc:" + update_path;
                     
@@ -81,10 +80,11 @@ namespace Popups {
                     update_path.clear();
                     app.request_exit = true;
                 }
+                ImGui::SetItemDefaultFocus();
                 
                 ImGui::SameLine(0.0f, 15.0f);
                 
-                if (ImGui::Button(strings[lang][Lang::ButtonCancel], ImVec2(120, 0))) {
+                if (ImGui::Button(strings[lang][Lang::ButtonCancel], ImVec2(120, 36))) {
                     ImGui::CloseCurrentPopup();
                     state = false;
                     done = false;
@@ -94,17 +94,18 @@ namespace Popups {
             }
             else if (download_failed || !connection_status) {
                 // Download failed or no connection: just show OK to close
-                if (ImGui::Button(strings[lang][Lang::ButtonOK], ImVec2(120, 0))) {
+                if (ImGui::Button(strings[lang][Lang::ButtonOK], ImVec2(120, 36))) {
                     ImGui::CloseCurrentPopup();
                     state = false;
                     done = false;
                     download_failed = false;
                     update_path.clear();
                 }
+                ImGui::SetItemDefaultFocus();
             }
             else if (connection_status && available && !tag.empty()) {
                 // Update available: OK to download, Cancel to close
-                if (ImGui::Button(strings[lang][Lang::ButtonOK], ImVec2(120, 0))) {
+                if (ImGui::Button(strings[lang][Lang::ButtonOK], ImVec2(120, 36))) {
                     update_path = Net::GetLatestReleaseNRO(app.fs, tag);
                     if (update_path.empty()) {
                         download_failed = true;
@@ -112,10 +113,11 @@ namespace Popups {
                         done = true;
                     }
                 }
+                ImGui::SetItemDefaultFocus();
                 
                 ImGui::SameLine(0.0f, 15.0f);
                 
-                if (ImGui::Button(strings[lang][Lang::ButtonCancel], ImVec2(120, 0))) {
+                if (ImGui::Button(strings[lang][Lang::ButtonCancel], ImVec2(120, 36))) {
                     ImGui::CloseCurrentPopup();
                     state = false;
                     done = false;
@@ -125,10 +127,11 @@ namespace Popups {
             }
             else {
                 // No update available: just show OK to close
-                if (ImGui::Button(strings[lang][Lang::ButtonOK], ImVec2(120, 0))) {
+                if (ImGui::Button(strings[lang][Lang::ButtonOK], ImVec2(120, 36))) {
                     ImGui::CloseCurrentPopup();
                     state = false;
                 }
+                ImGui::SetItemDefaultFocus();
             }
         }
         
@@ -146,10 +149,11 @@ namespace Popups {
             ImGui::Dummy(ImVec2(0.0f, 5.0f)); // Spacing
             
             const int lang = app.config.Lang();
-            if (ImGui::Button(strings[lang][Lang::ButtonOK], ImVec2(120, 0))) {
+            if (ImGui::Button(strings[lang][Lang::ButtonOK], ImVec2(120, 36))) {
                 ImGui::CloseCurrentPopup();
                 state = false;
             }
+            ImGui::SetItemDefaultFocus();
         }
         
         Popups::ExitPopup();

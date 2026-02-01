@@ -201,6 +201,11 @@ namespace Lang {
     InstallWarningMessage,
     InstallDontShowAgain,
 
+    // Success/Error Toasts
+    DeleteSuccess,
+    ArchiveSuccess,
+    ArchiveError,
+
     // Max
     Max
     } StringID;

@@ -185,7 +185,12 @@ static const char *strings_jp[] {
 
     // Install popup
     "警告: ホーム画面へのインストールは\nBANの原因となる可能性があります。",
-    "今後表示しない"
+    "今後表示しない",
+
+    // Success/Error Toasts
+    "削除が完了しました。",
+    "アーカイブの展開が完了しました。",
+    "アーカイブの展開に失敗しました。"
 };
 
 static const char *strings_en[] {
@@ -370,7 +375,12 @@ static const char *strings_en[] {
 
     // Install popup
     "Warning: Installing to the homescreen\nmay result in a ban.",
-    "Don't show again"
+    "Don't show again",
+
+    // Success/Error Toasts
+    "Delete completed successfully.",
+    "Archive extracted successfully.",
+    "Failed to extract archive."
 };
 
 // French (need to check and verify)
@@ -556,7 +566,12 @@ static const char *strings_fr[] {
 
     // Install popup
     "Attention: L'installation sur l'écran\nd'accueil peut entraîner un bannissement.",
-    "Ne plus afficher"
+    "Ne plus afficher",
+
+    // Success/Error Toasts
+    "Suppression terminée avec succès.",
+    "Archive extraite avec succès.",
+    "Échec de l'extraction de l'archive."
 };
 
 static const char *strings_de[] {
@@ -741,7 +756,12 @@ static const char *strings_de[] {
 
     // Install popup
     "Warnung: Die Installation auf dem Homescreen\nkann zu einem Bann führen.",
-    "Nicht mehr anzeigen"
+    "Nicht mehr anzeigen",
+
+    // Success/Error Toasts
+    "Löschen erfolgreich abgeschlossen.",
+    "Archiv erfolgreich extrahiert.",
+    "Archiv konnte nicht extrahiert werden."
 };
 
 // Italian (need to check and verify)
@@ -927,7 +947,12 @@ static const char *strings_it[] {
 
     // Install popup
     "Attenzione: L'installazione nella schermata\nprincipale potrebbe causare un ban.",
-    "Non mostrare più"
+    "Non mostrare più",
+
+    // Success/Error Toasts
+    "Eliminazione completata con successo.",
+    "Archivio estratto con successo.",
+    "Impossibile estrarre l'archivio."
 };
 
 //  Spanish
@@ -1113,7 +1138,12 @@ static const char *strings_es[] {
 
     // Install popup
     "Advertencia: Instalar en la pantalla\nde inicio puede resultar en un baneo.",
-    "No mostrar de nuevo"
+    "No mostrar de nuevo",
+
+    // Success/Error Toasts
+    "Eliminación completada con éxito.",
+    "Archivo extraído con éxito.",
+    "Error al extraer el archivo."
 };
 
 // Simplified Chinese ("Chinese")
@@ -1299,7 +1329,12 @@ static const char *strings_sc[] {
 
     // Install popup
     "警告：安装到主屏幕可能\n导致被封禁。",
-    "不再显示"
+    "不再显示",
+
+    // Success/Error Toasts
+    "删除成功完成。",
+    "归档提取成功。",
+    "归档提取失败。"
 };
 
 // Korean (need to check and verify)
@@ -1485,7 +1520,12 @@ static const char *strings_ko[] {
 
     // Install popup
     "경고: 홈 화면에 설치하면\n밴을 받을 수 있습니다.",
-    "다시 표시 안 함"
+    "다시 표시 안 함",
+
+    // Success/Error Toasts
+    "삭제가 성공적으로 완료되었습니다.",
+    "아카이브 추출 성공.",
+    "아카이브 추출 실패."
 };
 
 // Dutch (need to check and verify)
@@ -1671,7 +1711,12 @@ static const char *strings_nl[] {
 
     // Install popup
     "Waarschuwing: Installeren op het\nstartscherm kan leiden tot een ban.",
-    "Niet meer tonen"
+    "Niet meer tonen",
+
+    // Success/Error Toasts
+    "Verwijderen succesvol voltooid.",
+    "Archief succesvol uitgepakt.",
+    "Archief uitpakken mislukt."
 };
 
 // Portuguese
@@ -1857,7 +1902,12 @@ static const char *strings_pt[] {
 
     // Install popup
     "Aviso: Instalar na tela inicial\npode resultar em banimento.",
-    "Não mostrar novamente"
+    "Não mostrar novamente",
+
+    // Success/Error Toasts
+    "Exclusão concluída com sucesso.",
+    "Arquivo extraído com sucesso.",
+    "Falha ao extrair o arquivo."
 };
 
 // Russian (need to check and verify)
@@ -2043,7 +2093,12 @@ static const char *strings_ru[] {
 
     // Install popup
     "Внимание: Установка на главный экран\nможет привести к бану.",
-    "Больше не показывать"
+    "Больше не показывать",
+
+    // Success/Error Toasts
+    "Удаление успешно завершено.",
+    "Архив успешно извлечён.",
+    "Не удалось извлечь архив."
 };
 
 // Traditional Chinese ("Taiwanese")
@@ -2229,7 +2284,12 @@ static const char *strings_tw[] {
 
     // Install popup
     "警告：安裝到主畫面可能\n導致被封禁。",
-    "不再顯示"
+    "不再顯示",
+
+    // Success/Error Toasts
+    "刪除成功完成。",
+    "歸檔提取成功。",
+    "歸檔提取失敗。"
 };
 
 const char **strings[Lang::Max] = {
