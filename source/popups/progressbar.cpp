@@ -14,7 +14,7 @@ namespace Popups {
         Windows::MainWindow(app, key, true);
         Popups::SetupPopup(app, title.c_str());
         
-        if (ImGui::BeginPopupModal(title.c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        if (ImGui::BeginPopupModal(title.c_str(), nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoScrollbar)) {
             ImGui::Text("%s", text.c_str());
             ImGui::ProgressBar(size > 0 ? offset / size : 0.0f, ImVec2(400.0f, 0.0f));
         }

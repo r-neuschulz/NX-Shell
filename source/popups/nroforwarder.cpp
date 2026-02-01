@@ -48,14 +48,10 @@ namespace Popups {
         
         // If building, show progress
         if (nro_building) {
-            ImGui::OpenPopup(strings[lang][Lang::NROForwarderBuilding]);
-            
-            ImVec2 center = ImGui::GetMainViewport()->GetCenter();
-            ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
-            ImGui::SetNextWindowSize(ImVec2(400, 120));
+            Popups::SetupPopup(app, strings[lang][Lang::NROForwarderBuilding]);
             
             if (ImGui::BeginPopupModal(strings[lang][Lang::NROForwarderBuilding], nullptr, 
-                    ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove)) {
+                    ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoScrollbar)) {
                 ImGui::TextUnformatted(strings[lang][Lang::NROForwarderBuilding]);
                 ImGui::Dummy(ImVec2(0.0f, 10.0f));
                 
@@ -63,10 +59,10 @@ namespace Popups {
                 static float progress_anim = 0.0f;
                 progress_anim += ImGui::GetIO().DeltaTime * 0.5f;
                 if (progress_anim > 1.0f) progress_anim -= 1.0f;
-                ImGui::ProgressBar(progress_anim, ImVec2(-1.0f, 0.0f), "");
-                
-                ImGui::EndPopup();
+                ImGui::ProgressBar(progress_anim, ImVec2(350.0f, 0.0f), "");
             }
+            
+            Popups::ExitPopup();
             
             // Process build on next frame (so progress shows)
             static bool should_build = false;
@@ -105,57 +101,40 @@ namespace Popups {
         }
         
         // NRO Forwarder Confirmation Popup
-        ImGui::OpenPopup(strings[lang][Lang::NROForwarderTitle]);
-        
-        ImVec2 center = ImGui::GetMainViewport()->GetCenter();
-        ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
-        ImGui::SetNextWindowSize(ImVec2(650, 380));
+        Popups::SetupPopup(app, strings[lang][Lang::NROForwarderTitle]);
         
         if (ImGui::BeginPopupModal(strings[lang][Lang::NROForwarderTitle], nullptr, 
-                ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove)) {
-            // Title
-            ImGui::TextUnformatted(strings[lang][Lang::NROForwarderTitle]);
-            ImGui::Separator();
-            ImGui::Dummy(ImVec2(0.0f, 10.0f));
+                ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoScrollbar)) {
             
             // Show NRO info
-            ImGui::Text("File: %s", nro_filename.c_str());
-            ImGui::Dummy(ImVec2(0.0f, 5.0f));
+            ImGui::Text("%s: %s", strings[lang][Lang::PropertiesName], nro_filename.c_str());
             
             if (nro_metadata.valid) {
-                ImGui::Text("Name: %s", nro_metadata.name.c_str());
+                ImGui::Text("Title: %s", nro_metadata.name.c_str());
                 ImGui::Text("Publisher: %s", nro_metadata.publisher.c_str());
                 ImGui::Text("Version: %s", nro_metadata.version.c_str());
-                ImGui::Text("Icon: %s", nro_metadata.icon.empty() ? "None" : "Present");
-                ImGui::Dummy(ImVec2(0.0f, 5.0f));
                 
                 // Show generated title ID
                 std::string title_id = NSPBuild::GenerateTitleId(nro_file_path);
                 ImGui::Text("Title ID: %s", title_id.c_str());
             } else {
                 ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), 
-                    "Failed to read NRO metadata: %s", nro_metadata.error.c_str());
+                    "%s: %s", strings[lang][Lang::NROForwarderError], nro_metadata.error.c_str());
             }
             
-            ImGui::Dummy(ImVec2(0.0f, 10.0f));
+            ImGui::Dummy(ImVec2(0.0f, 5.0f));
             
             // Warning/info message
             ImGui::TextWrapped("%s", strings[lang][Lang::NROForwarderConfirm]);
-            ImGui::Dummy(ImVec2(0.0f, 10.0f));
-            
-            // Note: Keys are now derived from hardware, no prod.keys file needed
             
             // Check applet mode
             if (GUI::IsAppletMode()) {
+                ImGui::Dummy(ImVec2(0.0f, 5.0f));
                 ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), 
-                    "NSP creation may not work properly in applet mode.");
-                ImGui::Dummy(ImVec2(0.0f, 10.0f));
+                    "%s", strings[lang][Lang::NSPInstallNotAvailable]);
             }
             
-            float button_width = 120.0f;
-            float spacing = 15.0f;
-            float total_width = button_width * 2 + spacing;
-            ImGui::SetCursorPosX((650 - total_width) / 2);
+            ImGui::Dummy(ImVec2(0.0f, 5.0f));
             
             // Disable build button if invalid metadata
             bool can_build = nro_metadata.valid;
@@ -164,7 +143,7 @@ namespace Popups {
                 ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
             }
             
-            if (ImGui::Button(strings[lang][Lang::ButtonOK], ImVec2(button_width, 36))) {
+            if (ImGui::Button(strings[lang][Lang::ButtonOK], ImVec2(120, 36))) {
                 ImGui::CloseCurrentPopup();
                 nro_building = true;
             }
@@ -178,9 +157,9 @@ namespace Popups {
                 ImGui::PopStyleVar();
             }
             
-            ImGui::SameLine(0, spacing);
+            ImGui::SameLine(0, 15);
             
-            if (ImGui::Button(strings[lang][Lang::ButtonCancel], ImVec2(button_width, 36))) {
+            if (ImGui::Button(strings[lang][Lang::ButtonCancel], ImVec2(120, 36))) {
                 nro_confirm_shown = false;
                 nro_file_path.clear();
                 nro_filename.clear();
@@ -188,8 +167,8 @@ namespace Popups {
                 ImGui::CloseCurrentPopup();
                 app.window.state = WINDOW_STATE_FILEBROWSER;
             }
-            
-            ImGui::EndPopup();
         }
+        
+        Popups::ExitPopup();
     }
 }

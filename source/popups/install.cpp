@@ -35,24 +35,20 @@ namespace Popups {
         
         // If installing, show progress
         if (installing) {
-            ImGui::OpenPopup(strings[lang][Lang::NROForwarderBuilding]);
-            
-            ImVec2 center = ImGui::GetMainViewport()->GetCenter();
-            ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
-            ImGui::SetNextWindowSize(ImVec2(350, 100));
+            Popups::SetupPopup(app, strings[lang][Lang::NROForwarderBuilding]);
             
             if (ImGui::BeginPopupModal(strings[lang][Lang::NROForwarderBuilding], nullptr, 
-                    ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove)) {
+                    ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoScrollbar)) {
                 ImGui::TextUnformatted(strings[lang][Lang::NROForwarderBuilding]);
                 ImGui::Dummy(ImVec2(0.0f, 10.0f));
                 
                 static float progress_anim = 0.0f;
                 progress_anim += ImGui::GetIO().DeltaTime * 0.5f;
                 if (progress_anim > 1.0f) progress_anim -= 1.0f;
-                ImGui::ProgressBar(progress_anim, ImVec2(-1.0f, 0.0f), "");
-                
-                ImGui::EndPopup();
+                ImGui::ProgressBar(progress_anim, ImVec2(350.0f, 0.0f), "");
             }
+            
+            Popups::ExitPopup();
             
             // Process install on next frame
             static bool should_install = false;
@@ -125,20 +121,10 @@ namespace Popups {
         }
         
         // Confirmation popup
-        ImGui::OpenPopup(strings[lang][Lang::ButtonInstall]);
-        
-        // Calculate window height based on content
-        float window_width = 400.0f;
-        float window_height = 100.0f;  // Base height for buttons
-        if (show_warning) window_height += 84.0f;  // Warning text + checkbox
-        if (is_applet) window_height += 36.0f;  // Applet warning
-        
-        ImVec2 center = ImGui::GetMainViewport()->GetCenter();
-        ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
-        ImGui::SetNextWindowSize(ImVec2(window_width, window_height));
+        Popups::SetupPopup(app, strings[lang][Lang::ButtonInstall]);
         
         if (ImGui::BeginPopupModal(strings[lang][Lang::ButtonInstall], nullptr, 
-                ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar)) {
+                ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoScrollbar)) {
             
             // Warning message (if not hidden)
             if (show_warning) {
@@ -161,8 +147,6 @@ namespace Popups {
             // Buttons - Install first (pre-highlighted), Cancel second
             float button_width = 120.0f;
             float spacing = 15.0f;
-            float total_width = button_width * 2 + spacing;
-            ImGui::SetCursorPosX((window_width - total_width) / 2);
             
             bool can_install = !is_applet;
             if (!can_install) {
@@ -197,8 +181,8 @@ namespace Popups {
                 ImGui::CloseCurrentPopup();
                 app.window.state = WINDOW_STATE_FILEBROWSER;
             }
-            
-            ImGui::EndPopup();
         }
+        
+        Popups::ExitPopup();
     }
 }

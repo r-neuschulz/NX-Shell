@@ -21,7 +21,7 @@ namespace Popups {
         const int lang = app.config.Lang();
         Popups::SetupPopup(app, strings[lang][Lang::UpdateTitle]);
         
-        if (ImGui::BeginPopupModal(strings[lang][Lang::UpdateTitle], nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        if (ImGui::BeginPopupModal(strings[lang][Lang::UpdateTitle], nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoScrollbar)) {
             // Display message based on state
             if (!connection_status) {
                 ImGui::Text(strings[lang][Lang::UpdateNetworkError]);
@@ -141,7 +141,7 @@ namespace Popups {
     void UpdateWelcomePopup(App &app, bool &state, const std::string &version) {
         Popups::SetupPopup(app, "Welcome");
         
-        if (ImGui::BeginPopupModal("Welcome", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        if (ImGui::BeginPopupModal("Welcome", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoScrollbar)) {
             // Show welcome message with new version
             std::string welcome_text = "Welcome to NX-Shell " + version + "!";
             ImGui::Text("%s", welcome_text.c_str());

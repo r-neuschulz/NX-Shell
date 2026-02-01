@@ -121,7 +121,7 @@ namespace Popups {
         
         Popups::SetupPopup(app, strings[lang][Lang::OptionsTitle]);
 
-        if (ImGui::BeginPopupModal(strings[lang][Lang::OptionsTitle], nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        if (ImGui::BeginPopupModal(strings[lang][Lang::OptionsTitle], nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoScrollbar)) {
             if (ImGui::Button(strings[lang][Lang::OptionsSelectAll], ImVec2(200, 50))) {
                 // Clear any previous selections and select all in current directory
                 selection.Clear();
@@ -366,7 +366,7 @@ namespace Popups {
         }
         
         ImGui::SetNextWindowPos(GUI::GetScreenCenter(app), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
-        if (ImGui::BeginPopupModal("###RecursiveCopyError", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar)) {
+        if (ImGui::BeginPopupModal("###RecursiveCopyError", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollbar)) {
             ImGui::Text("%s", strings[lang][Lang::OptionsRecursiveCopyError]);
             ImGui::Dummy(ImVec2(0.0f, 5.0f));
             

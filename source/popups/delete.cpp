@@ -16,7 +16,7 @@ namespace Popups {
         const int lang = app.config.Lang();
         Popups::SetupPopup(app, strings[lang][Lang::OptionsDelete]);
         
-        if (ImGui::BeginPopupModal(strings[lang][Lang::OptionsDelete], nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        if (ImGui::BeginPopupModal(strings[lang][Lang::OptionsDelete], nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoScrollbar)) {
             ImGui::Text(strings[lang][Lang::DeleteMessage]);
             
             // Check if we have multiple selections

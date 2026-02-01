@@ -21,7 +21,7 @@ namespace Popups {
         const int lang = app.config.Lang();
         Popups::SetupPopup(app, strings[lang][Lang::OptionsProperties]);
         
-        if (ImGui::BeginPopupModal(strings[lang][Lang::OptionsProperties], nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        if (ImGui::BeginPopupModal(strings[lang][Lang::OptionsProperties], nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoScrollbar)) {
             std::string name_text = strings[lang][Lang::PropertiesName] + std::string(data.entries[data.selected].name);
             ImGui::Text(name_text.c_str());
             
@@ -88,7 +88,7 @@ namespace Popups {
         Popups::SetupPopup(app, strings[lang][Lang::OptionsProperties]);
 
         std::string new_width, new_height;
-        if (ImGui::BeginPopupModal(strings[lang][Lang::OptionsProperties], std::addressof(state), ImGuiWindowFlags_AlwaysAutoResize)) {
+        if (ImGui::BeginPopupModal(strings[lang][Lang::OptionsProperties], std::addressof(state), ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoScrollbar)) {
             std::string parent_text = strings[lang][Lang::PropertiesName];
             parent_text.append(app.fs.device);
             parent_text.append(app.fs.cwd);

@@ -16,7 +16,7 @@ namespace Popups {
         const int lang = app.config.Lang();
         Popups::SetupPopup(app, strings[lang][Lang::SettingsUSBTitle]);
 
-        if (ImGui::BeginPopupModal(strings[lang][Lang::SettingsUSBTitle], nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        if (ImGui::BeginPopupModal(strings[lang][Lang::SettingsUSBTitle], nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoScrollbar)) {
             if (!done)
                 ImGui::Text(strings[lang][Lang::USBUnmountPrompt]);
             else

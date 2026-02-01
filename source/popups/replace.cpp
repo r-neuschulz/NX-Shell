@@ -14,7 +14,7 @@ namespace Popups {
         const int lang = app.config.Lang();
         Popups::SetupPopup(app, strings[lang][Lang::ReplaceTitle]);
         
-        if (ImGui::BeginPopupModal(strings[lang][Lang::ReplaceTitle], nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        if (ImGui::BeginPopupModal(strings[lang][Lang::ReplaceTitle], nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoScrollbar)) {
             ImGui::Text("%s", strings[lang][Lang::ReplaceMessage]);
             
             ImGui::Dummy(ImVec2(0.0f, 5.0f)); // Spacing
@@ -78,7 +78,7 @@ namespace Popups {
         const int lang = app.config.Lang();
         Popups::SetupPopup(app, strings[lang][Lang::ReplaceTitle]);
         
-        if (ImGui::BeginPopupModal(strings[lang][Lang::ReplaceTitle], nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        if (ImGui::BeginPopupModal(strings[lang][Lang::ReplaceTitle], nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoScrollbar)) {
             // Format the message with conflict count
             char msg_buffer[256];
             std::snprintf(msg_buffer, sizeof(msg_buffer), strings[lang][Lang::MultiReplaceMessage], 

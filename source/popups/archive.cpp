@@ -175,7 +175,7 @@ namespace Popups {
         const int lang = app.config.Lang();
         Popups::SetupPopup(app, strings[lang][Lang::ArchiveTitle]);
         
-        if (ImGui::BeginPopupModal(strings[lang][Lang::ArchiveTitle], nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        if (ImGui::BeginPopupModal(strings[lang][Lang::ArchiveTitle], nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoScrollbar)) {
             ImGui::Text("%s", strings[lang][Lang::ArchiveMessage]);
             
             // Get just the filename from the path

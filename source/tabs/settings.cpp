@@ -878,7 +878,7 @@ namespace Tabs {
             const int lang = app.config.Lang();
             Popups::SetupPopup(app, strings[lang][Lang::SettingsResetTitle]);
             
-            if (ImGui::BeginPopupModal(strings[lang][Lang::SettingsResetTitle], nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+            if (ImGui::BeginPopupModal(strings[lang][Lang::SettingsResetTitle], nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoScrollbar)) {
                 ImGui::Text("%s", strings[lang][Lang::SettingsResetMessage]);
                 
                 ImGui::Dummy(ImVec2(0.0f, 10.0f)); // Spacing
