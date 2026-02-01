@@ -90,6 +90,8 @@ namespace Config {
         if (!config_svc.normal.last_known_version.empty())
             SetString(normal, "last_known_version", config_svc.normal.last_known_version);
         
+        SetInt(normal, "hide_install_warning", config_svc.normal.hide_install_warning);
+        
         json_object_set_new(root, "normal", normal);
         
         // Applet mode settings (limited)
@@ -199,6 +201,8 @@ namespace Config {
             
             // Load last known version for welcome popup on updates
             config_svc.normal.last_known_version = GetString(normal, "last_known_version", "");
+            
+            config_svc.normal.hide_install_warning = GetInt(normal, "hide_install_warning");
         }
         
         // Load applet mode settings

@@ -17,7 +17,7 @@ Inspired by [LineageOS's file manager](https://github.com/LineageOS/android_pack
 - File operations: copy, move, delete, rename, create (with Switch keyboard).
 - File properties (size, created/modified/accessed timestamps) and sorting (name, date, size).
 - Image viewer with caching (BMP, GIF, JPG, PGM, PPM, PNG, PSD, TGA, WEBP).
-- Installs executables (only NSP support)
+- Installs NSP and NRO files.
 - Archive extraction (only ZIP support).
 - File Preview using hex and plain text (all file types).
 - Device browsing: safe, user, system, USB.

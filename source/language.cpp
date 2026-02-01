@@ -181,7 +181,11 @@ static const char *strings_jp[] {
     "Create Forwarder",
 
     // Install button
-    "インストール"
+    "インストール",
+
+    // Install popup
+    "警告: ホーム画面へのインストールは\nBANの原因となる可能性があります。",
+    "今後表示しない"
 };
 
 static const char *strings_en[] {
@@ -362,7 +366,11 @@ static const char *strings_en[] {
     "Create Forwarder",
 
     // Install button
-    "Install"
+    "Install",
+
+    // Install popup
+    "Warning: Installing to the homescreen\nmay result in a ban.",
+    "Don't show again"
 };
 
 // French (need to check and verify)
@@ -544,7 +552,11 @@ static const char *strings_fr[] {
     "Créer redirection",
 
     // Install button
-    "Installer"
+    "Installer",
+
+    // Install popup
+    "Attention: L'installation sur l'écran\nd'accueil peut entraîner un bannissement.",
+    "Ne plus afficher"
 };
 
 static const char *strings_de[] {
@@ -725,7 +737,11 @@ static const char *strings_de[] {
     "Forwarder erstellen",
 
     // Install button
-    "Installieren"
+    "Installieren",
+
+    // Install popup
+    "Warnung: Die Installation auf dem Homescreen\nkann zu einem Bann führen.",
+    "Nicht mehr anzeigen"
 };
 
 // Italian (need to check and verify)
@@ -907,7 +923,11 @@ static const char *strings_it[] {
     "Crea forwarder",
 
     // Install button
-    "Installa"
+    "Installa",
+
+    // Install popup
+    "Attenzione: L'installazione nella schermata\nprincipale potrebbe causare un ban.",
+    "Non mostrare più"
 };
 
 //  Spanish
@@ -1089,7 +1109,11 @@ static const char *strings_es[] {
     "Crear forwarder",
 
     // Install button
-    "Instalar"
+    "Instalar",
+
+    // Install popup
+    "Advertencia: Instalar en la pantalla\nde inicio puede resultar en un baneo.",
+    "No mostrar de nuevo"
 };
 
 // Simplified Chinese ("Chinese")
@@ -1271,7 +1295,11 @@ static const char *strings_sc[] {
     "创建转发",
 
     // Install button
-    "安装"
+    "安装",
+
+    // Install popup
+    "警告：安装到主屏幕可能\n导致被封禁。",
+    "不再显示"
 };
 
 // Korean (need to check and verify)
@@ -1453,7 +1481,11 @@ static const char *strings_ko[] {
     "포워더 생성",
 
     // Install button
-    "설치"
+    "설치",
+
+    // Install popup
+    "경고: 홈 화면에 설치하면\n밴을 받을 수 있습니다.",
+    "다시 표시 안 함"
 };
 
 // Dutch (need to check and verify)
@@ -1635,7 +1667,11 @@ static const char *strings_nl[] {
     "Forwarder maken",
 
     // Install button
-    "Installeren"
+    "Installeren",
+
+    // Install popup
+    "Waarschuwing: Installeren op het\nstartscherm kan leiden tot een ban.",
+    "Niet meer tonen"
 };
 
 // Portuguese
@@ -1817,7 +1853,11 @@ static const char *strings_pt[] {
     "Criar forwarder",
 
     // Install button
-    "Instalar"
+    "Instalar",
+
+    // Install popup
+    "Aviso: Instalar na tela inicial\npode resultar em banimento.",
+    "Não mostrar novamente"
 };
 
 // Russian (need to check and verify)
@@ -1999,7 +2039,11 @@ static const char *strings_ru[] {
     "Создать форвардер",
 
     // Install button
-    "Установить"
+    "Установить",
+
+    // Install popup
+    "Внимание: Установка на главный экран\nможет привести к бану.",
+    "Больше не показывать"
 };
 
 // Traditional Chinese ("Taiwanese")
@@ -2181,7 +2225,11 @@ static const char *strings_tw[] {
     "建立轉發",
 
     // Install button
-    "安裝"
+    "安裝",
+
+    // Install popup
+    "警告：安裝到主畫面可能\n導致被封禁。",
+    "不再顯示"
 };
 
 const char **strings[Lang::Max] = {

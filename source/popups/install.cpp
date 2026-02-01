@@ -1,3 +1,4 @@
+#include "config.hpp"
 #include "gui.hpp"
 #include "imgui.h"
 #include "imgui_internal.h"
@@ -14,6 +15,7 @@ namespace {
     static std::string install_filename;
     static bool is_nsp_file = false;
     static bool installing = false;
+    static bool dont_show_again = false;  // Local checkbox state
 }
 
 namespace Popups {
@@ -21,6 +23,7 @@ namespace Popups {
         install_path = path;
         is_nsp_file = is_nsp;
         installing = false;
+        dont_show_again = false;  // Reset checkbox for new install
         
         // Extract filename
         size_t pos = path.find_last_of("/\\");
@@ -112,51 +115,67 @@ namespace Popups {
             return;
         }
         
+        bool show_warning = !app.config.HideInstallWarning();
+        bool is_applet = GUI::IsAppletMode();
+        
+        // Skip dialog and install directly if warning is hidden and not in applet mode
+        if (!show_warning && !is_applet) {
+            installing = true;
+            return;
+        }
+        
         // Confirmation popup
-        ImGui::OpenPopup("Install");
+        ImGui::OpenPopup(strings[lang][Lang::ButtonInstall]);
+        
+        // Calculate window height based on content (20% larger than base)
+        float window_width = 408.0f;
+        float window_height = 108.0f;  // Base height for buttons
+        if (show_warning) window_height += 84.0f;  // Warning text + checkbox
+        if (is_applet) window_height += 36.0f;  // Applet warning
         
         ImVec2 center = ImGui::GetMainViewport()->GetCenter();
         ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
-        ImGui::SetNextWindowSize(ImVec2(420, 180));
+        ImGui::SetNextWindowSize(ImVec2(window_width, window_height));
         
-        if (ImGui::BeginPopupModal("Install", nullptr, 
-                ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove)) {
+        if (ImGui::BeginPopupModal(strings[lang][Lang::ButtonInstall], nullptr, 
+                ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar)) {
             
-            ImGui::TextWrapped("%s", strings[lang][Lang::NSPFileInstallConfirm]);
-            ImGui::Dummy(ImVec2(0.0f, 5.0f));
-            
-            ImGui::TextDisabled("%s", install_filename.c_str());
-            ImGui::Dummy(ImVec2(0.0f, 10.0f));
+            // Warning message (if not hidden)
+            if (show_warning) {
+                ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.3f, 1.0f), 
+                    "%s", strings[lang][Lang::InstallWarningMessage]);
+                ImGui::Dummy(ImVec2(0.0f, 5.0f));
+                
+                // "Don't show again" checkbox (local state, saved on Install)
+                ImGui::Checkbox(strings[lang][Lang::InstallDontShowAgain], &dont_show_again);
+                ImGui::Dummy(ImVec2(0.0f, 5.0f));
+            }
             
             // Applet mode warning
-            if (GUI::IsAppletMode()) {
+            if (is_applet) {
                 ImGui::TextColored(ImVec4(1.0f, 0.4f, 0.4f, 1.0f), 
                     "%s", strings[lang][Lang::NSPInstallNotAvailable]);
                 ImGui::Dummy(ImVec2(0.0f, 5.0f));
             }
             
-            // Buttons
-            float button_width = 120.0f;
-            float spacing = 20.0f;
+            // Buttons - Install first (pre-highlighted), Cancel second
+            float button_width = 144.0f;
+            float spacing = 24.0f;
             float total_width = button_width * 2 + spacing;
-            ImGui::SetCursorPosX((420 - total_width) / 2);
+            ImGui::SetCursorPosX((window_width - total_width) / 2);
             
-            if (ImGui::Button(strings[lang][Lang::ButtonCancel], ImVec2(button_width, 35))) {
-                install_path.clear();
-                install_filename.clear();
-                ImGui::CloseCurrentPopup();
-                app.window.state = WINDOW_STATE_FILEBROWSER;
-            }
-            
-            ImGui::SameLine(0, spacing);
-            
-            bool can_install = !GUI::IsAppletMode();
+            bool can_install = !is_applet;
             if (!can_install) {
                 ImGui::PushItemFlag(ImGuiItemFlags_Disabled, true);
                 ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
             }
             
-            if (ImGui::Button(strings[lang][Lang::ButtonInstall], ImVec2(button_width, 35))) {
+            if (ImGui::Button(strings[lang][Lang::ButtonInstall], ImVec2(button_width, 42))) {
+                // Save "don't show again" preference if checked
+                if (dont_show_again) {
+                    app.config.normal.hide_install_warning = true;
+                    Config::Save(app.config, app.fs);
+                }
                 ImGui::CloseCurrentPopup();
                 installing = true;
             }
@@ -168,6 +187,15 @@ namespace Popups {
             if (!can_install) {
                 ImGui::PopItemFlag();
                 ImGui::PopStyleVar();
+            }
+            
+            ImGui::SameLine(0, spacing);
+            
+            if (ImGui::Button(strings[lang][Lang::ButtonCancel], ImVec2(button_width, 42))) {
+                install_path.clear();
+                install_filename.clear();
+                ImGui::CloseCurrentPopup();
+                app.window.state = WINDOW_STATE_FILEBROWSER;
             }
             
             ImGui::EndPopup();

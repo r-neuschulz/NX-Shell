@@ -116,6 +116,7 @@ struct NormalConfig {
     float accent_color[3] = {0.0f, 0.50f, 0.50f};
     int button_style = ButtonStyle_Colored;
     std::string last_known_version;  // Tracks last version user ran; used to show welcome popup on updates
+    bool hide_install_warning = false;  // Hide ban warning in install popup (reset with "Reset all")
 };
 
 // Applet mode: limited settings (most values are forced defaults)
@@ -168,6 +169,9 @@ struct ConfigService {
     float AccentB() const { return is_applet_mode ? 0.50f : normal.accent_color[2]; }
     int ButtonStyle() const { 
         return is_applet_mode ? ButtonStyle_Mono : normal.button_style; 
+    }
+    bool HideInstallWarning() const {
+        return is_applet_mode ? false : normal.hide_install_warning;
     }
     
     // Mutable accessors for settings UI (always modifies normal config)

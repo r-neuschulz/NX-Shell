@@ -197,6 +197,10 @@ namespace Lang {
     // Install button
     ButtonInstall,
 
+    // Install popup
+    InstallWarningMessage,
+    InstallDontShowAgain,
+
     // Max
     Max
     } StringID;
