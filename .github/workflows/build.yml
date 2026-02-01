@@ -116,14 +116,9 @@ jobs:
       - name: Build
         run: cmake --build build -j$(nproc)
 
-      - name: Rename NRO with version
+      - name: Copy NRO to root
         run: |
-          mv build/NX-Shell.nro "build/${{ steps.version.outputs.nro_filename }}"
-          ls -lh "build/${{ steps.version.outputs.nro_filename }}"
-
-      - name: Copy NRO to root (for act/deploy.ps1)
-        run: |
-          cp "build/${{ steps.version.outputs.nro_filename }}" "${{ steps.version.outputs.nro_filename }}" || true
+          cp "build/${{ steps.version.outputs.nro_filename }}" .
           ls -lh "${{ steps.version.outputs.nro_filename }}"
 
       - name: Create source archive

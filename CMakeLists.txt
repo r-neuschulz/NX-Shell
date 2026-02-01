@@ -353,8 +353,12 @@ else()
     set(ICON_FILE "")
 endif()
 
+# Create versioned NRO filename (e.g., NX-Shell-v5-0-0.nro)
+string(REPLACE "." "-" APP_VERSION_DASHED "${APP_VERSION}")
+set(NRO_FILENAME "${PROJECT_NAME}-v${APP_VERSION_DASHED}.nro")
+
 set(NACP_FILE ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.nacp)
-set(NRO_FILE ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.nro)
+set(NRO_FILE ${CMAKE_CURRENT_BINARY_DIR}/${NRO_FILENAME})
 
 add_custom_command(OUTPUT ${NACP_FILE}
     COMMAND ${NACPTOOL_EXECUTABLE} --create "${APP_TITLE}" "${APP_AUTHOR}" "${APP_VERSION}" ${NACP_FILE} --videocapture=2
@@ -366,16 +370,10 @@ add_custom_command(OUTPUT ${NRO_FILE}
         ${CMAKE_CURRENT_BINARY_DIR}/${PROJECT_NAME}.elf ${NRO_FILE}
         --icon=${ICON_FILE} --nacp=${NACP_FILE} --romfsdir=${ROMFS_DIR}
     DEPENDS ${PROJECT_NAME}.elf ${NACP_FILE}
-    COMMENT "Creating NRO file"
+    COMMENT "Creating NRO file: ${NRO_FILENAME}"
 )
 
 add_custom_target(nro ALL DEPENDS ${NRO_FILE})
-
-# Copy NRO to source directory for convenience
-add_custom_command(TARGET nro POST_BUILD
-    COMMAND ${CMAKE_COMMAND} -E copy_if_different ${NRO_FILE} ${CMAKE_CURRENT_SOURCE_DIR}/${PROJECT_NAME}.nro
-    COMMENT "Copying NRO to source directory"
-)
 
 #---------------------------------------------------------------------------------
 # Install
