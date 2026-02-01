@@ -73,6 +73,9 @@ string(JSON USBHSFS_VERSION GET ${DEPS_JSON} "git_dependencies" "libusbhsfs" "ve
 string(JSON USBHSFS_COMMIT GET ${DEPS_JSON} "git_dependencies" "libusbhsfs" "commit")
 string(JSON NSPMINI_COMMIT GET ${DEPS_JSON} "git_dependencies" "nspmini" "commit")
 
+# Shorten nspmini commit hash for display (first 7 chars)
+string(SUBSTRING "${NSPMINI_COMMIT}" 0 7 NSPMINI_COMMIT_SHORT)
+
 # Shorten commit hashes for display (first 7 chars)
 string(SUBSTRING "${LIBNSBMP_COMMIT}" 0 7 LIBNSBMP_COMMIT_SHORT)
 string(SUBSTRING "${STB_COMMIT}" 0 7 STB_COMMIT_SHORT)
@@ -82,6 +85,7 @@ message(STATUS "  Dear ImGui: ${IMGUI_VERSION}")
 message(STATUS "  libusbhsfs: ${USBHSFS_VERSION}")
 message(STATUS "  libnsbmp: ${LIBNSBMP_COMMIT_SHORT}")
 message(STATUS "  stb: ${STB_COMMIT_SHORT}")
+message(STATUS "  nspmini: ${NSPMINI_COMMIT_SHORT}")
 
 #---------------------------------------------------------------------------------
 # Fetch Dependencies
@@ -293,6 +297,7 @@ target_compile_definitions(${PROJECT_NAME}.elf PRIVATE
     DEP_LIBUSBHSFS_VERSION="${USBHSFS_VERSION}"
     DEP_LIBNSBMP_COMMIT="${LIBNSBMP_COMMIT_SHORT}"
     DEP_STB_COMMIT="${STB_COMMIT_SHORT}"
+    DEP_NSPMINI_COMMIT="${NSPMINI_COMMIT_SHORT}"
     # ImGui configuration
     IMGUI_IMPL_OPENGL_LOADER_GLAD
     IMGUI_DEFINE_MATH_OPERATORS

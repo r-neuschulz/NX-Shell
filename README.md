@@ -65,3 +65,5 @@ Replace `<SWITCH_IP>` with your Switch's IP address. The IP is shown when using 
 - [DarkMatterCore](https://github.com/DarkMatterCore) for [libusbhsfs](https://github.com/DarkMatterCore/libusbhsfs).
 - [Sean Barrett](https://github.com/nothings) for [stb_image](https://github.com/nothings/stb).
 - [Grzegorz Kostka](https://github.com/gkostka) for [lwext4](https://github.com/gkostka/lwext4) and the [NTFS-3G](https://github.com/tuxera/ntfs-3g) developers.
+- [StarDustCFW](https://github.com/StarDustCFW) for [nspmini](https://github.com/StarDustCFW/nspmini).
+- [The-4n](https://github.com/The-4n) for [hacBrewPack](https://github.com/The-4n/hacBrewPack), which served as the reference implementation for NSP/NCA building.

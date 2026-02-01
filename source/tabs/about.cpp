@@ -100,6 +100,8 @@ namespace Tabs {
             ImGui::Text("libnsbmp (%s)", DEP_LIBNSBMP_COMMIT);
             ImGui::Dummy(ImVec2(0.0f, 3.0f));
             ImGui::Text("stb (%s)", DEP_STB_COMMIT);
+            ImGui::Dummy(ImVec2(0.0f, 3.0f));
+            ImGui::Text("nspmini (%s)", DEP_NSPMINI_COMMIT);
             ImGui::Dummy(ImVec2(0.0f, 10.0f));
             
             // devkitPro libraries (greyed out as secondary info)
