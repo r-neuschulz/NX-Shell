@@ -153,7 +153,7 @@ namespace FS {
         {".EXE", FileTypeBinary}, {".DLL", FileTypeBinary}, {".SYS", FileTypeBinary},
         
         // Nintendo Switch formats
-        {".NRO", FileTypeSwitch}, {".NSO", FileTypeSwitch}, {".NCA", FileTypeSwitch},
+        {".NRO", FileTypeSwitchNRO}, {".NSO", FileTypeSwitch}, {".NCA", FileTypeSwitch},
         {".NSP", FileTypeSwitchInstallable}, {".XCI", FileTypeSwitch}, {".NACP", FileTypeSwitch},
         {".SO", FileTypeBinary}, {".DYLIB", FileTypeBinary}, {".A", FileTypeBinary},
         {".O", FileTypeBinary}, {".ELF", FileTypeBinary}, {".AXF", FileTypeBinary},

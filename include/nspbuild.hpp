@@ -149,7 +149,7 @@ struct NSPBuildResult {
 // Public API
 // ============================================================================
 
-// Extract metadata from an NRO file
+// Extract metadata from an NRO file (used for forwarder creation)
 NroMetadata ExtractNroMetadata(const std::string &nro_path);
 
 // Generate a title ID from the NRO path (using SHA256 hash)

@@ -45,11 +45,11 @@ namespace Popups {
     // Returns: 0 = cancelled/pending, 1 = open as text, 2 = open as hex
     int OpenModePopup(App &app, bool &show);
     
-    // NSP file installation popup
-    void SetNSPInstallPath(const std::string &path);
-    void NSPInstallPopup(App &app);
+    // Unified install popup (for both NSP and NRO from file browser A button)
+    void SetInstallPath(const std::string &path, bool is_nsp);
+    void InstallPopup(App &app);
     
-    // NRO to NSP forwarder popup
+    // NRO to NSP forwarder popup (from Options menu)
     void SetNROForwarderPath(const std::string &path);
     void NROForwarderPopup(App &app);
 }

@@ -178,7 +178,10 @@ static const char *strings_jp[] {
     "Failed to create forwarder NSP.",
     "Keys file not found at sdmc:/switch/prod.keys",
     "Building forwarder NSP...",
-    "Create Forwarder"
+    "Create Forwarder",
+
+    // Install button
+    "インストール"
 };
 
 static const char *strings_en[] {
@@ -356,7 +359,10 @@ static const char *strings_en[] {
     "Failed to create forwarder NSP.",
     "Keys file not found at sdmc:/switch/prod.keys",
     "Building forwarder NSP...",
-    "Create Forwarder"
+    "Create Forwarder",
+
+    // Install button
+    "Install"
 };
 
 // French (need to check and verify)
@@ -535,7 +541,10 @@ static const char *strings_fr[] {
     "Échec de la création du NSP de redirection.",
     "Fichier de clés introuvable à sdmc:/switch/prod.keys",
     "Création du NSP de redirection...",
-    "Créer redirection"
+    "Créer redirection",
+
+    // Install button
+    "Installer"
 };
 
 static const char *strings_de[] {
@@ -713,7 +722,10 @@ static const char *strings_de[] {
     "Forwarder-NSP konnte nicht erstellt werden.",
     "Schlüsseldatei nicht gefunden unter sdmc:/switch/prod.keys",
     "Erstelle Forwarder-NSP...",
-    "Forwarder erstellen"
+    "Forwarder erstellen",
+
+    // Install button
+    "Installieren"
 };
 
 // Italian (need to check and verify)
@@ -892,7 +904,10 @@ static const char *strings_it[] {
     "Impossibile creare NSP forwarder.",
     "File delle chiavi non trovato in sdmc:/switch/prod.keys",
     "Creazione NSP forwarder...",
-    "Crea forwarder"
+    "Crea forwarder",
+
+    // Install button
+    "Installa"
 };
 
 //  Spanish
@@ -1071,7 +1086,10 @@ static const char *strings_es[] {
     "Error al crear NSP forwarder.",
     "Archivo de claves no encontrado en sdmc:/switch/prod.keys",
     "Creando NSP forwarder...",
-    "Crear forwarder"
+    "Crear forwarder",
+
+    // Install button
+    "Instalar"
 };
 
 // Simplified Chinese ("Chinese")
@@ -1250,7 +1268,10 @@ static const char *strings_sc[] {
     "转发NSP创建失败。",
     "密钥文件未找到：sdmc:/switch/prod.keys",
     "正在创建转发NSP...",
-    "创建转发"
+    "创建转发",
+
+    // Install button
+    "安装"
 };
 
 // Korean (need to check and verify)
@@ -1429,7 +1450,10 @@ static const char *strings_ko[] {
     "포워더 NSP 생성에 실패했습니다.",
     "키 파일을 찾을 수 없습니다: sdmc:/switch/prod.keys",
     "포워더 NSP 생성 중...",
-    "포워더 생성"
+    "포워더 생성",
+
+    // Install button
+    "설치"
 };
 
 // Dutch (need to check and verify)
@@ -1608,7 +1632,10 @@ static const char *strings_nl[] {
     "Forwarder NSP maken mislukt.",
     "Sleutelbestand niet gevonden op sdmc:/switch/prod.keys",
     "Forwarder NSP maken...",
-    "Forwarder maken"
+    "Forwarder maken",
+
+    // Install button
+    "Installeren"
 };
 
 // Portuguese
@@ -1787,7 +1814,10 @@ static const char *strings_pt[] {
     "Falha ao criar NSP forwarder.",
     "Arquivo de chaves não encontrado em sdmc:/switch/prod.keys",
     "Criando NSP forwarder...",
-    "Criar forwarder"
+    "Criar forwarder",
+
+    // Install button
+    "Instalar"
 };
 
 // Russian (need to check and verify)
@@ -1966,7 +1996,10 @@ static const char *strings_ru[] {
     "Не удалось создать NSP-форвардер.",
     "Файл ключей не найден: sdmc:/switch/prod.keys",
     "Создание NSP-форвардера...",
-    "Создать форвардер"
+    "Создать форвардер",
+
+    // Install button
+    "Установить"
 };
 
 // Traditional Chinese ("Taiwanese")
@@ -2145,7 +2178,10 @@ static const char *strings_tw[] {
     "轉發NSP建立失敗。",
     "密鑰檔案未找到：sdmc:/switch/prod.keys",
     "正在建立轉發NSP...",
-    "建立轉發"
+    "建立轉發",
+
+    // Install button
+    "安裝"
 };
 
 const char **strings[Lang::Max] = {

@@ -194,6 +194,9 @@ namespace Lang {
     NROForwarderBuilding,
     OptionsCreateForwarder,
 
+    // Install button
+    ButtonInstall,
+
     // Max
     Max
     } StringID;

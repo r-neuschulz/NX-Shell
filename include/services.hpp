@@ -53,7 +53,8 @@ enum FileType {
     FileTypeText,
     FileTypeBinary,
     FileTypeSwitch,
-    FileTypeSwitchInstallable  // NSP files that can be installed
+    FileTypeSwitchInstallable,  // NSP files that can be installed
+    FileTypeSwitchNRO           // NRO homebrew that can be converted to NSP
 };
 
 enum ConflictHandling {
@@ -257,8 +258,8 @@ enum WindowState {
     WINDOW_STATE_REPLACE,
     WINDOW_STATE_MULTI_REPLACE,
     WINDOW_STATE_OPENMODE,
-    WINDOW_STATE_NSP_INSTALL,
-    WINDOW_STATE_NRO_FORWARDER
+    WINDOW_STATE_INSTALL,          // Unified install popup (for NSP and NRO)
+    WINDOW_STATE_NRO_FORWARDER     // NRO to NSP forwarder (from Options menu)
 };
 
 enum SortState {

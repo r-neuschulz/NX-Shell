@@ -296,7 +296,7 @@ namespace Textures {
         tjDestroy(jpeg);
         return ret;
     }
-
+    
     static bool LoadImageOther(const std::string &path, Tex &texture) {
         unsigned char *image = stbi_load(path.c_str(), std::addressof(texture.width), std::addressof(texture.height), nullptr, STBI_rgb_alpha);
         bool ret = Textures::Create(image, GL_RGBA, texture);
@@ -371,7 +371,7 @@ namespace Textures {
     }
     
     void Init(App &app) {
-        const int num_icons = 7;
+        const int num_icons = 8;
 
         const std::string paths[num_icons] {
             "romfs:/file.png",
@@ -380,7 +380,8 @@ namespace Textures {
             "romfs:/text.png",
             "romfs:/file0x.png",  // Binary/Hex icon
             "romfs:/switch.png",  // Nintendo Switch files
-            "romfs:/switch.png"   // Nintendo Switch installable (NSP) - same icon
+            "romfs:/switch.png",  // Nintendo Switch installable (NSP) - same icon
+            "romfs:/switch.png"   // Nintendo Switch NRO homebrew - same icon
         };
 
         // Load all icons - don't use IM_ASSERT for calls with side effects

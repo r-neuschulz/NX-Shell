@@ -602,9 +602,15 @@ namespace Tabs {
                                         break;
 
                                     case FileTypeSwitchInstallable:
-                                        Popups::SetNSPInstallPath(path);
+                                        Popups::SetInstallPath(path, true);  // true = NSP
                                         data.selected = i;
-                                        data.state = WINDOW_STATE_NSP_INSTALL;
+                                        data.state = WINDOW_STATE_INSTALL;
+                                        break;
+
+                                    case FileTypeSwitchNRO:
+                                        Popups::SetInstallPath(path, false);  // false = NRO
+                                        data.selected = i;
+                                        data.state = WINDOW_STATE_INSTALL;
                                         break;
 
                                     case FileTypeSwitch:
