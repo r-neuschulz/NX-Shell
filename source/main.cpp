@@ -302,7 +302,7 @@ namespace Services {
         LogTiming("Textures::Init", phase_tick);
         
         plExit();
-        romfsExit();
+        // Note: romfs stays mounted for runtime access (e.g., NSP forwarder installation)
         return 0;
     }
     
@@ -334,6 +334,7 @@ namespace Services {
         setsysExit();
         setExit();
         nifmExit();
+        romfsExit();
         
         // Close socket last among services (only if it was initialized)
         Net::ExitSocket();

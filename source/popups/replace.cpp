@@ -14,12 +14,12 @@ namespace Popups {
         const int lang = app.config.Lang();
         Popups::SetupPopup(app, strings[lang][Lang::ReplaceTitle]);
         
-        if (ImGui::BeginPopupModal(strings[lang][Lang::ReplaceTitle], nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        if (ImGui::BeginPopupModal(strings[lang][Lang::ReplaceTitle], nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoScrollbar)) {
             ImGui::Text("%s", strings[lang][Lang::ReplaceMessage]);
             
             ImGui::Dummy(ImVec2(0.0f, 5.0f)); // Spacing
             
-            if (ImGui::Button(strings[lang][Lang::ReplaceButton], ImVec2(120, 0))) {
+            if (ImGui::Button(strings[lang][Lang::ReplaceButton], ImVec2(120, 36))) {
                 // Build destination path and delete existing file/directory first
                 std::string dest_path = FS::BuildPath(app.fs, FS::GetCopyEntryFilename(app.fs), true);
                 if (!FS::DeletePath(dest_path)) {
@@ -60,10 +60,11 @@ namespace Popups {
                 ImGui::CloseCurrentPopup();
                 data.state = WINDOW_STATE_FILEBROWSER;
             }
+            ImGui::SetItemDefaultFocus();
             
             ImGui::SameLine(0.0f, 15.0f);
             
-            if (ImGui::Button(strings[lang][Lang::ButtonCancel], ImVec2(120, 0))) {
+            if (ImGui::Button(strings[lang][Lang::ButtonCancel], ImVec2(120, 36))) {
                 ImGui::CloseCurrentPopup();
                 data.state = WINDOW_STATE_OPTIONS;
             }
@@ -77,7 +78,7 @@ namespace Popups {
         const int lang = app.config.Lang();
         Popups::SetupPopup(app, strings[lang][Lang::ReplaceTitle]);
         
-        if (ImGui::BeginPopupModal(strings[lang][Lang::ReplaceTitle], nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        if (ImGui::BeginPopupModal(strings[lang][Lang::ReplaceTitle], nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoScrollbar)) {
             // Format the message with conflict count
             char msg_buffer[256];
             std::snprintf(msg_buffer, sizeof(msg_buffer), strings[lang][Lang::MultiReplaceMessage], 
@@ -87,16 +88,17 @@ namespace Popups {
             ImGui::Dummy(ImVec2(0.0f, 5.0f)); // Spacing
             
             // Replace All button
-            if (ImGui::Button(strings[lang][Lang::MultiReplaceAll], ImVec2(150, 0))) {
+            if (ImGui::Button(strings[lang][Lang::MultiReplaceAll], ImVec2(120, 36))) {
                 FS::SetConflictHandling(app.fs, ConflictHandling_ReplaceAll);
                 ImGui::CloseCurrentPopup();
                 data.state = WINDOW_STATE_OPTIONS;  // Return to options to execute copy/move
             }
+            ImGui::SetItemDefaultFocus();
             
             ImGui::SameLine(0.0f, 15.0f);
             
             // Skip Existing button
-            if (ImGui::Button(strings[lang][Lang::MultiReplaceSkip], ImVec2(150, 0))) {
+            if (ImGui::Button(strings[lang][Lang::MultiReplaceSkip], ImVec2(120, 36))) {
                 FS::SetConflictHandling(app.fs, ConflictHandling_SkipAll);
                 ImGui::CloseCurrentPopup();
                 data.state = WINDOW_STATE_OPTIONS;  // Return to options to execute copy/move
@@ -105,7 +107,7 @@ namespace Popups {
             ImGui::SameLine(0.0f, 15.0f);
             
             // Cancel button
-            if (ImGui::Button(strings[lang][Lang::ButtonCancel], ImVec2(120, 0))) {
+            if (ImGui::Button(strings[lang][Lang::ButtonCancel], ImVec2(120, 36))) {
                 Popups::ClearPendingMultiOperation(app.fs);
                 SetCopyMode(false);
                 SetMoveMode(false);

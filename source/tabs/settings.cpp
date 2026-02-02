@@ -878,12 +878,12 @@ namespace Tabs {
             const int lang = app.config.Lang();
             Popups::SetupPopup(app, strings[lang][Lang::SettingsResetTitle]);
             
-            if (ImGui::BeginPopupModal(strings[lang][Lang::SettingsResetTitle], nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+            if (ImGui::BeginPopupModal(strings[lang][Lang::SettingsResetTitle], nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoScrollbar)) {
                 ImGui::Text("%s", strings[lang][Lang::SettingsResetMessage]);
                 
                 ImGui::Dummy(ImVec2(0.0f, 10.0f)); // Spacing
                 
-                if (ImGui::Button(strings[lang][Lang::HintConfirm], ImVec2(120, 0))) {
+                if (ImGui::Button(strings[lang][Lang::HintConfirm], ImVec2(120, 36))) {
                     // Reset all settings to defaults
                     Config::ResetNormalConfig(app.config);
                     Config::Save(app.config, app.fs);
@@ -899,10 +899,11 @@ namespace Tabs {
                     ImGui::CloseCurrentPopup();
                     reset_settings_popup = false;
                 }
+                ImGui::SetItemDefaultFocus();
                 
                 ImGui::SameLine(0.0f, 15.0f);
                 
-                if (ImGui::Button(strings[lang][Lang::HintCancel], ImVec2(120, 0))) {
+                if (ImGui::Button(strings[lang][Lang::HintCancel], ImVec2(120, 36))) {
                     ImGui::CloseCurrentPopup();
                     reset_settings_popup = false;
                 }

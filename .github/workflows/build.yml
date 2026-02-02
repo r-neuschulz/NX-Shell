@@ -35,6 +35,8 @@ jobs:
       version: ${{ steps.version.outputs.version }}
       tag: ${{ steps.version.outputs.tag }}
       nro_filename: ${{ steps.version.outputs.nro_filename }}
+      source_archive: ${{ steps.source_archive.outputs.source_archive }}
+      build_archive: ${{ steps.build_archive.outputs.build_archive }}
 
     steps:
       - name: Validate release inputs
@@ -114,22 +116,77 @@ jobs:
       - name: Build
         run: cmake --build build -j$(nproc)
 
-      - name: Rename NRO with version
+      - name: Copy NRO to root
         run: |
-          mv build/NX-Shell.nro "build/${{ steps.version.outputs.nro_filename }}"
-          ls -lh "build/${{ steps.version.outputs.nro_filename }}"
-
-      - name: Copy NRO to root (for act/deploy.ps1)
-        run: |
-          cp "build/${{ steps.version.outputs.nro_filename }}" "${{ steps.version.outputs.nro_filename }}" || true
+          cp "build/${{ steps.version.outputs.nro_filename }}" .
           ls -lh "${{ steps.version.outputs.nro_filename }}"
 
-      - name: Upload artifact
+      - name: Create source archive
+        if: ${{ !env.ACT || env.CREATE_BUNDLE == 'true' }}
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          VERSION_DASHED=$(echo "${VERSION}" | tr '.' '-')
+          ARCHIVE_NAME="NX-Shell-v${VERSION_DASHED}-source.tar.gz"
+          
+          tar -czvf "build/${ARCHIVE_NAME}" \
+            --exclude='.git' \
+            --exclude='build' \
+            --exclude='*.nro' \
+            --exclude='.github' \
+            source/ \
+            include/ \
+            res/ \
+            CMakeLists.txt \
+            dependencies.json \
+            icon.jpg \
+            LICENSE \
+            README.md
+          
+          ls -lh "build/${ARCHIVE_NAME}"
+          echo "source_archive=${ARCHIVE_NAME}" >> $GITHUB_OUTPUT
+        id: source_archive
+
+      - name: Create build archive
+        if: ${{ !env.ACT || env.CREATE_BUNDLE == 'true' }}
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          VERSION_DASHED=$(echo "${VERSION}" | tr '.' '-')
+          ARCHIVE_NAME="NX-Shell-v${VERSION_DASHED}-build.tar.gz"
+          
+          # Archive entire repository after build (source + all generated files)
+          # Create archive in /tmp first to avoid "file changed as we read it" error
+          tar -czvf "/tmp/${ARCHIVE_NAME}" \
+            --exclude='.git' \
+            --exclude='*.tar.gz' \
+            .
+          
+          mv "/tmp/${ARCHIVE_NAME}" "build/${ARCHIVE_NAME}"
+          ls -lh "build/${ARCHIVE_NAME}"
+          echo "build_archive=${ARCHIVE_NAME}" >> $GITHUB_OUTPUT
+        id: build_archive
+
+      - name: Upload NRO artifact
         uses: actions/upload-artifact@v4
         if: ${{ !env.ACT }}
         with:
           name: NX-Shell
           path: build/${{ steps.version.outputs.nro_filename }}
+          if-no-files-found: error
+
+      - name: Upload source archive artifact
+        uses: actions/upload-artifact@v4
+        if: ${{ !env.ACT }}
+        with:
+          name: NX-Shell-source
+          path: build/${{ steps.source_archive.outputs.source_archive }}
+          if-no-files-found: error
+
+      - name: Upload build archive artifact
+        uses: actions/upload-artifact@v4
+        if: ${{ !env.ACT }}
+        with:
+          name: NX-Shell-build
+          path: build/${{ steps.build_archive.outputs.build_archive }}
           if-no-files-found: error
 
   release:
@@ -145,15 +202,29 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Download artifact
+      - name: Download NRO artifact
         uses: actions/download-artifact@v4
         with:
           name: NX-Shell
           path: dist/
 
+      - name: Download source archive artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: NX-Shell-source
+          path: dist/
+
+      - name: Download build archive artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: NX-Shell-build
+          path: dist/
+
       - name: Generate changelog
         run: |
           NRO_FILENAME="${{ needs.build.outputs.nro_filename }}"
+          SOURCE_ARCHIVE="${{ needs.build.outputs.source_archive }}"
+          BUILD_ARCHIVE="${{ needs.build.outputs.build_archive }}"
           
           # Check for previous tag to generate changelog
           PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
@@ -169,6 +240,10 @@ jobs:
           echo "1. Download \`${NRO_FILENAME}\`" >> RELEASE_NOTES.md
           echo "2. Copy to \`/switch/NX-Shell/\` on your SD card (any location works)" >> RELEASE_NOTES.md
           echo "3. Launch from the Homebrew Menu" >> RELEASE_NOTES.md
+          echo "" >> RELEASE_NOTES.md
+          echo "**Additional Downloads**" >> RELEASE_NOTES.md
+          echo "- \`${SOURCE_ARCHIVE}\` - Source code archive" >> RELEASE_NOTES.md
+          echo "- \`${BUILD_ARCHIVE}\` - Full repository snapshot after build (source + all generated files)" >> RELEASE_NOTES.md
           
           cat RELEASE_NOTES.md
 
@@ -181,5 +256,8 @@ jobs:
           body_path: RELEASE_NOTES.md
           draft: false
           prerelease: ${{ github.event.inputs.prerelease || false }}
-          files: dist/${{ needs.build.outputs.nro_filename }}
+          files: |
+            dist/${{ needs.build.outputs.nro_filename }}
+            dist/${{ needs.build.outputs.source_archive }}
+            dist/${{ needs.build.outputs.build_archive }}
           fail_on_unmatched_files: true

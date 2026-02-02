@@ -21,7 +21,7 @@ namespace Popups {
         const int lang = app.config.Lang();
         Popups::SetupPopup(app, strings[lang][Lang::OptionsProperties]);
         
-        if (ImGui::BeginPopupModal(strings[lang][Lang::OptionsProperties], nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        if (ImGui::BeginPopupModal(strings[lang][Lang::OptionsProperties], nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoScrollbar)) {
             std::string name_text = strings[lang][Lang::PropertiesName] + std::string(data.entries[data.selected].name);
             ImGui::Text(name_text.c_str());
             
@@ -62,7 +62,10 @@ namespace Popups {
             
             ImGui::Dummy(ImVec2(0.0f, 5.0f)); // Spacing
             
-            if (ImGui::Button(strings[lang][Lang::ButtonOK], ImVec2(120, 0))) {
+            // Center the OK button
+            float button_width = 120.0f;
+            ImGui::SetCursorPosX((ImGui::GetWindowWidth() - button_width) * 0.5f);
+            if (ImGui::Button(strings[lang][Lang::ButtonOK], ImVec2(button_width, 36))) {
                 file_stat = false;
                 // Reset the properties flag when called from text/image viewer
                 if (properties)
@@ -74,26 +77,28 @@ namespace Popups {
                     data.state = WINDOW_STATE_OPTIONS;
                 }
             }
+            ImGui::SetItemDefaultFocus();
         }
         
         Popups::ExitPopup();
     }
 
     void ImageProperties(App &app, bool &state, Tex &texture, bool &file_stat) {
-        Popups::SetupPopup(app, strings[app.config.Lang()][Lang::OptionsProperties]);
+        const int lang = app.config.Lang();
+        Popups::SetupPopup(app, strings[lang][Lang::OptionsProperties]);
 
         std::string new_width, new_height;
-        if (ImGui::BeginPopupModal("Properties", std::addressof(state), ImGuiWindowFlags_AlwaysAutoResize)) {
-            std::string parent_text = "Parent: ";
+        if (ImGui::BeginPopupModal(strings[lang][Lang::OptionsProperties], std::addressof(state), ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoScrollbar)) {
+            std::string parent_text = strings[lang][Lang::PropertiesName];
             parent_text.append(app.fs.device);
             parent_text.append(app.fs.cwd);
-            ImGui::Text(parent_text.c_str());
+            ImGui::Text("%s", parent_text.c_str());
 
             ImGui::Dummy(ImVec2(0.0f, 5.0f)); // Spacing
 
-            std::string name_text = "Name: ";
+            std::string name_text = strings[lang][Lang::PropertiesName];
             name_text.append(app.window.entries[app.window.selected].name);
-            ImGui::Text(name_text.c_str());
+            ImGui::Text("%s", name_text.c_str());
 
             ImGui::Dummy(ImVec2(0.0f, 5.0f)); // Spacing
             
@@ -107,34 +112,35 @@ namespace Popups {
 
             char size_str[16];
             Utils::GetSizeString(size_str, static_cast<double>(size));
-            std::string size_text = "Size: ";
+            std::string size_text = strings[lang][Lang::PropertiesSize];
             size_text.append(size_str);
-            ImGui::Text(size_text.c_str());
+            ImGui::Text("%s", size_text.c_str());
 
             ImGui::Dummy(ImVec2(0.0f, 5.0f)); // Spacing
 
-            std::string width_text = "Width: ";
+            std::string width_text = strings[lang][Lang::PropertiesWidth];
             width_text.append(std::to_string(texture.width));
             width_text.append("px");
-            ImGui::Text(width_text.c_str());
-            /*ImGui::SameLine(0.0f, 10.0f);
-            if (ImGui::Button("Edit width"))
-                new_width = Keyboard::GetText("Enter width", std::to_string(texture.width));*/
+            ImGui::Text("%s", width_text.c_str());
 
             ImGui::Dummy(ImVec2(0.0f, 5.0f)); // Spacing
 
-            std::string height_text = "Height: ";
+            std::string height_text = strings[lang][Lang::PropertiesHeight];
             height_text.append(std::to_string(texture.height));
             height_text.append("px");
-            ImGui::Text(height_text.c_str());
+            ImGui::Text("%s", height_text.c_str());
 
             ImGui::Dummy(ImVec2(0.0f, 5.0f)); // Spacing
             
-            if (ImGui::Button("OK", ImVec2(120, 0))) {
+            // Center the OK button
+            float button_width = 120.0f;
+            ImGui::SetCursorPosX((ImGui::GetWindowWidth() - button_width) * 0.5f);
+            if (ImGui::Button(strings[lang][Lang::ButtonOK], ImVec2(button_width, 36))) {
                 state = false;
                 file_stat = false;
                 ImGui::CloseCurrentPopup();
             }
+            ImGui::SetItemDefaultFocus();
         }
         
         Popups::ExitPopup();

@@ -6,6 +6,7 @@
 #include "archive.hpp"
 #include "config.hpp"
 #include "fs.hpp"
+#include "gui.hpp"
 #include "services.hpp"
 #include "imgui.h"
 #include "language.hpp"
@@ -174,7 +175,7 @@ namespace Popups {
         const int lang = app.config.Lang();
         Popups::SetupPopup(app, strings[lang][Lang::ArchiveTitle]);
         
-        if (ImGui::BeginPopupModal(strings[lang][Lang::ArchiveTitle], nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        if (ImGui::BeginPopupModal(strings[lang][Lang::ArchiveTitle], nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoScrollbar)) {
             ImGui::Text("%s", strings[lang][Lang::ArchiveMessage]);
             
             // Get just the filename from the path
@@ -186,13 +187,17 @@ namespace Popups {
             
             ImGui::Dummy(ImVec2(0.0f, 5.0f)); // Spacing
             
-            if (ImGui::Button(strings[lang][Lang::ButtonOK], ImVec2(120, 0))) {
+            if (ImGui::Button(strings[lang][Lang::ButtonOK], ImVec2(120, 36))) {
                 ImGui::EndPopup();
                 ImGui::PopStyleVar();
                 ImGui::Render();
                 
-                if (!Archive::ExtractZip(app)) {
+                bool success = Archive::ExtractZip(app);
+                if (!success) {
                     Log::Error("Archive extraction failed\n");
+                    Toast::Show(strings[lang][Lang::ArchiveError], false, 3.0f);
+                } else {
+                    Toast::Show(strings[lang][Lang::ArchiveSuccess], true, 3.0f);
                 }
                 
                 // Refresh directory listing
@@ -204,10 +209,11 @@ namespace Popups {
                 app.window.state = WINDOW_STATE_FILEBROWSER;
                 return;
             }
+            ImGui::SetItemDefaultFocus();
             
             ImGui::SameLine(0.0f, 15.0f);
             
-            if (ImGui::Button(strings[lang][Lang::ButtonCancel], ImVec2(120, 0))) {
+            if (ImGui::Button(strings[lang][Lang::ButtonCancel], ImVec2(120, 36))) {
                 ImGui::CloseCurrentPopup();
                 app.window.state = WINDOW_STATE_FILEBROWSER;
             }

@@ -16,7 +16,7 @@ namespace Popups {
         const int lang = app.config.Lang();
         Popups::SetupPopup(app, strings[lang][Lang::SettingsUSBTitle]);
 
-        if (ImGui::BeginPopupModal(strings[lang][Lang::SettingsUSBTitle], nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        if (ImGui::BeginPopupModal(strings[lang][Lang::SettingsUSBTitle], nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoScrollbar)) {
             if (!done)
                 ImGui::Text(strings[lang][Lang::USBUnmountPrompt]);
             else
@@ -24,7 +24,7 @@ namespace Popups {
             
             ImGui::Dummy(ImVec2(0.0f, 5.0f)); // Spacing
             
-            if (ImGui::Button(strings[lang][Lang::ButtonOK], ImVec2(120, 0))) {
+            if (ImGui::Button(strings[lang][Lang::ButtonOK], ImVec2(120, 36))) {
                 if (!done) {
                     USB::Unmount();
                     
@@ -50,11 +50,12 @@ namespace Popups {
                     state = false;
                 }
             }
+            ImGui::SetItemDefaultFocus();
             
             ImGui::SameLine(0.0f, 15.0f);
             
             if (!done) {
-                if (ImGui::Button(strings[lang][Lang::ButtonCancel], ImVec2(120, 0))) {
+                if (ImGui::Button(strings[lang][Lang::ButtonCancel], ImVec2(120, 36))) {
                     ImGui::CloseCurrentPopup();
                     state = false;
                 }

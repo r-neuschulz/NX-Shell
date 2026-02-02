@@ -1,3 +1,4 @@
+#include <cctype>
 #include <cstring>
 #include <sys/stat.h>
 
@@ -120,7 +121,7 @@ namespace Popups {
         
         Popups::SetupPopup(app, strings[lang][Lang::OptionsTitle]);
 
-        if (ImGui::BeginPopupModal(strings[lang][Lang::OptionsTitle], nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        if (ImGui::BeginPopupModal(strings[lang][Lang::OptionsTitle], nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoScrollbar)) {
             if (ImGui::Button(strings[lang][Lang::OptionsSelectAll], ImVec2(200, 50))) {
                 // Clear any previous selections and select all in current directory
                 selection.Clear();
@@ -331,6 +332,29 @@ namespace Popups {
                 ImGui::CloseCurrentPopup();
                 app.window.state = WINDOW_STATE_FILEBROWSER;
             }
+            
+            // Show "Create NRO Forwarder" button only for NRO files
+            {
+                std::string selected_name = app.window.entries[app.window.selected].name;
+                std::string ext;
+                size_t dot_pos = selected_name.find_last_of('.');
+                if (dot_pos != std::string::npos) {
+                    ext = selected_name.substr(dot_pos);
+                    // Convert to uppercase for comparison
+                    for (auto &c : ext) c = std::toupper(c);
+                }
+                
+                if (ext == ".NRO" && app.window.entries[app.window.selected].type == FsDirEntryType_File) {
+                    ImGui::Dummy(ImVec2(0.0f, 5.0f)); // Spacing
+                    
+                    if (ImGui::Button(strings[lang][Lang::OptionsCreateForwarder], ImVec2(415, 50))) {
+                        std::string path = FS::BuildPath(app.fs, app.window.entries[app.window.selected]);
+                        Popups::SetNROForwarderPath(path);
+                        ImGui::CloseCurrentPopup();
+                        app.window.state = WINDOW_STATE_NRO_FORWARDER;
+                    }
+                }
+            }
         }
         
         Popups::ExitPopup();
@@ -342,7 +366,7 @@ namespace Popups {
         }
         
         ImGui::SetNextWindowPos(GUI::GetScreenCenter(app), ImGuiCond_Always, ImVec2(0.5f, 0.5f));
-        if (ImGui::BeginPopupModal("###RecursiveCopyError", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar)) {
+        if (ImGui::BeginPopupModal("###RecursiveCopyError", nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollbar)) {
             ImGui::Text("%s", strings[lang][Lang::OptionsRecursiveCopyError]);
             ImGui::Dummy(ImVec2(0.0f, 5.0f));
             
@@ -350,9 +374,10 @@ namespace Popups {
             float window_width = ImGui::GetWindowSize().x;
             ImGui::SetCursorPosX((window_width - button_width) * 0.5f);
             
-            if (ImGui::Button(strings[lang][Lang::ButtonOK], ImVec2(button_width, 0))) {
+            if (ImGui::Button(strings[lang][Lang::ButtonOK], ImVec2(button_width, 36))) {
                 ImGui::CloseCurrentPopup();
             }
+            ImGui::SetItemDefaultFocus();
             ImGui::EndPopup();
         }
     }

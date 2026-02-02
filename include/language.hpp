@@ -175,6 +175,37 @@ namespace Lang {
     // Restart button for update dialog
     ButtonRestart,
 
+    // Error messages
+    ErrorEmptyFile,
+
+    // NSP File Installation (from file browser)
+    NSPFileInstallTitle,
+    NSPFileInstallConfirm,
+    NSPFileInstallSuccess,
+    NSPFileInstallError,
+    NSPInstallNotAvailable,
+
+    // NRO Forwarder NSP Creation
+    NROForwarderTitle,
+    NROForwarderConfirm,
+    NROForwarderSuccess,
+    NROForwarderError,
+    NROForwarderNoKeys,
+    NROForwarderBuilding,
+    OptionsCreateForwarder,
+
+    // Install button
+    ButtonInstall,
+
+    // Install popup
+    InstallWarningMessage,
+    InstallDontShowAgain,
+
+    // Success/Error Toasts
+    DeleteSuccess,
+    ArchiveSuccess,
+    ArchiveError,
+
     // Max
     Max
     } StringID;

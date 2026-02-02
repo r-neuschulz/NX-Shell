@@ -35,6 +35,13 @@
       "managed_by": "FetchContent",
       "location": "build/_deps/usbhsfs_release-src",
       "includes": ["libusbhsfs.a", "liblwext4.a", "libntfs-3g.a"]
+    },
+    "nspmini": {
+      "url": "https://github.com/StarDustCFW/nspmini.git",
+      "commit": "7564d25",
+      "description": "Minimal NSP installation library for Nintendo Switch",
+      "managed_by": "FetchContent",
+      "location": "build/_deps/nspmini-src"
     }
   },
   

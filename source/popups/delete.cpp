@@ -2,6 +2,7 @@
 
 #include "config.hpp"
 #include "fs.hpp"
+#include "gui.hpp"
 #include "imgui.h"
 #include "language.hpp"
 #include "log.hpp"
@@ -15,7 +16,7 @@ namespace Popups {
         const int lang = app.config.Lang();
         Popups::SetupPopup(app, strings[lang][Lang::OptionsDelete]);
         
-        if (ImGui::BeginPopupModal(strings[lang][Lang::OptionsDelete], nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        if (ImGui::BeginPopupModal(strings[lang][Lang::OptionsDelete], nullptr, ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoScrollbar)) {
             ImGui::Text(strings[lang][Lang::DeleteMessage]);
             
             // Check if we have multiple selections
@@ -36,7 +37,7 @@ namespace Popups {
             
             ImGui::Dummy(ImVec2(0.0f, 5.0f)); // Spacing
             
-            if (ImGui::Button(strings[lang][Lang::ButtonOK], ImVec2(120, 0))) {
+            if (ImGui::Button(strings[lang][Lang::ButtonOK], ImVec2(120, 36))) {
                 bool ret = false;
 
                 if (selection.Count() > 1) {
@@ -69,16 +70,18 @@ namespace Popups {
                     if (!FS::RefreshDirectory(app.fs, app.selection, data.entries, data.metadata_cache, true)) {
                         Log::Error("DeletePopup: Failed to refresh directory after delete\n");
                     }
+                    Toast::Show(strings[lang][Lang::DeleteSuccess], true, 3.0f);
                 }
 
                 data.sort = -1;
                 ImGui::CloseCurrentPopup();
                 data.state = WINDOW_STATE_FILEBROWSER;
             }
+            ImGui::SetItemDefaultFocus();
             
             ImGui::SameLine(0.0f, 15.0f);
             
-            if (ImGui::Button(strings[lang][Lang::ButtonCancel], ImVec2(120, 0))) {
+            if (ImGui::Button(strings[lang][Lang::ButtonCancel], ImVec2(120, 36))) {
                 ImGui::CloseCurrentPopup();
                 data.state = WINDOW_STATE_OPTIONS;
             }

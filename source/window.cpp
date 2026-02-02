@@ -18,6 +18,7 @@ namespace Windows {
     static bool image_properties = false, text_properties = false, file_stat = false;
     static int current_tab = -1;  // -1 = no forced selection, 0-2 = force select tab
     static int active_tab = 0;    // Track which tab is currently active
+    static bool suppress_b_navigation = false;  // Suppress B button parent directory navigation for one frame
     
     // Window title with version (from version.hpp)
     static constexpr const char* WINDOW_TITLE = NX_SHELL_WINDOW_TITLE;
@@ -580,6 +581,14 @@ namespace Windows {
                 }
                 break;
 
+            case WINDOW_STATE_INSTALL:
+                Popups::InstallPopup(app);
+                break;
+
+            case WINDOW_STATE_NRO_FORWARDER:
+                Popups::NROForwarderPopup(app);
+                break;
+
             default:
                 break;
         }
@@ -622,7 +631,11 @@ namespace Windows {
                 case WINDOW_STATE_FILEBROWSER:
                     // B button navigates to parent directory when in file browser tab
                     // or jumps back to file browser from Settings/About tabs
-                    if (active_tab == 0)
+                    // Skip if we just closed a popup (suppress_b_navigation flag)
+                    if (suppress_b_navigation) {
+                        suppress_b_navigation = false;
+                    }
+                    else if (active_tab == 0)
                         Tabs::RequestParentDirectory();
                     else if ((active_tab == 1 || active_tab == 2) && !popup_was_open) {
                         // Jump back to file browser tab (but not if a combo/popup was open)
@@ -633,6 +646,7 @@ namespace Windows {
                 
                 case WINDOW_STATE_OPTIONS:
                     app.window.state = WINDOW_STATE_FILEBROWSER;
+                    suppress_b_navigation = true;  // Prevent B from also navigating up
                     break;
 
                 case WINDOW_STATE_PROPERTIES:
@@ -655,10 +669,22 @@ namespace Windows {
 
                 case WINDOW_STATE_ARCHIVEEXTRACT:
                     app.window.state = WINDOW_STATE_FILEBROWSER;
+                    suppress_b_navigation = true;  // Prevent B from also navigating up
                     break;
 
                 case WINDOW_STATE_OPENMODE:
                     app.window.state = WINDOW_STATE_FILEBROWSER;
+                    suppress_b_navigation = true;  // Prevent B from also navigating up
+                    break;
+
+                case WINDOW_STATE_INSTALL:
+                    app.window.state = WINDOW_STATE_FILEBROWSER;
+                    suppress_b_navigation = true;  // Prevent B from also navigating up
+                    break;
+
+                case WINDOW_STATE_NRO_FORWARDER:
+                    app.window.state = WINDOW_STATE_FILEBROWSER;
+                    suppress_b_navigation = true;  // Prevent B from also navigating up
                     break;
 
                 case WINDOW_STATE_IMAGEVIEWER:
@@ -669,6 +695,7 @@ namespace Windows {
                     else {
                         ImageViewer::ClearTextures(app);
                         app.window.state = WINDOW_STATE_FILEBROWSER;
+                        suppress_b_navigation = true;  // Prevent B from also navigating up
                     }
                     
                     break;
@@ -681,6 +708,7 @@ namespace Windows {
                     else {
                         TextReader::Clear(app);
                         app.window.state = WINDOW_STATE_FILEBROWSER;
+                        suppress_b_navigation = true;  // Prevent B from also navigating up
                     }
                     
                     break;

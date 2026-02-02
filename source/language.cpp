@@ -159,7 +159,38 @@ static const char *strings_jp[] {
     " アクセント",
 
     // Restart button
-    "再起動"
+    "再起動",
+
+    // Error messages
+    "ファイルが空です (0 KB)",
+
+    // NSP File Installation
+    "NSPをインストール",
+    "このNSPファイルをインストールしますか？\n\n警告: NSPをインストールするとBANされる可能性があります。",
+    "NSPのインストールに成功しました。",
+    "NSPのインストールに失敗しました。",
+    "アプレットモードではNSPインストールは利用できません。",
+
+    // NRO Forwarder NSP Creation
+    "Create Forwarder NSP",
+    "Create a forwarder NSP for this NRO?\n\nThis will generate an installable NSP that launches this homebrew.",
+    "Forwarder NSP created successfully.",
+    "Failed to create forwarder NSP.",
+    "Keys file not found at sdmc:/switch/prod.keys",
+    "Building forwarder NSP...",
+    "Create Forwarder",
+
+    // Install button
+    "インストール",
+
+    // Install popup
+    "警告: ホーム画面へのインストールは\nBANの原因となる可能性があります。",
+    "今後表示しない",
+
+    // Success/Error Toasts
+    "削除が完了しました。",
+    "アーカイブの展開が完了しました。",
+    "アーカイブの展開に失敗しました。"
 };
 
 static const char *strings_en[] {
@@ -318,7 +349,38 @@ static const char *strings_en[] {
     " Accent",
 
     // Restart button
-    "Restart"
+    "Restart",
+
+    // Error messages
+    "File is empty (0 KB)",
+
+    // NSP File Installation
+    "Install NSP",
+    "Do you want to install this NSP file?\n\nWarning: Installing NSPs may result in a ban.",
+    "NSP installed successfully.",
+    "Failed to install NSP.",
+    "NSP installation not available in applet mode.",
+
+    // NRO Forwarder NSP Creation
+    "Create Forwarder NSP",
+    "Create a forwarder NSP for this NRO?\n\nThis will generate an installable NSP that launches this homebrew.",
+    "Forwarder NSP created successfully.",
+    "Failed to create forwarder NSP.",
+    "Keys file not found at sdmc:/switch/prod.keys",
+    "Building forwarder NSP...",
+    "Create Forwarder",
+
+    // Install button
+    "Install",
+
+    // Install popup
+    "Warning: Installing to the homescreen\nmay result in a ban.",
+    "Don't show again",
+
+    // Success/Error Toasts
+    "Delete completed successfully.",
+    "Archive extracted successfully.",
+    "Failed to extract archive."
 };
 
 // French (need to check and verify)
@@ -478,7 +540,38 @@ static const char *strings_fr[] {
     " Accent",
 
     // Restart button
-    "Redémarrer"
+    "Redémarrer",
+
+    // Error messages
+    "Le fichier est vide (0 Ko)",
+
+    // NSP File Installation
+    "Installer NSP",
+    "Voulez-vous installer ce fichier NSP ?\n\nAttention : L'installation de NSP peut entraîner un bannissement.",
+    "NSP installé avec succès.",
+    "Échec de l'installation du NSP.",
+    "L'installation NSP n'est pas disponible en mode applet.",
+
+    // NRO Forwarder NSP Creation
+    "Créer un NSP de redirection",
+    "Créer un NSP de redirection pour ce NRO ?\n\nCela générera un NSP installable qui lance ce homebrew.",
+    "NSP de redirection créé avec succès.",
+    "Échec de la création du NSP de redirection.",
+    "Fichier de clés introuvable à sdmc:/switch/prod.keys",
+    "Création du NSP de redirection...",
+    "Créer redirection",
+
+    // Install button
+    "Installer",
+
+    // Install popup
+    "Attention: L'installation sur l'écran\nd'accueil peut entraîner un bannissement.",
+    "Ne plus afficher",
+
+    // Success/Error Toasts
+    "Suppression terminée avec succès.",
+    "Archive extraite avec succès.",
+    "Échec de l'extraction de l'archive."
 };
 
 static const char *strings_de[] {
@@ -637,7 +730,38 @@ static const char *strings_de[] {
     " Akzent",
 
     // Restart button
-    "Neustart"
+    "Neustart",
+
+    // Error messages
+    "Datei ist leer (0 KB)",
+
+    // NSP File Installation
+    "NSP installieren",
+    "Möchten Sie diese NSP-Datei installieren?\n\nWarnung: Die Installation von NSPs kann zu einem Bann führen.",
+    "NSP erfolgreich installiert.",
+    "NSP-Installation fehlgeschlagen.",
+    "NSP-Installation im Applet-Modus nicht verfügbar.",
+
+    // NRO Forwarder NSP Creation
+    "Forwarder-NSP erstellen",
+    "Forwarder-NSP für dieses NRO erstellen?\n\nDies generiert ein installierbares NSP, das diese Homebrew startet.",
+    "Forwarder-NSP erfolgreich erstellt.",
+    "Forwarder-NSP konnte nicht erstellt werden.",
+    "Schlüsseldatei nicht gefunden unter sdmc:/switch/prod.keys",
+    "Erstelle Forwarder-NSP...",
+    "Forwarder erstellen",
+
+    // Install button
+    "Installieren",
+
+    // Install popup
+    "Warnung: Die Installation auf dem Homescreen\nkann zu einem Bann führen.",
+    "Nicht mehr anzeigen",
+
+    // Success/Error Toasts
+    "Löschen erfolgreich abgeschlossen.",
+    "Archiv erfolgreich extrahiert.",
+    "Archiv konnte nicht extrahiert werden."
 };
 
 // Italian (need to check and verify)
@@ -797,7 +921,38 @@ static const char *strings_it[] {
     " Accento",
 
     // Restart button
-    "Riavvia"
+    "Riavvia",
+
+    // Error messages
+    "Il file è vuoto (0 KB)",
+
+    // NSP File Installation
+    "Installa NSP",
+    "Vuoi installare questo file NSP?\n\nAttenzione: L'installazione di NSP potrebbe causare un ban.",
+    "NSP installato con successo.",
+    "Installazione NSP fallita.",
+    "Installazione NSP non disponibile in modalità applet.",
+
+    // NRO Forwarder NSP Creation
+    "Crea NSP forwarder",
+    "Creare un NSP forwarder per questo NRO?\n\nQuesto genererà un NSP installabile che avvia questo homebrew.",
+    "NSP forwarder creato con successo.",
+    "Impossibile creare NSP forwarder.",
+    "File delle chiavi non trovato in sdmc:/switch/prod.keys",
+    "Creazione NSP forwarder...",
+    "Crea forwarder",
+
+    // Install button
+    "Installa",
+
+    // Install popup
+    "Attenzione: L'installazione nella schermata\nprincipale potrebbe causare un ban.",
+    "Non mostrare più",
+
+    // Success/Error Toasts
+    "Eliminazione completata con successo.",
+    "Archivio estratto con successo.",
+    "Impossibile estrarre l'archivio."
 };
 
 //  Spanish
@@ -957,7 +1112,38 @@ static const char *strings_es[] {
     " Acento",
 
     // Restart button
-    "Reiniciar"
+    "Reiniciar",
+
+    // Error messages
+    "El archivo está vacío (0 KB)",
+
+    // NSP File Installation
+    "Instalar NSP",
+    "¿Deseas instalar este archivo NSP?\n\nAdvertencia: Instalar NSPs puede resultar en un baneo.",
+    "NSP instalado exitosamente.",
+    "Error al instalar el NSP.",
+    "Instalación NSP no disponible en modo applet.",
+
+    // NRO Forwarder NSP Creation
+    "Crear NSP forwarder",
+    "¿Crear un NSP forwarder para este NRO?\n\nEsto generará un NSP instalable que lanza este homebrew.",
+    "NSP forwarder creado exitosamente.",
+    "Error al crear NSP forwarder.",
+    "Archivo de claves no encontrado en sdmc:/switch/prod.keys",
+    "Creando NSP forwarder...",
+    "Crear forwarder",
+
+    // Install button
+    "Instalar",
+
+    // Install popup
+    "Advertencia: Instalar en la pantalla\nde inicio puede resultar en un baneo.",
+    "No mostrar de nuevo",
+
+    // Success/Error Toasts
+    "Eliminación completada con éxito.",
+    "Archivo extraído con éxito.",
+    "Error al extraer el archivo."
 };
 
 // Simplified Chinese ("Chinese")
@@ -1117,7 +1303,38 @@ static const char *strings_sc[] {
     " 主题色",
 
     // Restart button
-    "重启"
+    "重启",
+
+    // Error messages
+    "文件为空 (0 KB)",
+
+    // NSP File Installation
+    "安装NSP",
+    "您要安装此NSP文件吗？\n\n警告：安装NSP可能导致被封禁。",
+    "NSP安装成功。",
+    "NSP安装失败。",
+    "小程序模式下无法安装NSP。",
+
+    // NRO Forwarder NSP Creation
+    "创建转发NSP",
+    "为此NRO创建转发NSP？\n\n这将生成一个可安装的NSP来启动此自制软件。",
+    "转发NSP创建成功。",
+    "转发NSP创建失败。",
+    "密钥文件未找到：sdmc:/switch/prod.keys",
+    "正在创建转发NSP...",
+    "创建转发",
+
+    // Install button
+    "安装",
+
+    // Install popup
+    "警告：安装到主屏幕可能\n导致被封禁。",
+    "不再显示",
+
+    // Success/Error Toasts
+    "删除成功完成。",
+    "归档提取成功。",
+    "归档提取失败。"
 };
 
 // Korean (need to check and verify)
@@ -1277,7 +1494,38 @@ static const char *strings_ko[] {
     " 강조색",
 
     // Restart button
-    "다시 시작"
+    "다시 시작",
+
+    // Error messages
+    "파일이 비어 있습니다 (0 KB)",
+
+    // NSP File Installation
+    "NSP 설치",
+    "이 NSP 파일을 설치하시겠습니까?\n\n경고: NSP 설치는 차단될 수 있습니다.",
+    "NSP가 성공적으로 설치되었습니다.",
+    "NSP 설치에 실패했습니다.",
+    "애플릿 모드에서는 NSP 설치를 사용할 수 없습니다.",
+
+    // NRO Forwarder NSP Creation
+    "포워더 NSP 생성",
+    "이 NRO에 대한 포워더 NSP를 생성하시겠습니까?\n\n이 홈브류를 실행하는 설치 가능한 NSP가 생성됩니다.",
+    "포워더 NSP가 성공적으로 생성되었습니다.",
+    "포워더 NSP 생성에 실패했습니다.",
+    "키 파일을 찾을 수 없습니다: sdmc:/switch/prod.keys",
+    "포워더 NSP 생성 중...",
+    "포워더 생성",
+
+    // Install button
+    "설치",
+
+    // Install popup
+    "경고: 홈 화면에 설치하면\n밴을 받을 수 있습니다.",
+    "다시 표시 안 함",
+
+    // Success/Error Toasts
+    "삭제가 성공적으로 완료되었습니다.",
+    "아카이브 추출 성공.",
+    "아카이브 추출 실패."
 };
 
 // Dutch (need to check and verify)
@@ -1437,7 +1685,38 @@ static const char *strings_nl[] {
     " Accent",
 
     // Restart button
-    "Herstarten"
+    "Herstarten",
+
+    // Error messages
+    "Bestand is leeg (0 KB)",
+
+    // NSP File Installation
+    "NSP installeren",
+    "Wilt u dit NSP-bestand installeren?\n\nWaarschuwing: Het installeren van NSPs kan leiden tot een ban.",
+    "NSP succesvol geïnstalleerd.",
+    "NSP-installatie mislukt.",
+    "NSP-installatie niet beschikbaar in applet-modus.",
+
+    // NRO Forwarder NSP Creation
+    "Forwarder NSP maken",
+    "Forwarder NSP maken voor deze NRO?\n\nDit genereert een installeerbare NSP die deze homebrew start.",
+    "Forwarder NSP succesvol gemaakt.",
+    "Forwarder NSP maken mislukt.",
+    "Sleutelbestand niet gevonden op sdmc:/switch/prod.keys",
+    "Forwarder NSP maken...",
+    "Forwarder maken",
+
+    // Install button
+    "Installeren",
+
+    // Install popup
+    "Waarschuwing: Installeren op het\nstartscherm kan leiden tot een ban.",
+    "Niet meer tonen",
+
+    // Success/Error Toasts
+    "Verwijderen succesvol voltooid.",
+    "Archief succesvol uitgepakt.",
+    "Archief uitpakken mislukt."
 };
 
 // Portuguese
@@ -1597,7 +1876,38 @@ static const char *strings_pt[] {
     " Destaque",
 
     // Restart button
-    "Reiniciar"
+    "Reiniciar",
+
+    // Error messages
+    "O arquivo está vazio (0 KB)",
+
+    // NSP File Installation
+    "Instalar NSP",
+    "Deseja instalar este arquivo NSP?\n\nAviso: Instalar NSPs pode resultar em banimento.",
+    "NSP instalado com sucesso.",
+    "Falha ao instalar o NSP.",
+    "Instalação NSP não disponível no modo applet.",
+
+    // NRO Forwarder NSP Creation
+    "Criar NSP Forwarder",
+    "Criar um NSP forwarder para este NRO?\n\nIsso gerará um NSP instalável que inicia este homebrew.",
+    "NSP forwarder criado com sucesso.",
+    "Falha ao criar NSP forwarder.",
+    "Arquivo de chaves não encontrado em sdmc:/switch/prod.keys",
+    "Criando NSP forwarder...",
+    "Criar forwarder",
+
+    // Install button
+    "Instalar",
+
+    // Install popup
+    "Aviso: Instalar na tela inicial\npode resultar em banimento.",
+    "Não mostrar novamente",
+
+    // Success/Error Toasts
+    "Exclusão concluída com sucesso.",
+    "Arquivo extraído com sucesso.",
+    "Falha ao extrair o arquivo."
 };
 
 // Russian (need to check and verify)
@@ -1757,7 +2067,38 @@ static const char *strings_ru[] {
     " Акцент",
 
     // Restart button
-    "Перезапуск"
+    "Перезапуск",
+
+    // Error messages
+    "Файл пустой (0 КБ)",
+
+    // NSP File Installation
+    "Установить NSP",
+    "Вы хотите установить этот NSP файл?\n\nПредупреждение: Установка NSP может привести к бану.",
+    "NSP успешно установлен.",
+    "Не удалось установить NSP.",
+    "Установка NSP недоступна в режиме апплета.",
+
+    // NRO Forwarder NSP Creation
+    "Создать NSP-форвардер",
+    "Создать NSP-форвардер для этого NRO?\n\nБудет создан устанавливаемый NSP для запуска этого хомбрю.",
+    "NSP-форвардер успешно создан.",
+    "Не удалось создать NSP-форвардер.",
+    "Файл ключей не найден: sdmc:/switch/prod.keys",
+    "Создание NSP-форвардера...",
+    "Создать форвардер",
+
+    // Install button
+    "Установить",
+
+    // Install popup
+    "Внимание: Установка на главный экран\nможет привести к бану.",
+    "Больше не показывать",
+
+    // Success/Error Toasts
+    "Удаление успешно завершено.",
+    "Архив успешно извлечён.",
+    "Не удалось извлечь архив."
 };
 
 // Traditional Chinese ("Taiwanese")
@@ -1917,7 +2258,38 @@ static const char *strings_tw[] {
     " 主題色",
 
     // Restart button
-    "重新啟動"
+    "重新啟動",
+
+    // Error messages
+    "檔案為空 (0 KB)",
+
+    // NSP File Installation
+    "安裝NSP",
+    "您要安裝此NSP檔案嗎？\n\n警告：安裝NSP可能導致被封禁。",
+    "NSP安裝成功。",
+    "NSP安裝失敗。",
+    "小程式模式下無法安裝NSP。",
+
+    // NRO Forwarder NSP Creation
+    "建立轉發NSP",
+    "為此NRO建立轉發NSP？\n\n這將產生一個可安裝的NSP來啟動此自製軟體。",
+    "轉發NSP建立成功。",
+    "轉發NSP建立失敗。",
+    "密鑰檔案未找到：sdmc:/switch/prod.keys",
+    "正在建立轉發NSP...",
+    "建立轉發",
+
+    // Install button
+    "安裝",
+
+    // Install popup
+    "警告：安裝到主畫面可能\n導致被封禁。",
+    "不再顯示",
+
+    // Success/Error Toasts
+    "刪除成功完成。",
+    "歸檔提取成功。",
+    "歸檔提取失敗。"
 };
 
 const char **strings[Lang::Max] = {

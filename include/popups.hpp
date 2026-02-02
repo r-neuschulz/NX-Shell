@@ -44,4 +44,12 @@ namespace Popups {
     // Open mode popup for unknown/binary files
     // Returns: 0 = cancelled/pending, 1 = open as text, 2 = open as hex
     int OpenModePopup(App &app, bool &show);
+    
+    // Unified install popup (for both NSP and NRO from file browser A button)
+    void SetInstallPath(const std::string &path, bool is_nsp);
+    void InstallPopup(App &app);
+    
+    // NRO to NSP forwarder popup (from Options menu)
+    void SetNROForwarderPath(const std::string &path);
+    void NROForwarderPopup(App &app);
 }
