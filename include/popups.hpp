@@ -37,7 +37,6 @@ namespace Popups {
     bool IsMoveMode(void);
     void SetMoveMode(bool value);
     void UpdatePopup(App &app, bool &state, bool &connection_status, bool &available, const std::string &tag);
-    void UpdateWelcomePopup(App &app, bool &state, const std::string &version);
     void ProgressBar(App &app, float offset, float size, const std::string &title, const std::string &text);
     void USBPopup(App &app, bool &state);
     

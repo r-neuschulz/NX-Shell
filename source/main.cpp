@@ -416,22 +416,25 @@ int main(int argc, char* argv[]) {
     // Set initial focus (sdmc: at partition root, or ".." in directory)
     Tabs::RequestFileBrowserFocus(app.fs);
     
-    // Use compile-time version string for comparison and welcome popup
+    // Use compile-time version string for comparison and welcome toast
     const char* current_version = NX_SHELL_VERSION_STR;
     
     // Check if this is a new version compared to last known
     const std::string& last_known = app.config.LastKnownVersion();
-    bool show_welcome_popup = false;
     
     if (last_known.empty()) {
-        // First run ever - just save current version, no popup
+        // First run ever - just save current version, no toast
         Log::Debug("First run detected, saving version %s to config\n", current_version);
         app.config.SetLastKnownVersion(current_version);
         Config::Save(app.config, app.fs);
     } else if (last_known != current_version) {
-        // Version changed - show welcome popup
-        Log::Debug("Version changed: %s -> %s, will show welcome popup\n", last_known.c_str(), current_version);
-        show_welcome_popup = true;
+        // Version changed - show welcome toast and save new version
+        Log::Debug("Version changed: %s -> %s, showing welcome toast\n", last_known.c_str(), current_version);
+        char welcome_msg[64];
+        std::snprintf(welcome_msg, sizeof(welcome_msg), "Welcome to NX-Shell %s!", current_version);
+        Toast::Show(welcome_msg, true, 4.0f);
+        app.config.SetLastKnownVersion(current_version);
+        Config::Save(app.config, app.fs);
     }
     
     // Log total startup time
@@ -440,18 +443,6 @@ int main(int argc, char* argv[]) {
     
     while (GUI::Loop(app, key)) {
         Windows::MainWindow(app, key, false);
-        
-        // Show welcome popup on version change (update from any source)
-        if (show_welcome_popup) {
-            Popups::UpdateWelcomePopup(app, show_welcome_popup, current_version);
-            
-            // When popup closes, save new version to config
-            if (!show_welcome_popup) {
-                app.config.SetLastKnownVersion(current_version);
-                Config::Save(app.config, app.fs);
-                Log::Debug("Welcome popup closed, saved version %s to config\n", current_version);
-            }
-        }
         
         GUI::RenderStatsOverlay(app);
         Toast::RenderTimed(app);
