@@ -141,6 +141,11 @@ namespace FS {
     static const std::unordered_map<std::string, FileType> extension_map = {
         // Archive formats
         {".ZIP", FileTypeArchive}, {".RAR", FileTypeArchive}, {".7Z", FileTypeArchive},
+        {".TAR", FileTypeArchive}, {".TGZ", FileTypeArchive}, {".TBZ2", FileTypeArchive},
+        {".TXZ", FileTypeArchive}, {".TAR.GZ", FileTypeArchive}, {".TAR.BZ2", FileTypeArchive},
+        {".TAR.XZ", FileTypeArchive}, {".TAR.LZMA", FileTypeArchive},
+        {".GZ", FileTypeArchive}, {".BZ2", FileTypeArchive}, {".XZ", FileTypeArchive},
+        {".LZMA", FileTypeArchive},
         
         // Image formats
         {".BMP", FileTypeImage}, {".GIF", FileTypeImage}, {".JPG", FileTypeImage},

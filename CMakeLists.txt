@@ -338,7 +338,8 @@ target_link_libraries(${PROJECT_NAME}.elf PRIVATE
     glad EGL glapi drm_nouveau
     usbhsfs lwext4 ntfs-3g
     nsp
-    minizip nx m z
+    archive lzma bz2
+    nx m z
 )
 
 #---------------------------------------------------------------------------------

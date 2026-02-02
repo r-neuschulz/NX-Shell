@@ -1,7 +1,8 @@
 #include <cstring>
 #include <filesystem>
 #include <memory>
-#include <minizip/unzip.h>
+#include <archive.h>
+#include <archive_entry.h>
 
 #include "archive.hpp"
 #include "config.hpp"
@@ -18,11 +19,6 @@
 namespace Archive {
     static std::string archive_path;
     static std::string extract_dest;
-    static bool extraction_in_progress = false;
-    static bool extraction_complete = false;
-    static bool extraction_error = false;
-    static std::string current_file;
-    static float progress = 0.0f;
     
     void SetArchivePath(FileSystemService &fs_svc, const std::string &path) {
         archive_path = path;
@@ -32,41 +28,89 @@ namespace Archive {
         if (extract_dest.empty()) {
             extract_dest = fs_svc.device + fs_svc.cwd;
         }
-        extraction_in_progress = false;
-        extraction_complete = false;
-        extraction_error = false;
-        current_file.clear();
-        progress = 0.0f;
     }
     
     const std::string& GetArchivePath(void) {
         return archive_path;
     }
     
-    static bool CreateDirectories(const std::string &path) {
-        std::filesystem::path p(path);
-        std::error_code ec;
-        std::filesystem::create_directories(p.parent_path(), ec);
-        return !ec;
+    // Count entries in archive for progress reporting
+    static int64_t CountArchiveEntries(const std::string &path) {
+        struct archive *a = archive_read_new();
+        if (!a) return -1;
+        
+        archive_read_support_format_all(a);
+        archive_read_support_filter_all(a);
+        
+        if (archive_read_open_filename(a, path.c_str(), 10240) != ARCHIVE_OK) {
+            archive_read_free(a);
+            return -1;
+        }
+        
+        int64_t count = 0;
+        struct archive_entry *entry;
+        while (archive_read_next_header(a, &entry) == ARCHIVE_OK) {
+            count++;
+            archive_read_data_skip(a);
+        }
+        
+        archive_read_free(a);
+        return count;
     }
     
-    bool ExtractZip(App &app) {
+    // Get the base name for extraction directory
+    // Handles compound extensions like .tar.gz, .tar.xz, etc.
+    static std::string GetArchiveBaseName(const std::string &path) {
+        std::filesystem::path p(path);
+        std::string name = p.filename().string();
+        
+        // Handle compound extensions (.tar.gz, .tar.bz2, .tar.xz, .tar.lzma)
+        const char* compound_exts[] = {".tar.gz", ".tar.bz2", ".tar.xz", ".tar.lzma", ".tgz", ".tbz2", ".txz"};
+        std::string name_lower = name;
+        for (auto &c : name_lower) c = std::tolower(c);
+        
+        for (const char* ext : compound_exts) {
+            size_t ext_len = strlen(ext);
+            if (name_lower.length() > ext_len && 
+                name_lower.substr(name_lower.length() - ext_len) == ext) {
+                return name.substr(0, name.length() - ext_len);
+            }
+        }
+        
+        // Standard single extension
+        return p.stem().string();
+    }
+    
+    bool Extract(App &app) {
         if (archive_path.empty()) {
-            Log::Error("Archive::ExtractZip - No archive path set\n");
+            Log::Error("Archive::Extract - No archive path set\n");
             return false;
         }
         
-        unzFile zip = unzOpen64(archive_path.c_str());
-        if (!zip) {
-            Log::Error("Archive::ExtractZip - Failed to open archive: %s\n", archive_path.c_str());
+        // Count total entries for progress
+        int64_t total_entries = CountArchiveEntries(archive_path);
+        if (total_entries < 0) {
+            Log::Error("Archive::Extract - Failed to count archive entries: %s\n", archive_path.c_str());
+            // Continue anyway, progress will be indeterminate
+            total_entries = 0;
+        }
+        
+        // Open archive for extraction
+        struct archive *a = archive_read_new();
+        if (!a) {
+            Log::Error("Archive::Extract - Failed to create archive reader\n");
             return false;
         }
         
-        // Get global info to determine total files
-        unz_global_info64 global_info;
-        if (unzGetGlobalInfo64(zip, &global_info) != UNZ_OK) {
-            Log::Error("Archive::ExtractZip - Failed to get global info\n");
-            unzClose(zip);
+        // Enable all supported formats and filters
+        archive_read_support_format_all(a);
+        archive_read_support_filter_all(a);
+        
+        // Open the archive file
+        if (archive_read_open_filename(a, archive_path.c_str(), 10240) != ARCHIVE_OK) {
+            Log::Error("Archive::Extract - Failed to open archive: %s (%s)\n", 
+                      archive_path.c_str(), archive_error_string(a));
+            archive_read_free(a);
             return false;
         }
         
@@ -75,8 +119,7 @@ namespace Archive {
         const std::string extracting_prefix = strings[lang][Lang::ArchiveExtracting];
         
         // Create base extraction directory (archive name without extension)
-        std::filesystem::path archive_p(archive_path);
-        std::string archive_name = archive_p.stem().string();
+        std::string archive_name = GetArchiveBaseName(archive_path);
         std::string base_dest = extract_dest;
         if (base_dest.back() != '/')
             base_dest += '/';
@@ -86,86 +129,92 @@ namespace Archive {
         std::error_code ec;
         std::filesystem::create_directories(base_dest, ec);
         if (ec) {
-            Log::Error("Archive::ExtractZip - Failed to create extraction directory: %s\n", base_dest.c_str());
-            unzClose(zip);
+            Log::Error("Archive::Extract - Failed to create extraction directory: %s\n", base_dest.c_str());
+            archive_read_free(a);
             return false;
         }
         
         const std::size_t buf_size = 0x10000;  // 64KB buffer
         auto buffer = std::make_unique<unsigned char[]>(buf_size);
         
-        u64 files_extracted = 0;
-        int ret = unzGoToFirstFile(zip);
+        int64_t entries_extracted = 0;
+        struct archive_entry *entry;
         
-        while (ret == UNZ_OK) {
-            unz_file_info64 file_info;
-            char filename[512];
-            
-            if (unzGetCurrentFileInfo64(zip, &file_info, filename, sizeof(filename), nullptr, 0, nullptr, 0) != UNZ_OK) {
-                Log::Error("Archive::ExtractZip - Failed to get file info\n");
-                ret = unzGoToNextFile(zip);
+        while (archive_read_next_header(a, &entry) == ARCHIVE_OK) {
+            const char *entry_path = archive_entry_pathname(entry);
+            if (!entry_path) {
+                archive_read_data_skip(a);
                 continue;
             }
             
-            std::string dest_path = base_dest + filename;
+            std::string dest_path = base_dest + entry_path;
+            mode_t entry_type = archive_entry_filetype(entry);
             
-            // Check if it's a directory (ends with /)
-            size_t filename_len = std::strlen(filename);
-            if (filename_len > 0 && filename[filename_len - 1] == '/') {
+            if (entry_type == AE_IFDIR) {
                 // Create directory
                 std::filesystem::create_directories(dest_path, ec);
             }
-            else {
-                // Extract file
+            else if (entry_type == AE_IFREG) {
+                // Extract regular file
                 // First create parent directories
-                CreateDirectories(dest_path);
-                
-                if (unzOpenCurrentFile(zip) != UNZ_OK) {
-                    Log::Error("Archive::ExtractZip - Failed to open file in archive: %s\n", filename);
-                    ret = unzGoToNextFile(zip);
-                    continue;
-                }
+                std::filesystem::path p(dest_path);
+                std::filesystem::create_directories(p.parent_path(), ec);
                 
                 FILE *out_file = fopen(dest_path.c_str(), "wb");
                 if (!out_file) {
-                    Log::Error("Archive::ExtractZip - Failed to create output file: %s\n", dest_path.c_str());
-                    unzCloseCurrentFile(zip);
-                    ret = unzGoToNextFile(zip);
+                    Log::Error("Archive::Extract - Failed to create output file: %s\n", dest_path.c_str());
+                    archive_read_data_skip(a);
                     continue;
                 }
                 
-                int bytes_read;
-                do {
-                    bytes_read = unzReadCurrentFile(zip, buffer.get(), buf_size);
-                    if (bytes_read < 0) {
-                        Log::Error("Archive::ExtractZip - Error reading file: %s\n", filename);
-                        break;
-                    }
-                    if (bytes_read > 0) {
-                        fwrite(buffer.get(), 1, bytes_read, out_file);
-                    }
-                } while (bytes_read > 0);
+                la_ssize_t bytes_read;
+                while ((bytes_read = archive_read_data(a, buffer.get(), buf_size)) > 0) {
+                    fwrite(buffer.get(), 1, bytes_read, out_file);
+                }
+                
+                if (bytes_read < 0) {
+                    Log::Error("Archive::Extract - Error reading data: %s (%s)\n", 
+                              entry_path, archive_error_string(a));
+                }
                 
                 fclose(out_file);
-                unzCloseCurrentFile(zip);
+            }
+            else if (entry_type == AE_IFLNK) {
+                // Symbolic link - skip on Switch (no symlink support)
+                Log::Debug("Archive::Extract - Skipping symlink: %s\n", entry_path);
+                archive_read_data_skip(a);
+            }
+            else {
+                // Other types (sockets, devices, etc.) - skip
+                archive_read_data_skip(a);
             }
             
-            files_extracted++;
+            entries_extracted++;
             
             // Update progress
-            std::string short_filename = filename;
+            std::string short_filename = entry_path;
             if (short_filename.length() > 40) {
                 short_filename = "..." + short_filename.substr(short_filename.length() - 37);
             }
             std::string progress_text = extracting_prefix + " " + short_filename;
-            Popups::ProgressBar(app, static_cast<float>(files_extracted), static_cast<float>(global_info.number_entry), title, progress_text);
             
-            ret = unzGoToNextFile(zip);
+            if (total_entries > 0) {
+                Popups::ProgressBar(app, static_cast<float>(entries_extracted), 
+                                   static_cast<float>(total_entries), title, progress_text);
+            } else {
+                // Indeterminate progress (show count only)
+                Popups::ProgressBar(app, 0.0f, 0.0f, title, progress_text);
+            }
         }
         
-        unzClose(zip);
+        int archive_result = archive_read_close(a);
+        archive_read_free(a);
         
-        Log::Debug("Archive::ExtractZip - Extracted %lu files to %s\n", files_extracted, base_dest.c_str());
+        if (archive_result != ARCHIVE_OK) {
+            Log::Error("Archive::Extract - Archive closed with errors\n");
+        }
+        
+        Log::Debug("Archive::Extract - Extracted %lld entries to %s\n", entries_extracted, base_dest.c_str());
         return true;
     }
 }
@@ -192,7 +241,7 @@ namespace Popups {
                 ImGui::PopStyleVar();
                 ImGui::Render();
                 
-                bool success = Archive::ExtractZip(app);
+                bool success = Archive::Extract(app);
                 if (!success) {
                     Log::Error("Archive extraction failed\n");
                     Toast::Show(strings[lang][Lang::ArchiveError], false, 3.0f);

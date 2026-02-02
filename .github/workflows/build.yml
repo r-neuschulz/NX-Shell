@@ -25,18 +25,40 @@ on:
         default: false
 
 jobs:
+  # Setup job reads dependencies.json to get the Docker image tag
+  # This allows dependencies.json to be the single source of truth
+  setup:
+    runs-on: ubuntu-latest
+    outputs:
+      docker_image: ${{ steps.read_deps.outputs.docker_image }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          sparse-checkout: dependencies.json
+          sparse-checkout-cone-mode: false
+
+      - name: Read Docker image from dependencies.json
+        id: read_deps
+        run: |
+          DOCKER_IMAGE=$(jq -r '.system_packages.devkitpro.docker_image' dependencies.json)
+          DOCKER_TAG=$(jq -r '.system_packages.devkitpro.docker_tag' dependencies.json)
+          echo "docker_image=${DOCKER_IMAGE}:${DOCKER_TAG}" >> $GITHUB_OUTPUT
+          echo "Using Docker image: ${DOCKER_IMAGE}:${DOCKER_TAG}"
+
   build:
+    needs: setup
     runs-on: ubuntu-latest
     container:
-      image: devkitpro/devkita64:latest
+      image: ${{ needs.setup.outputs.docker_image }}
     
     outputs:
       is_release: ${{ steps.version.outputs.is_release }}
       version: ${{ steps.version.outputs.version }}
       tag: ${{ steps.version.outputs.tag }}
       nro_filename: ${{ steps.version.outputs.nro_filename }}
-      source_archive: ${{ steps.source_archive.outputs.source_archive }}
-      build_archive: ${{ steps.build_archive.outputs.build_archive }}
+      source_archive: ${{ steps.version.outputs.source_archive }}
+      build_archive: ${{ steps.version.outputs.build_archive }}
 
     steps:
       - name: Validate release inputs
@@ -85,26 +107,28 @@ jobs:
             echo "Development build with default version: ${VERSION}"
           fi
           
-          # Create versioned filename (e.g., NX-Shell-v5-0-1.nro)
+          # Create versioned strings (e.g., 5-0-1 for filenames)
           VERSION_DASHED=$(echo "${VERSION}" | tr '.' '-')
           NRO_FILENAME="NX-Shell-v${VERSION_DASHED}.nro"
-          echo "NRO filename: ${NRO_FILENAME}"
+          SOURCE_ARCHIVE="NX-Shell-v${VERSION_DASHED}-source.tar.gz"
+          BUILD_ARCHIVE="NX-Shell-v${VERSION_DASHED}-build.tar.gz"
           
-          # Extract repository owner and name for update checks
-          # This allows forks to automatically check their own releases
+          # Extract repository owner and name for update checks (allows forks to check their own releases)
           REPO_OWNER="${GITHUB_REPOSITORY%%/*}"
           REPO_NAME="${GITHUB_REPOSITORY##*/}"
-          echo "Repository: ${REPO_OWNER}/${REPO_NAME}"
           
           echo "is_release=${IS_RELEASE}" >> $GITHUB_OUTPUT
           echo "version=${VERSION}" >> $GITHUB_OUTPUT
+          echo "version_dashed=${VERSION_DASHED}" >> $GITHUB_OUTPUT
           echo "tag=v${VERSION}" >> $GITHUB_OUTPUT
           echo "repo_owner=${REPO_OWNER}" >> $GITHUB_OUTPUT
           echo "repo_name=${REPO_NAME}" >> $GITHUB_OUTPUT
           echo "nro_filename=${NRO_FILENAME}" >> $GITHUB_OUTPUT
+          echo "source_archive=${SOURCE_ARCHIVE}" >> $GITHUB_OUTPUT
+          echo "build_archive=${BUILD_ARCHIVE}" >> $GITHUB_OUTPUT
           echo "cmake_version_flag=-DPROJECT_VERSION_OVERRIDE=${VERSION}" >> $GITHUB_OUTPUT
           
-          echo "Final: is_release=${IS_RELEASE}, version=${VERSION}, nro=${NRO_FILENAME}"
+          echo "Build: version=${VERSION}, nro=${NRO_FILENAME}, release=${IS_RELEASE}"
 
       - name: Configure CMake
         run: |
@@ -116,54 +140,18 @@ jobs:
       - name: Build
         run: cmake --build build -j$(nproc)
 
-      - name: Copy NRO to root
-        run: |
-          cp "build/${{ steps.version.outputs.nro_filename }}" .
-          ls -lh "${{ steps.version.outputs.nro_filename }}"
-
       - name: Create source archive
         if: ${{ !env.ACT || env.CREATE_BUNDLE == 'true' }}
         run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          VERSION_DASHED=$(echo "${VERSION}" | tr '.' '-')
-          ARCHIVE_NAME="NX-Shell-v${VERSION_DASHED}-source.tar.gz"
-          
-          tar -czvf "build/${ARCHIVE_NAME}" \
-            --exclude='.git' \
-            --exclude='build' \
-            --exclude='*.nro' \
-            --exclude='.github' \
-            source/ \
-            include/ \
-            res/ \
-            CMakeLists.txt \
-            dependencies.json \
-            icon.jpg \
-            LICENSE \
-            README.md
-          
-          ls -lh "build/${ARCHIVE_NAME}"
-          echo "source_archive=${ARCHIVE_NAME}" >> $GITHUB_OUTPUT
-        id: source_archive
+          tar -czvf "build/${{ steps.version.outputs.source_archive }}" \
+            --exclude='.git' --exclude='build' --exclude='*.nro' --exclude='.github' \
+            source/ include/ res/ CMakeLists.txt dependencies.json icon.jpg LICENSE README.md
 
       - name: Create build archive
         if: ${{ !env.ACT || env.CREATE_BUNDLE == 'true' }}
         run: |
-          VERSION="${{ steps.version.outputs.version }}"
-          VERSION_DASHED=$(echo "${VERSION}" | tr '.' '-')
-          ARCHIVE_NAME="NX-Shell-v${VERSION_DASHED}-build.tar.gz"
-          
-          # Archive entire repository after build (source + all generated files)
-          # Create archive in /tmp first to avoid "file changed as we read it" error
-          tar -czvf "/tmp/${ARCHIVE_NAME}" \
-            --exclude='.git' \
-            --exclude='*.tar.gz' \
-            .
-          
-          mv "/tmp/${ARCHIVE_NAME}" "build/${ARCHIVE_NAME}"
-          ls -lh "build/${ARCHIVE_NAME}"
-          echo "build_archive=${ARCHIVE_NAME}" >> $GITHUB_OUTPUT
-        id: build_archive
+          tar -czvf "/tmp/${{ steps.version.outputs.build_archive }}" --exclude='.git' --exclude='*.tar.gz' .
+          mv "/tmp/${{ steps.version.outputs.build_archive }}" build/
 
       - name: Upload NRO artifact
         uses: actions/upload-artifact@v4
@@ -178,7 +166,7 @@ jobs:
         if: ${{ !env.ACT }}
         with:
           name: NX-Shell-source
-          path: build/${{ steps.source_archive.outputs.source_archive }}
+          path: build/${{ steps.version.outputs.source_archive }}
           if-no-files-found: error
 
       - name: Upload build archive artifact
@@ -186,7 +174,7 @@ jobs:
         if: ${{ !env.ACT }}
         with:
           name: NX-Shell-build
-          path: build/${{ steps.build_archive.outputs.build_archive }}
+          path: build/${{ steps.version.outputs.build_archive }}
           if-no-files-found: error
 
   release:

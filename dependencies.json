@@ -47,7 +47,9 @@
   
   "system_packages": {
     "devkitpro": {
-      "description": "Nintendo Switch development toolchain (provided by devkitpro/devkita64 Docker image)",
+      "docker_image": "devkitpro/devkita64",
+      "docker_tag": "20251231",
+      "description": "Nintendo Switch development toolchain",
       "packages": [
         "switch-dev",
         "switch-freetype",
@@ -58,14 +60,17 @@
         "switch-libgif",
         "switch-jansson",
         "switch-glad",
-        "switch-minizip"
+        "switch-libarchive",
+        "switch-liblzma",
+        "switch-bzip2"
       ]
     }
   },
   
   "update_instructions": {
     "git_dependencies": "Update version/commit in this file (dependencies.json), then clean rebuild. CMake reads from here.",
-    "system_packages": "Update devkitpro Docker image or run 'dkp-pacman -Syu' locally"
+    "docker_image": "Update docker_tag in system_packages.devkitpro, then update build.yml container image reference",
+    "system_packages": "Run 'dkp-pacman -Syu' locally, or update docker_tag to a newer image"
   },
   
   "notes": [
