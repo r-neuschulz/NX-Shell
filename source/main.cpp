@@ -365,6 +365,8 @@ int main(int argc, char* argv[]) {
     // Record startup begin time
     s_startup_begin_tick = armGetSystemTick();
     Log::Debug("[TIMING] ========== STARTUP BEGIN ==========\n");
+    Log::Debug("[VERSION] %s (NX_SHELL_RELEASE_BUILD=%d, commit=%s)\n", 
+               NX_SHELL_VERSION_STR, NX_SHELL_RELEASE_BUILD, GIT_COMMIT_HASH);
 
     // Set application path from argv (homebrew launcher passes NRO path in argv[0])
     Services::SetApplicationPath(argc, argv);

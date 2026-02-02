@@ -40,6 +40,31 @@ if(NOT DEFINED GITHUB_REPO_NAME)
 endif()
 message(STATUS "Update check repository: ${GITHUB_REPO_OWNER}/${GITHUB_REPO_NAME}")
 
+# Release build flag (set by CI for release builds, defaults to OFF for dev builds)
+option(RELEASE_BUILD "Mark this as a release build (no -dev suffix)" OFF)
+
+# Get git commit hash for dev builds
+set(GIT_COMMIT_HASH "unknown")
+find_package(Git QUIET)
+if(GIT_FOUND)
+    execute_process(
+        COMMAND ${GIT_EXECUTABLE} rev-parse --short=7 HEAD
+        WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}
+        OUTPUT_VARIABLE GIT_COMMIT_HASH
+        OUTPUT_STRIP_TRAILING_WHITESPACE
+        ERROR_QUIET
+    )
+endif()
+
+# Set explicit 0/1 value for compile definition (avoids generator expression issues)
+if(RELEASE_BUILD)
+    set(NX_SHELL_RELEASE_BUILD_VALUE 1)
+    message(STATUS "Build type: RELEASE (NX_SHELL_RELEASE_BUILD=1)")
+else()
+    set(NX_SHELL_RELEASE_BUILD_VALUE 0)
+    message(STATUS "Build type: DEVELOPMENT (NX_SHELL_RELEASE_BUILD=0, commit: ${GIT_COMMIT_HASH})")
+endif()
+
 #---------------------------------------------------------------------------------
 # Project Configuration
 #---------------------------------------------------------------------------------
@@ -289,6 +314,9 @@ target_compile_definitions(${PROJECT_NAME}.elf PRIVATE
     VERSION_MINOR=${PROJECT_VERSION_MINOR}
     VERSION_MICRO=${PROJECT_VERSION_PATCH}
     VERSION_STRING="${APP_VERSION}"
+    # Build type: NX_SHELL_RELEASE_BUILD=1 for releases, 0 for dev builds
+    NX_SHELL_RELEASE_BUILD=${NX_SHELL_RELEASE_BUILD_VALUE}
+    GIT_COMMIT_HASH="${GIT_COMMIT_HASH}"
     # GitHub repository for update checks (injected at build time)
     GITHUB_REPO_OWNER="${GITHUB_REPO_OWNER}"
     GITHUB_REPO_NAME="${GITHUB_REPO_NAME}"
@@ -338,7 +366,7 @@ target_link_libraries(${PROJECT_NAME}.elf PRIVATE
     glad EGL glapi drm_nouveau
     usbhsfs lwext4 ntfs-3g
     nsp
-    archive lzma bz2
+    archive lzma bz2 lz4 zstd
     nx m z
 )
 

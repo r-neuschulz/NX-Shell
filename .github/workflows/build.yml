@@ -128,12 +128,20 @@ jobs:
           echo "build_archive=${BUILD_ARCHIVE}" >> $GITHUB_OUTPUT
           echo "cmake_version_flag=-DPROJECT_VERSION_OVERRIDE=${VERSION}" >> $GITHUB_OUTPUT
           
+          # Release builds don't show -dev suffix
+          if [ "${IS_RELEASE}" = "true" ]; then
+            echo "cmake_release_flag=-DRELEASE_BUILD=ON" >> $GITHUB_OUTPUT
+          else
+            echo "cmake_release_flag=" >> $GITHUB_OUTPUT
+          fi
+          
           echo "Build: version=${VERSION}, nro=${NRO_FILENAME}, release=${IS_RELEASE}"
 
       - name: Configure CMake
         run: |
           cmake -B build -DCMAKE_BUILD_TYPE=Release \
             ${{ steps.version.outputs.cmake_version_flag }} \
+            ${{ steps.version.outputs.cmake_release_flag }} \
             -DGITHUB_REPO_OWNER=${{ steps.version.outputs.repo_owner }} \
             -DGITHUB_REPO_NAME=${{ steps.version.outputs.repo_name }}
 
