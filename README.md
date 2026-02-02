@@ -17,9 +17,10 @@ Inspired by [LineageOS's file manager](https://github.com/LineageOS/android_pack
 - File operations: copy, move, delete, rename, create (with Switch keyboard).
 - File properties (size, created/modified/accessed timestamps) and sorting (name, date, size).
 - Image viewer with caching (BMP, GIF, JPG, PGM, PPM, PNG, PSD, TGA, WEBP).
-- Installs NSP and NRO files.
-- Archive extraction (only ZIP support).
-- File Preview using hex and plain text (all file types).
+- Installs NSP and NRO files to the homescreen.
+- Archive extraction (ZIP, RAR, 7Z, TAR, TAR.GZ, TAR.BZ2, TAR.XZ, TAR.LZMA, GZ, BZ2, XZ, LZMA).
+- Text viewer with syntax-aware file detection (TXT, LOG, MD, RST, JSON, XML, YAML, YML, CFG, INI, CONF, TOML, ENV, and more).
+- Hex preview for binary files (BIN, DAT, ROM, EXE, DLL, ELF, and more).
 - Device browsing: safe, user, system, USB.
 - Language support: Japanese, English, French, German, Italian, Spanish, Simplified/Traditional Chinese, Korean, Dutch, Portuguese, Russian.
 - Automatic docked (1080p) or handheld (720p) rendering detection with configurable overrides.
@@ -30,13 +31,13 @@ Inspired by [LineageOS's file manager](https://github.com/LineageOS/android_pack
 
 ## Prerequisites
 
-Follow the [devkitPro Getting Started guide](https://devkitpro.org/wiki/Getting_Started) to install the toolchain for your platform. Then install the required Switch packages:
+Follow the [devkitPro Getting Started guide](https://devkitpro.org/wiki/Getting_Started) to install the toolchain for your platform. Then install the required Switch packages listed in [`dependencies.json`](dependencies.json) under `system_packages.devkitpro.packages`:
 
 ```bash
-sudo dkp-pacman -S switch-dev switch-freetype switch-curl switch-libpng switch-libjpeg-turbo switch-libwebp switch-libgif switch-jansson switch-glad switch-minizip
+sudo dkp-pacman -S switch-dev switch-freetype switch-curl switch-libpng switch-libjpeg-turbo switch-libwebp switch-libgif switch-jansson switch-glad switch-libarchive switch-liblzma switch-bzip2
 ```
 
-> **Note:** `switch-dev` is a meta-package that installs the base toolchain (devkitA64, libnx, switch-tools). The remaining packages are additional libraries required by NX-Shell.
+> **Note:** `switch-dev` is a meta-package that installs the base toolchain (devkitA64, libnx, switch-tools). The remaining packages are additional libraries required by NX-Shell. See [`dependencies.json`](dependencies.json) for the authoritative list used by the CI workflow.
 
 ## Build
 
@@ -59,6 +60,7 @@ Replace `<SWITCH_IP>` with your Switch's IP address. The IP is shown when using 
 
 # Credits:
 
+- [Joel16](https://github.com/joel16) for the original [NX-Shell](https://github.com/joel16/NX-Shell).
 - [PreetiSketch](https://www.youtube.com/channel/UCxg-ATCKERNRSG87bgjhoqA) for the banner.
 - [Omar Cornut](https://github.com/ocornut) and contributors for [Dear ImGui](https://github.com/ocornut/imgui).
 - [devkitPro](https://devkitpro.org/) maintainers and contributors for [libnx](https://github.com/switchbrew/libnx), [devkitA64](https://devkitpro.org/wiki/devkitA64), and many other packages used by this project.
