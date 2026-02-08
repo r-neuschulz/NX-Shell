@@ -48,7 +48,7 @@ namespace Config {
             if (R_SUCCEEDED(setGetSystemLanguage(&lang_code)) &&
                 R_SUCCEEDED(setMakeLanguage(lang_code, &lang))) {
                 int idx = static_cast<int>(lang);
-                if (idx >= 0 && idx <= 11) resolved = idx;
+                if (idx >= 0 && idx <= 19) resolved = idx;
                 else resolved = 1;  // English fallback
             } else {
                 resolved = 1;  // English fallback
