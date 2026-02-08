@@ -2292,17 +2292,407 @@ static const char *strings_tw[] {
     "歸檔提取失敗。"
 };
 
+// Romanian
+static const char *strings_ro[] {
+    "OK",
+    "Anulare",
+
+    "Opțiuni",
+    "Selectare tot",
+    "Deselectare tot",
+    "Proprietăți",
+    "Redenumire",
+    "Dosar nou",
+    "Fișier nou",
+    "Copiere",
+    "Nu se poate copia un dosar în el însuși.",
+    "Mutare",
+    "Lipire",
+    "Ștergere",
+    "Setare bit arhivă",
+    "Introduceți numele",
+    "Introduceți numele dosarului",
+    "Introduceți numele fișierului",
+    "Copiere:",
+
+    "Nume: ",
+    "Dimensiune: ",
+    "Creat: ",
+    "Modificat: ",
+    "Accesat: ",
+    "Lățime: ",
+    "Înălțime: ",
+
+    "Această acțiune nu poate fi anulată.",
+    "Doriți să ștergeți următoarele:",
+    "Doriți să ștergeți ",
+
+    "Extragere arhivă",
+    "Această acțiune poate dura.",
+    "Doriți să extrageți ",
+    "Extragere:",
+
+    "Setări",
+    "Setări de sortare",
+    "Limbă",
+    "USB",
+    "Deconectare dispozitive USB",
+    "Vizualizator imagini",
+    "Opțiuni dezvoltator",
+    "Rezoluție ecran",
+    " Auto",
+    " 1080p",
+    " 720p",
+    "Despre",
+    "Actualizare",
+    "Componente terțe",
+    "Verificare actualizări",
+    " Afișare nume fișier",
+    " Deschide imaginile pe ecran complet",
+    " Activare jurnale",
+    "versiune",
+    "Autor",
+    "Banner",
+    "Licență",
+
+    "Statistici avansate",
+    " Afișare suprapunere performanță",
+
+    // Stats overlay strings
+    "Rezoluție: %dx%d",
+    "FPS: %.1f (%.2fms)",
+    "CPU: %u MHz",
+    "GPU: %u MHz",
+    "RAM: %.1f/%.1f MB",
+    "Temp SOC: %.1f°C",
+    "Temp suprafață: %.1f°C",
+    "N/D",
+
+    "Culoare accent",
+    "Resetare",
+
+    "Temă",
+    "Auto",
+    "Întunecat",
+    "Luminos",
+
+    "Actualizare",
+    "Nu s-a putut conecta la rețea.",
+    "O actualizare este disponibilă.",
+    "Doriți să descărcați și să instalați NX-Shell versiunea ",
+    "Actualizarea a fost realizată cu succes.",
+    "Vă rugăm să reporniți aplicația.",
+    "Aveți ultima versiune.",
+
+    "Doriți să deconectați toate dispozitivele USB conectate?",
+    "Dispozitivul USB poate fi acum îndepărtat în siguranță.",
+
+    "Numele nu poate fi gol.",
+
+    "Deschide",
+    "Înapoi",
+    "Selectare",
+    "Opțiuni",
+    "Unitate",
+    "Ieșire",
+
+    "Nume fișier",
+    "Dispozitiv",
+    "Dimensiune",
+    "Modificat",
+    "Arhivat",
+    "Selectare dispozitiv",
+
+    "Detalii",
+    "Confirmare",
+    "Anulare",
+
+    "Fișiere",
+    "Setări",
+    "Despre",
+
+    // Image/Text Viewer Hints
+    "Anterior",
+    "Următor",
+    "Mărire",
+    "Micșorare",
+    "Proprietăți",
+    "Ecran complet",
+    "Apăsați ZR pentru a ieși din ecranul complet",
+
+    // Reset Settings
+    "Resetare setări",
+    "Aceasta va reseta toate setările la valorile implicite. Sunteți sigur?",
+    "Resetare implicite",
+
+    // Replace Confirmation
+    "Fișierul există deja",
+    "Un fișier cu acest nume există deja. Doriți să îl înlocuiți?",
+    "Înlocuire",
+
+    // Multi-file Replace Confirmation
+    "%zu din %zu fișiere există deja la destinație.",
+    "Înlocuire tot",
+    "Omitere existente",
+
+    // Hex Mode
+    "Hex",
+    "Deschide fișier",
+    "Acest fișier poate conține date binare. Cum doriți să îl deschideți?",
+    "Deschide ca text",
+    "Deschide ca hex",
+
+    // Button Style
+    "Stil butoane",
+    " Colorat",
+    " Mono",
+    " Accent",
+
+    // Restart button
+    "Repornire",
+
+    // Error messages
+    "Fișierul este gol (0 KB)",
+
+    // NSP File Installation
+    "Instalare NSP",
+    "Doriți să instalați acest fișier NSP?\n\nAvertisment: Instalarea NSP-urilor poate duce la o interdicție.",
+    "NSP instalat cu succes.",
+    "Instalarea NSP a eșuat.",
+    "Instalarea NSP nu este disponibilă în modul applet.",
+
+    // NRO Forwarder NSP Creation
+    "Creare NSP de redirecționare",
+    "Creați un NSP de redirecționare pentru acest NRO?\n\nAceasta va genera un NSP instalabil care lansează acest homebrew.",
+    "NSP de redirecționare creat cu succes.",
+    "Crearea NSP de redirecționare a eșuat.",
+    "Fișierul de chei nu a fost găsit la sdmc:/switch/prod.keys",
+    "Se construiește NSP de redirecționare...",
+    "Creare redirecționare",
+
+    // Install button
+    "Instalare",
+
+    // Install popup
+    "Avertisment: Instalarea pe ecranul principal\npoate duce la o interdicție.",
+    "Nu mai afișa",
+
+    // Success/Error Toasts
+    "Ștergerea a fost realizată cu succes.",
+    "Arhiva a fost extrasă cu succes.",
+    "Extragerea arhivei a eșuat."
+};
+
+// Turkish
+static const char *strings_tr[] {
+    "Tamam",
+    "İptal",
+
+    "Seçenekler",
+    "Tümünü Seç",
+    "Tümünü Temizle",
+    "Özellikler",
+    "Yeniden Adlandır",
+    "Yeni Klasör",
+    "Yeni Dosya",
+    "Kopyala",
+    "Bir klasör kendisine kopyalanamaz.",
+    "Taşı",
+    "Yapıştır",
+    "Sil",
+    "Arşiv Bitini Ayarla",
+    "Ad girin",
+    "Klasör adı girin",
+    "Dosya adı girin",
+    "Kopyalanıyor:",
+
+    "Ad: ",
+    "Boyut: ",
+    "Oluşturulma: ",
+    "Değiştirilme: ",
+    "Erişilme: ",
+    "Genişlik: ",
+    "Yükseklik: ",
+
+    "Bu işlem geri alınamaz.",
+    "Aşağıdakileri silmek istiyor musunuz:",
+    "Silmek istiyor musunuz: ",
+
+    "Arşivi çıkar",
+    "Bu işlem biraz zaman alabilir.",
+    "Çıkarmak istiyor musunuz: ",
+    "Çıkarılıyor:",
+
+    "Ayarlar",
+    "Sıralama Ayarları",
+    "Dil",
+    "USB",
+    "USB cihazlarını çıkar",
+    "Resim Görüntüleyici",
+    "Geliştirici Seçenekleri",
+    "Ekran Çözünürlüğü",
+    " Otomatik",
+    " 1080p",
+    " 720p",
+    "Hakkında",
+    "Güncelleme",
+    "3. Parti Bileşenler",
+    "Güncellemeleri Kontrol Et",
+    " Dosya adını göster",
+    " Resimleri tam ekranda aç",
+    " Günlükleri etkinleştir",
+    "sürüm",
+    "Yazar",
+    "Afiş",
+    "Lisans",
+
+    "Gelişmiş istatistikler",
+    " Performans katmanını göster",
+
+    // Stats overlay strings
+    "Çözünürlük: %dx%d",
+    "FPS: %.1f (%.2fms)",
+    "CPU: %u MHz",
+    "GPU: %u MHz",
+    "RAM: %.1f/%.1f MB",
+    "SOC Sıcaklık: %.1f°C",
+    "Yüzey Sıcaklık: %.1f°C",
+    "Yok",
+
+    "Vurgu Rengi",
+    "Sıfırla",
+
+    "Tema",
+    "Otomatik",
+    "Koyu",
+    "Açık",
+
+    "Güncelleme",
+    "Ağa bağlanılamadı.",
+    "Bir güncelleme mevcut.",
+    "NX-Shell sürümünü indirip yüklemek istiyor musunuz: ",
+    "Güncelleme başarılı oldu.",
+    "Lütfen uygulamayı yeniden başlatın.",
+    "En son sürümdesiniz.",
+
+    "Bağlı tüm USB cihazlarını çıkarmak istiyor musunuz?",
+    "USB cihazı artık güvenle çıkarılabilir.",
+
+    "Ad boş olamaz.",
+
+    "Aç",
+    "Geri",
+    "Seç",
+    "Seçenekler",
+    "Sürücü",
+    "Çıkış",
+
+    "Dosya Adı",
+    "Cihaz",
+    "Boyut",
+    "Değiştirilme",
+    "Arşivlenmiş",
+    "Cihaz Seç",
+
+    "Ayrıntılar",
+    "Onayla",
+    "İptal",
+
+    "Dosyalar",
+    "Ayarlar",
+    "Hakkında",
+
+    // Image/Text Viewer Hints
+    "Önceki",
+    "Sonraki",
+    "Yakınlaştır",
+    "Uzaklaştır",
+    "Özellikler",
+    "Tam Ekran",
+    "Tam ekrandan çıkmak için ZR'ye basın",
+
+    // Reset Settings
+    "Ayarları Sıfırla",
+    "Tüm ayarlar varsayılana sıfırlanacak. Emin misiniz?",
+    "Varsayılanlara Sıfırla",
+
+    // Replace Confirmation
+    "Dosya Zaten Mevcut",
+    "Bu adda bir dosya zaten mevcut. Değiştirmek istiyor musunuz?",
+    "Değiştir",
+
+    // Multi-file Replace Confirmation
+    "%zu / %zu dosya hedefte zaten mevcut.",
+    "Tümünü Değiştir",
+    "Mevcut Olanları Atla",
+
+    // Hex Mode
+    "Hex",
+    "Dosya Aç",
+    "Bu dosya ikili veri içerebilir. Nasıl açmak istersiniz?",
+    "Metin Olarak Aç",
+    "Hex Olarak Aç",
+
+    // Button Style
+    "Düğme Stili",
+    " Renkli",
+    " Tek Renk",
+    " Vurgu",
+
+    // Restart button
+    "Yeniden Başlat",
+
+    // Error messages
+    "Dosya boş (0 KB)",
+
+    // NSP File Installation
+    "NSP Yükle",
+    "Bu NSP dosyasını yüklemek istiyor musunuz?\n\nUyarı: NSP yüklemek yasaklanmaya neden olabilir.",
+    "NSP başarıyla yüklendi.",
+    "NSP yüklenemedi.",
+    "Applet modunda NSP yükleme kullanılamaz.",
+
+    // NRO Forwarder NSP Creation
+    "Yönlendirici NSP Oluştur",
+    "Bu NRO için yönlendirici NSP oluşturmak istiyor musunuz?\n\nBu, homebrew'u başlatan yüklenebilir bir NSP oluşturacaktır.",
+    "Yönlendirici NSP başarıyla oluşturuldu.",
+    "Yönlendirici NSP oluşturulamadı.",
+    "Anahtar dosyası bulunamadı: sdmc:/switch/prod.keys",
+    "Yönlendirici NSP oluşturuluyor...",
+    "Yönlendirici Oluştur",
+
+    // Install button
+    "Yükle",
+
+    // Install popup
+    "Uyarı: Ana ekrana yükleme\nyasaklanmaya neden olabilir.",
+    "Tekrar gösterme",
+
+    // Success/Error Toasts
+    "Silme başarıyla tamamlandı.",
+    "Arşiv başarıyla çıkarıldı.",
+    "Arşiv çıkarılamadı."
+};
+
 const char **strings[Lang::Max] = {
-    strings_jp,
-    strings_en,
-    strings_fr,
-    strings_de,
-    strings_it,
-    strings_es,
-    strings_sc,
-    strings_ko,
-    strings_nl,
-    strings_pt,
-    strings_ru,
-    strings_tw
+    strings_jp,      //  0: Japanese          (SetLanguage_JA)
+    strings_en,      //  1: English (US)      (SetLanguage_ENUS)
+    strings_fr,      //  2: French            (SetLanguage_FR)
+    strings_de,      //  3: German            (SetLanguage_DE)
+    strings_it,      //  4: Italian           (SetLanguage_IT)
+    strings_es,      //  5: Spanish           (SetLanguage_ES)
+    strings_sc,      //  6: Chinese Simplified(SetLanguage_ZHCN)
+    strings_ko,      //  7: Korean            (SetLanguage_KO)
+    strings_nl,      //  8: Dutch             (SetLanguage_NL)
+    strings_pt,      //  9: Portuguese        (SetLanguage_PT)
+    strings_ru,      // 10: Russian           (SetLanguage_RU)
+    strings_tw,      // 11: Chinese Trad.     (SetLanguage_ZHTW)
+    strings_en,      // 12: English (GB)      (SetLanguage_ENGB)
+    strings_fr,      // 13: French (Canada)   (SetLanguage_FRCA)
+    strings_es,      // 14: Spanish (LatAm)   (SetLanguage_ES419)
+    strings_sc,      // 15: Chinese Simp. Hans(SetLanguage_ZHHANS)
+    strings_tw,      // 16: Chinese Trad. Hant(SetLanguage_ZHHANT)
+    strings_pt,      // 17: Portuguese (BR)   (SetLanguage_PTBR)
+    strings_ro,      // 18: Romanian          (custom)
+    strings_tr       // 19: Turkish           (custom)
 };
