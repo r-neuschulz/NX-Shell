@@ -2,7 +2,7 @@ name: Build NX-Shell
 
 on:
   push:
-    branches: [master, main]
+    branches: [master, main, 'renovate/**']
     tags:
       - 'v*.*.*'
   pull_request:
