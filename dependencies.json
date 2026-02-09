@@ -48,8 +48,8 @@
     },
     "tinyxml2": {
       "url": "https://github.com/leethomason/tinyxml2.git",
-      "version": "10.0.0",
-      "tag": "10.0.0",
+      "version": "11.0.0",
+      "tag": "11.0.0",
       "description": "Lightweight C++ XML parser for EPUB structure files (container.xml, OPF, NCX)",
       "managed_by": "FetchContent",
       "location": "build/_deps/tinyxml2-src"
