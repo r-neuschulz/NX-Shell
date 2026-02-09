@@ -91,7 +91,7 @@ set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -specs=${DEVKITPRO}/libnx/
 file(READ "${CMAKE_CURRENT_SOURCE_DIR}/dependencies.json" DEPS_JSON)
 
 # Extract versions using CMake's JSON parsing (requires CMake 3.19+)
-string(JSON IMGUI_VERSION GET ${DEPS_JSON} "git_dependencies" "imgui" "version")
+string(JSON IMGUI_VERSION GET ${DEPS_JSON} "git_dependencies" "imgui" "tag")
 string(JSON LIBNSBMP_COMMIT GET ${DEPS_JSON} "git_dependencies" "libnsbmp" "commit")
 string(JSON STB_COMMIT GET ${DEPS_JSON} "git_dependencies" "stb" "commit")
 string(JSON USBHSFS_VERSION GET ${DEPS_JSON} "git_dependencies" "libusbhsfs" "version")

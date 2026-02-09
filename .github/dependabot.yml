@@ -1,0 +1,17 @@
+# Dependabot configuration for GitHub Actions
+# Monitors .github/workflows/ for outdated action versions (e.g., actions/checkout@v4)
+# Docs: https://docs.github.com/en/code-security/dependabot/dependabot-version-updates
+
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+    commit-message:
+      prefix: "ci"
+    labels:
+      - "dependencies"
+      - "github-actions"
+    open-pull-requests-limit: 5

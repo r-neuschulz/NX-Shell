@@ -1,0 +1,58 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "labels": ["dependencies"],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "description": "Update tag-based git dependencies in dependencies.json (imgui, tinyxml2, litehtml)",
+      "fileMatch": ["^dependencies\\.json$"],
+      "matchStrings": [
+        "\"url\":\\s*\"https://github\\.com/(?<depName>[^\"]+?)\\.git\"[^}]*?\"tag\":\\s*\"(?<currentValue>[^\"]+)\""
+      ],
+      "datasourceTemplate": "github-tags"
+    },
+    {
+      "customType": "regex",
+      "description": "Update release-based dependencies in dependencies.json (libusbhsfs)",
+      "fileMatch": ["^dependencies\\.json$"],
+      "matchStrings": [
+        "\"url\":\\s*\"https://github\\.com/(?<depName>[^\"]+?)/releases\"[^}]*?\"version\":\\s*\"(?<currentValue>[^\"]+)\""
+      ],
+      "datasourceTemplate": "github-releases",
+      "extractVersionTemplate": "^v?(?<version>.+)$"
+    },
+    {
+      "customType": "regex",
+      "description": "Track commit-pinned dependencies for new commits (libnsbmp, stb, nspmini)",
+      "fileMatch": ["^dependencies\\.json$"],
+      "matchStrings": [
+        "\"url\":\\s*\"(?<packageName>https://github\\.com/(?<depName>[^\"]+?)\\.git)\"[^}]*?\"branch\":\\s*\"(?<currentValue>[^\"]+)\"[^}]*?\"commit\":\\s*\"(?<currentDigest>[a-f0-9]+)\""
+      ],
+      "datasourceTemplate": "git-refs"
+    },
+    {
+      "customType": "regex",
+      "description": "Update devkitPro Docker image tag in dependencies.json",
+      "fileMatch": ["^dependencies\\.json$"],
+      "matchStrings": [
+        "\"docker_image\":\\s*\"(?<depName>[^\"]+)\"[^}]*?\"docker_tag\":\\s*\"(?<currentValue>[^\"]+)\""
+      ],
+      "datasourceTemplate": "docker"
+    }
+  ],
+  "packageRules": [
+    {
+      "description": "Group all dependency updates from dependencies.json",
+      "matchFileNames": ["dependencies.json"],
+      "groupName": "NX-Shell dependencies",
+      "groupSlug": "nx-shell-deps"
+    },
+    {
+      "description": "Auto-merge minor/patch GitHub Actions updates",
+      "matchManagers": ["github-actions"],
+      "matchUpdateTypes": ["minor", "patch"],
+      "automerge": true
+    }
+  ]
+}

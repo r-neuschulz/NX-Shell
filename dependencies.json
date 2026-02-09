@@ -14,6 +14,7 @@
     },
     "libnsbmp": {
       "url": "https://github.com/netsurf-browser/libnsbmp.git",
+      "branch": "master",
       "commit": "ea063c9f46acb43e90208da14073332b505ef7e7",
       "description": "NetSurf bitmap decoder library",
       "managed_by": "FetchContent",
@@ -22,6 +23,7 @@
     },
     "stb": {
       "url": "https://github.com/nothings/stb.git",
+      "branch": "master",
       "commit": "f1c79c02822848a9bed4315b12c8c8f3761e1296",
       "description": "stb single-file public domain libraries (for stb_image.h)",
       "managed_by": "FetchContent",
@@ -38,6 +40,7 @@
     },
     "nspmini": {
       "url": "https://github.com/StarDustCFW/nspmini.git",
+      "branch": "master",
       "commit": "7564d25",
       "description": "Minimal NSP installation library for Nintendo Switch",
       "managed_by": "FetchContent",
