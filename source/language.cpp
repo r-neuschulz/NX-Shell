@@ -190,7 +190,14 @@ static const char *strings_jp[] {
     // Success/Error Toasts
     "削除が完了しました。",
     "アーカイブの展開が完了しました。",
-    "アーカイブの展開に失敗しました。"
+    "アーカイブの展開に失敗しました。",
+
+    // Text/Hex Editor
+    "Edit",
+    "Save",
+    "Edit Mode",
+    "ファイルが保存されました。",
+    "ファイルの保存に失敗しました。"
 };
 
 static const char *strings_en[] {
@@ -380,7 +387,14 @@ static const char *strings_en[] {
     // Success/Error Toasts
     "Delete completed successfully.",
     "Archive extracted successfully.",
-    "Failed to extract archive."
+    "Failed to extract archive.",
+
+    // Text/Hex Editor
+    "Edit",
+    "Save",
+    "Edit Mode",
+    "File saved successfully.",
+    "Failed to save file."
 };
 
 // French (need to check and verify)
@@ -571,7 +585,14 @@ static const char *strings_fr[] {
     // Success/Error Toasts
     "Suppression terminée avec succès.",
     "Archive extraite avec succès.",
-    "Échec de l'extraction de l'archive."
+    "Échec de l'extraction de l'archive.",
+
+    // Text/Hex Editor
+    "Edit",
+    "Save",
+    "Edit Mode",
+    "File saved successfully.",
+    "Failed to save file."
 };
 
 static const char *strings_de[] {
@@ -761,7 +782,14 @@ static const char *strings_de[] {
     // Success/Error Toasts
     "Löschen erfolgreich abgeschlossen.",
     "Archiv erfolgreich extrahiert.",
-    "Archiv konnte nicht extrahiert werden."
+    "Archiv konnte nicht extrahiert werden.",
+
+    // Text/Hex Editor
+    "Edit",
+    "Save",
+    "Edit Mode",
+    "File saved successfully.",
+    "Failed to save file."
 };
 
 // Italian (need to check and verify)
@@ -952,7 +980,14 @@ static const char *strings_it[] {
     // Success/Error Toasts
     "Eliminazione completata con successo.",
     "Archivio estratto con successo.",
-    "Impossibile estrarre l'archivio."
+    "Impossibile estrarre l'archivio.",
+
+    // Text/Hex Editor
+    "Edit",
+    "Save",
+    "Edit Mode",
+    "File saved successfully.",
+    "Failed to save file."
 };
 
 //  Spanish
@@ -1143,7 +1178,14 @@ static const char *strings_es[] {
     // Success/Error Toasts
     "Eliminación completada con éxito.",
     "Archivo extraído con éxito.",
-    "Error al extraer el archivo."
+    "Error al extraer el archivo.",
+
+    // Text/Hex Editor
+    "Edit",
+    "Save",
+    "Edit Mode",
+    "File saved successfully.",
+    "Failed to save file."
 };
 
 // Simplified Chinese ("Chinese")
@@ -1334,7 +1376,14 @@ static const char *strings_sc[] {
     // Success/Error Toasts
     "删除成功完成。",
     "归档提取成功。",
-    "归档提取失败。"
+    "归档提取失败。",
+
+    // Text/Hex Editor
+    "Edit",
+    "Save",
+    "Edit Mode",
+    "File saved successfully.",
+    "Failed to save file."
 };
 
 // Korean (need to check and verify)
@@ -1525,7 +1574,14 @@ static const char *strings_ko[] {
     // Success/Error Toasts
     "삭제가 성공적으로 완료되었습니다.",
     "아카이브 추출 성공.",
-    "아카이브 추출 실패."
+    "아카이브 추출 실패.",
+
+    // Text/Hex Editor
+    "Edit",
+    "Save",
+    "Edit Mode",
+    "File saved successfully.",
+    "Failed to save file."
 };
 
 // Dutch (need to check and verify)
@@ -1716,7 +1772,14 @@ static const char *strings_nl[] {
     // Success/Error Toasts
     "Verwijderen succesvol voltooid.",
     "Archief succesvol uitgepakt.",
-    "Archief uitpakken mislukt."
+    "Archief uitpakken mislukt.",
+
+    // Text/Hex Editor
+    "Edit",
+    "Save",
+    "Edit Mode",
+    "File saved successfully.",
+    "Failed to save file."
 };
 
 // Portuguese
@@ -1907,7 +1970,14 @@ static const char *strings_pt[] {
     // Success/Error Toasts
     "Exclusão concluída com sucesso.",
     "Arquivo extraído com sucesso.",
-    "Falha ao extrair o arquivo."
+    "Falha ao extrair o arquivo.",
+
+    // Text/Hex Editor
+    "Edit",
+    "Save",
+    "Edit Mode",
+    "File saved successfully.",
+    "Failed to save file."
 };
 
 // Russian (need to check and verify)
@@ -2098,7 +2168,14 @@ static const char *strings_ru[] {
     // Success/Error Toasts
     "Удаление успешно завершено.",
     "Архив успешно извлечён.",
-    "Не удалось извлечь архив."
+    "Не удалось извлечь архив.",
+
+    // Text/Hex Editor
+    "Edit",
+    "Save",
+    "Edit Mode",
+    "File saved successfully.",
+    "Failed to save file."
 };
 
 // Traditional Chinese ("Taiwanese")
@@ -2289,7 +2366,14 @@ static const char *strings_tw[] {
     // Success/Error Toasts
     "刪除成功完成。",
     "歸檔提取成功。",
-    "歸檔提取失敗。"
+    "歸檔提取失敗。",
+
+    // Text/Hex Editor
+    "Edit",
+    "Save",
+    "Edit Mode",
+    "File saved successfully.",
+    "Failed to save file."
 };
 
 // Romanian
@@ -2480,7 +2564,14 @@ static const char *strings_ro[] {
     // Success/Error Toasts
     "Ștergerea a fost realizată cu succes.",
     "Arhiva a fost extrasă cu succes.",
-    "Extragerea arhivei a eșuat."
+    "Extragerea arhivei a eșuat.",
+
+    // Text/Hex Editor
+    "Edit",
+    "Save",
+    "Edit Mode",
+    "File saved successfully.",
+    "Failed to save file."
 };
 
 // Turkish
@@ -2671,7 +2762,14 @@ static const char *strings_tr[] {
     // Success/Error Toasts
     "Silme başarıyla tamamlandı.",
     "Arşiv başarıyla çıkarıldı.",
-    "Arşiv çıkarılamadı."
+    "Arşiv çıkarılamadı.",
+
+    // Text/Hex Editor
+    "Edit",
+    "Save",
+    "Edit Mode",
+    "File saved successfully.",
+    "Failed to save file."
 };
 
 const char **strings[Lang::Max] = {

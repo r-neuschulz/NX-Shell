@@ -29,6 +29,7 @@ namespace ImageViewer {
 
 namespace TextReader {
     bool LoadFile(App &app, const std::string &path, bool restore_offset = false);
+    bool SaveFile(App &app);
     void Clear(App &app);
     bool HandleScroll(App &app, int index, bool restore_offset = false);
     bool HandlePrev(App &app);
@@ -43,6 +44,18 @@ namespace TextReader {
     void SetHexMode(bool mode);
     void ToggleHexMode(void);
     const std::vector<unsigned char>& GetRawContent(void);
+    
+    bool IsEditMode(void);
+    void SetEditMode(bool mode);
+    void ToggleEditMode(void);
+}
+
+namespace EpubReader {
+    bool LoadFile(App &app, const std::string &path);
+    void Clear(App &app);
+    bool HandleScroll(App &app, int index);
+    void HandleControls(App &app, u64 &key, bool &properties);
+    void ToggleViewMode(App &app);
 }
 
 namespace Windows {
@@ -51,5 +64,6 @@ namespace Windows {
     void MainWindow(App &app, u64 &key, bool progress);
     void ImageViewer(App &app, bool &properties, bool &file_stat);
     void TextReader(App &app, bool &properties, bool &file_stat);
+    void EpubReaderWindow(App &app, bool &properties, bool &file_stat);
     int GetActiveTab(void);
 }

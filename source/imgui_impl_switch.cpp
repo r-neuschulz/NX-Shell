@@ -91,6 +91,10 @@ struct ImGui_ImplSwitch_Data {
     
     // Buttons pressed this frame
     u64 buttons_down = 0;
+    
+    // USB keyboard state
+    bool keyboard_initialized = false;
+    HidKeyboardState prev_keyboard_state = {};
 
     ImGui_ImplSwitch_Data() { std::memset((void*)this, 0, sizeof(*this)); }
 };
@@ -411,6 +415,189 @@ static u64 ImGui_ImplSwitch_UpdateGamepads(void) {
     return padGetButtonsDown(&bd->pad);
 }
 
+// Map HID keyboard keys to ImGuiKey values
+static ImGuiKey ImGui_ImplSwitch_HidKeyToImGuiKey(HidKeyboardKey key) {
+    switch (key) {
+        case HidKeyboardKey_A: return ImGuiKey_A;
+        case HidKeyboardKey_B: return ImGuiKey_B;
+        case HidKeyboardKey_C: return ImGuiKey_C;
+        case HidKeyboardKey_D: return ImGuiKey_D;
+        case HidKeyboardKey_E: return ImGuiKey_E;
+        case HidKeyboardKey_F: return ImGuiKey_F;
+        case HidKeyboardKey_G: return ImGuiKey_G;
+        case HidKeyboardKey_H: return ImGuiKey_H;
+        case HidKeyboardKey_I: return ImGuiKey_I;
+        case HidKeyboardKey_J: return ImGuiKey_J;
+        case HidKeyboardKey_K: return ImGuiKey_K;
+        case HidKeyboardKey_L: return ImGuiKey_L;
+        case HidKeyboardKey_M: return ImGuiKey_M;
+        case HidKeyboardKey_N: return ImGuiKey_N;
+        case HidKeyboardKey_O: return ImGuiKey_O;
+        case HidKeyboardKey_P: return ImGuiKey_P;
+        case HidKeyboardKey_Q: return ImGuiKey_Q;
+        case HidKeyboardKey_R: return ImGuiKey_R;
+        case HidKeyboardKey_S: return ImGuiKey_S;
+        case HidKeyboardKey_T: return ImGuiKey_T;
+        case HidKeyboardKey_U: return ImGuiKey_U;
+        case HidKeyboardKey_V: return ImGuiKey_V;
+        case HidKeyboardKey_W: return ImGuiKey_W;
+        case HidKeyboardKey_X: return ImGuiKey_X;
+        case HidKeyboardKey_Y: return ImGuiKey_Y;
+        case HidKeyboardKey_Z: return ImGuiKey_Z;
+        case HidKeyboardKey_D1: return ImGuiKey_1;
+        case HidKeyboardKey_D2: return ImGuiKey_2;
+        case HidKeyboardKey_D3: return ImGuiKey_3;
+        case HidKeyboardKey_D4: return ImGuiKey_4;
+        case HidKeyboardKey_D5: return ImGuiKey_5;
+        case HidKeyboardKey_D6: return ImGuiKey_6;
+        case HidKeyboardKey_D7: return ImGuiKey_7;
+        case HidKeyboardKey_D8: return ImGuiKey_8;
+        case HidKeyboardKey_D9: return ImGuiKey_9;
+        case HidKeyboardKey_D0: return ImGuiKey_0;
+        case HidKeyboardKey_Return: return ImGuiKey_Enter;
+        case HidKeyboardKey_Escape: return ImGuiKey_Escape;
+        case HidKeyboardKey_Backspace: return ImGuiKey_Backspace;
+        case HidKeyboardKey_Tab: return ImGuiKey_Tab;
+        case HidKeyboardKey_Space: return ImGuiKey_Space;
+        case HidKeyboardKey_Minus: return ImGuiKey_Minus;
+        case HidKeyboardKey_Plus: return ImGuiKey_Equal;
+        case HidKeyboardKey_OpenBracket: return ImGuiKey_LeftBracket;
+        case HidKeyboardKey_CloseBracket: return ImGuiKey_RightBracket;
+        case HidKeyboardKey_Backslash: return ImGuiKey_Backslash;
+        case HidKeyboardKey_Semicolon: return ImGuiKey_Semicolon;
+        case HidKeyboardKey_Quote: return ImGuiKey_Apostrophe;
+        case HidKeyboardKey_Tilde: return ImGuiKey_GraveAccent;
+        case HidKeyboardKey_Comma: return ImGuiKey_Comma;
+        case HidKeyboardKey_Period: return ImGuiKey_Period;
+        case HidKeyboardKey_Slash: return ImGuiKey_Slash;
+        case HidKeyboardKey_Delete: return ImGuiKey_Delete;
+        case HidKeyboardKey_LeftArrow: return ImGuiKey_LeftArrow;
+        case HidKeyboardKey_RightArrow: return ImGuiKey_RightArrow;
+        case HidKeyboardKey_UpArrow: return ImGuiKey_UpArrow;
+        case HidKeyboardKey_DownArrow: return ImGuiKey_DownArrow;
+        case HidKeyboardKey_Home: return ImGuiKey_Home;
+        case HidKeyboardKey_End: return ImGuiKey_End;
+        case HidKeyboardKey_PageUp: return ImGuiKey_PageUp;
+        case HidKeyboardKey_PageDown: return ImGuiKey_PageDown;
+        case HidKeyboardKey_LeftControl: return ImGuiKey_LeftCtrl;
+        case HidKeyboardKey_LeftShift: return ImGuiKey_LeftShift;
+        case HidKeyboardKey_LeftAlt: return ImGuiKey_LeftAlt;
+        case HidKeyboardKey_RightControl: return ImGuiKey_RightCtrl;
+        case HidKeyboardKey_RightShift: return ImGuiKey_RightShift;
+        case HidKeyboardKey_RightAlt: return ImGuiKey_RightAlt;
+        default: return ImGuiKey_None;
+    }
+}
+
+// Check if a specific key is pressed in the HID keyboard state
+static bool ImGui_ImplSwitch_IsKeyPressed(const HidKeyboardState &state, HidKeyboardKey key) {
+    int idx = static_cast<int>(key) / 64;
+    int bit = static_cast<int>(key) % 64;
+    if (idx < 4)
+        return (state.keys[idx] & (1ULL << bit)) != 0;
+    return false;
+}
+
+// Get the character for a given HID key considering shift state
+static char ImGui_ImplSwitch_GetCharForKey(HidKeyboardKey key, bool shift) {
+    // Letters
+    if (key >= HidKeyboardKey_A && key <= HidKeyboardKey_Z) {
+        char base = 'a' + (static_cast<int>(key) - static_cast<int>(HidKeyboardKey_A));
+        return shift ? (base - 32) : base;
+    }
+    // Numbers / symbols
+    if (key >= HidKeyboardKey_D1 && key <= HidKeyboardKey_D0) {
+        static const char normal[] = "1234567890";
+        static const char shifted[] = "!@#$%^&*()";
+        int idx = static_cast<int>(key) - static_cast<int>(HidKeyboardKey_D1);
+        return shift ? shifted[idx] : normal[idx];
+    }
+    // Punctuation
+    switch (key) {
+        case HidKeyboardKey_Space:        return ' ';
+        case HidKeyboardKey_Minus:        return shift ? '_' : '-';
+        case HidKeyboardKey_Plus:         return shift ? '+' : '=';
+        case HidKeyboardKey_OpenBracket:  return shift ? '{' : '[';
+        case HidKeyboardKey_CloseBracket: return shift ? '}' : ']';
+        case HidKeyboardKey_Backslash:    return shift ? '|' : '\\';
+        case HidKeyboardKey_Semicolon:    return shift ? ':' : ';';
+        case HidKeyboardKey_Quote:        return shift ? '"' : '\'';
+        case HidKeyboardKey_Tilde:        return shift ? '~' : '`';
+        case HidKeyboardKey_Comma:        return shift ? '<' : ',';
+        case HidKeyboardKey_Period:       return shift ? '>' : '.';
+        case HidKeyboardKey_Slash:        return shift ? '?' : '/';
+        default: return 0;
+    }
+}
+
+static void ImGui_ImplSwitch_UpdateKeyboard(void) {
+    ImGui_ImplSwitch_Data *bd = ImGui_ImplSwitch_GetBackendData();
+    ImGuiIO &io = ImGui::GetIO();
+    
+    HidKeyboardState kb_state = {};
+    if (!hidGetKeyboardStates(&kb_state, 1))
+        return;
+    
+    // Detect modifier state
+    bool shift = ImGui_ImplSwitch_IsKeyPressed(kb_state, HidKeyboardKey_LeftShift) ||
+                 ImGui_ImplSwitch_IsKeyPressed(kb_state, HidKeyboardKey_RightShift);
+    bool ctrl  = ImGui_ImplSwitch_IsKeyPressed(kb_state, HidKeyboardKey_LeftControl) ||
+                 ImGui_ImplSwitch_IsKeyPressed(kb_state, HidKeyboardKey_RightControl);
+    bool alt   = ImGui_ImplSwitch_IsKeyPressed(kb_state, HidKeyboardKey_LeftAlt) ||
+                 ImGui_ImplSwitch_IsKeyPressed(kb_state, HidKeyboardKey_RightAlt);
+    
+    io.AddKeyEvent(ImGuiMod_Shift, shift);
+    io.AddKeyEvent(ImGuiMod_Ctrl, ctrl);
+    io.AddKeyEvent(ImGuiMod_Alt, alt);
+    
+    // Iterate over all keyboard keys and send events for state changes
+    static const HidKeyboardKey tracked_keys[] = {
+        HidKeyboardKey_A, HidKeyboardKey_B, HidKeyboardKey_C, HidKeyboardKey_D,
+        HidKeyboardKey_E, HidKeyboardKey_F, HidKeyboardKey_G, HidKeyboardKey_H,
+        HidKeyboardKey_I, HidKeyboardKey_J, HidKeyboardKey_K, HidKeyboardKey_L,
+        HidKeyboardKey_M, HidKeyboardKey_N, HidKeyboardKey_O, HidKeyboardKey_P,
+        HidKeyboardKey_Q, HidKeyboardKey_R, HidKeyboardKey_S, HidKeyboardKey_T,
+        HidKeyboardKey_U, HidKeyboardKey_V, HidKeyboardKey_W, HidKeyboardKey_X,
+        HidKeyboardKey_Y, HidKeyboardKey_Z,
+        HidKeyboardKey_D1, HidKeyboardKey_D2, HidKeyboardKey_D3, HidKeyboardKey_D4,
+        HidKeyboardKey_D5, HidKeyboardKey_D6, HidKeyboardKey_D7, HidKeyboardKey_D8,
+        HidKeyboardKey_D9, HidKeyboardKey_D0,
+        HidKeyboardKey_Return, HidKeyboardKey_Escape, HidKeyboardKey_Backspace,
+        HidKeyboardKey_Tab, HidKeyboardKey_Space, HidKeyboardKey_Minus, HidKeyboardKey_Plus,
+        HidKeyboardKey_OpenBracket, HidKeyboardKey_CloseBracket, HidKeyboardKey_Backslash,
+        HidKeyboardKey_Semicolon, HidKeyboardKey_Quote, HidKeyboardKey_Tilde,
+        HidKeyboardKey_Comma, HidKeyboardKey_Period, HidKeyboardKey_Slash,
+        HidKeyboardKey_Delete, HidKeyboardKey_LeftArrow, HidKeyboardKey_RightArrow,
+        HidKeyboardKey_UpArrow, HidKeyboardKey_DownArrow, HidKeyboardKey_Home,
+        HidKeyboardKey_End, HidKeyboardKey_PageUp, HidKeyboardKey_PageDown,
+        HidKeyboardKey_LeftControl, HidKeyboardKey_LeftShift, HidKeyboardKey_LeftAlt,
+        HidKeyboardKey_RightControl, HidKeyboardKey_RightShift, HidKeyboardKey_RightAlt,
+    };
+    
+    for (auto hid_key : tracked_keys) {
+        bool now_pressed = ImGui_ImplSwitch_IsKeyPressed(kb_state, hid_key);
+        bool was_pressed = ImGui_ImplSwitch_IsKeyPressed(bd->prev_keyboard_state, hid_key);
+        
+        ImGuiKey imgui_key = ImGui_ImplSwitch_HidKeyToImGuiKey(hid_key);
+        if (imgui_key == ImGuiKey_None)
+            continue;
+        
+        if (now_pressed != was_pressed) {
+            io.AddKeyEvent(imgui_key, now_pressed);
+            
+            // Generate character input on key press (not release)
+            if (now_pressed && !ctrl && !alt) {
+                char c = ImGui_ImplSwitch_GetCharForKey(hid_key, shift);
+                if (c != 0) {
+                    io.AddInputCharacter(static_cast<unsigned int>(c));
+                }
+            }
+        }
+    }
+    
+    bd->prev_keyboard_state = kb_state;
+}
+
 u64 ImGui_ImplSwitch_NewFrame(void) {
     ImGui_ImplSwitch_Data *bd = ImGui_ImplSwitch_GetBackendData();
     IM_ASSERT(bd != nullptr && "Did you call ImGui_ImplSwitch_Init()?");
@@ -442,6 +629,9 @@ u64 ImGui_ImplSwitch_NewFrame(void) {
 
     // Update touch input (mapped to mouse for UI interaction)
     ImGui_ImplSwitch_UpdateTouch();
+    
+    // Update USB keyboard input (forward HID keyboard events to ImGui)
+    ImGui_ImplSwitch_UpdateKeyboard();
 
     return ImGui_ImplSwitch_UpdateGamepads();
 }

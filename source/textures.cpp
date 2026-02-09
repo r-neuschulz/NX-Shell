@@ -371,7 +371,7 @@ namespace Textures {
     }
     
     void Init(App &app) {
-        const int num_icons = 8;
+        const int num_icons = 9;
 
         const std::string paths[num_icons] {
             "romfs:/file.png",
@@ -381,7 +381,8 @@ namespace Textures {
             "romfs:/file0x.png",  // Binary/Hex icon
             "romfs:/switch.png",  // Nintendo Switch files
             "romfs:/switch.png",  // Nintendo Switch installable (NSP) - same icon
-            "romfs:/switch.png"   // Nintendo Switch NRO homebrew - same icon
+            "romfs:/switch.png",  // Nintendo Switch NRO homebrew - same icon
+            "romfs:/text.png"     // EPUB e-book (reuse text icon)
         };
 
         // Load all icons - don't use IM_ASSERT for calls with side effects
