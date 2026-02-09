@@ -226,6 +226,9 @@ namespace FS {
         
         // Text formats - Nintendo Switch specific
         {".PCHTXT", FileTypeText}, {".IPS", FileTypeText},
+        
+        // E-book formats
+        {".EPUB", FileTypeEpub},
     };
     
     // Common extensionless text files (case-insensitive basename match)

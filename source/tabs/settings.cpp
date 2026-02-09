@@ -79,7 +79,9 @@ namespace Tabs {
                 {" Korean", 7},
                 {" Portuguese", 9},
                 {" Russian", 10},
-                {" Spanish", 5}
+                {" Romanian", 18},
+                {" Spanish", 5},
+                {" Turkish", 19}
             };
             
             static const int num_languages = sizeof(supported_languages) / sizeof(supported_languages[0]);

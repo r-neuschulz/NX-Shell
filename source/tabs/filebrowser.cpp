@@ -621,6 +621,13 @@ namespace Tabs {
                                         }
                                         break;
 
+                                    case FileTypeEpub:
+                                        if (EpubReader::LoadFile(app, path)) {
+                                            data.selected = i;
+                                            data.state = WINDOW_STATE_EPUBREADER;
+                                        }
+                                        break;
+
                                     case FileTypeNone:
                                     default:
                                         data.selected = i;

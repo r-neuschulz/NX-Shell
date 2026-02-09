@@ -206,6 +206,13 @@ namespace Lang {
     ArchiveSuccess,
     ArchiveError,
 
+    // Text/Hex Editor
+    HintEdit,
+    HintSave,
+    HintEditMode,
+    EditorSaveSuccess,
+    EditorSaveError,
+
     // Max
     Max
     } StringID;

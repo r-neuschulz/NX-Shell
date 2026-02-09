@@ -3,6 +3,7 @@
 #include <switch.h>
 
 #include "config.hpp"
+#include "epub.hpp"
 #include "fs.hpp"
 #include "gui.hpp"
 #include "services.hpp"
@@ -15,7 +16,7 @@
 #include "windows.hpp"
 
 namespace Windows {
-    static bool image_properties = false, text_properties = false, file_stat = false;
+    static bool image_properties = false, text_properties = false, epub_properties = false, file_stat = false;
     static int current_tab = -1;  // -1 = no forced selection, 0-2 = force select tab
     static int active_tab = 0;    // Track which tab is currently active
     static bool suppress_b_navigation = false;  // Suppress B button parent directory navigation for one frame
@@ -548,6 +549,11 @@ namespace Windows {
                 TextReader::HandleControls(app, key, text_properties);
                 break;
 
+            case WINDOW_STATE_EPUBREADER:
+                Windows::EpubReaderWindow(app, epub_properties, file_stat);
+                EpubReader::HandleControls(app, key, epub_properties);
+                break;
+
             case WINDOW_STATE_OPENMODE:
                 {
                     static bool show_openmode_popup = true;
@@ -707,6 +713,19 @@ namespace Windows {
                     }
                     else {
                         TextReader::Clear(app);
+                        app.window.state = WINDOW_STATE_FILEBROWSER;
+                        suppress_b_navigation = true;  // Prevent B from also navigating up
+                    }
+                    
+                    break;
+
+                case WINDOW_STATE_EPUBREADER:
+                    if (epub_properties) {
+                        epub_properties = false;
+                        file_stat = false;
+                    }
+                    else {
+                        EpubReader::Clear(app);
                         app.window.state = WINDOW_STATE_FILEBROWSER;
                         suppress_b_navigation = true;  // Prevent B from also navigating up
                     }

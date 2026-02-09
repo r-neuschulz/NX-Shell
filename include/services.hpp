@@ -54,7 +54,8 @@ enum FileType {
     FileTypeBinary,
     FileTypeSwitch,
     FileTypeSwitchInstallable,  // NSP files that can be installed
-    FileTypeSwitchNRO           // NRO homebrew that can be converted to NSP
+    FileTypeSwitchNRO,          // NRO homebrew that can be converted to NSP
+    FileTypeEpub                // EPUB e-book files
 };
 
 enum ConflictHandling {
@@ -263,7 +264,8 @@ enum WindowState {
     WINDOW_STATE_MULTI_REPLACE,
     WINDOW_STATE_OPENMODE,
     WINDOW_STATE_INSTALL,          // Unified install popup (for NSP and NRO)
-    WINDOW_STATE_NRO_FORWARDER     // NRO to NSP forwarder (from Options menu)
+    WINDOW_STATE_NRO_FORWARDER,    // NRO to NSP forwarder (from Options menu)
+    WINDOW_STATE_EPUBREADER        // EPUB e-book reader
 };
 
 enum SortState {
@@ -295,6 +297,12 @@ struct WindowService {
     
     // Text reader data
     std::string text_content;
+    
+    // EPUB reader state
+    int epub_chapter_index = 0;     // Current chapter (spine index)
+    int epub_current_page = 0;      // Current page within chapter
+    int epub_total_pages = 0;       // Total pages in current chapter
+    bool epub_side_by_side = false;  // Side-by-side (bookspread) mode
     
     // Sort state
     int sort = 0;

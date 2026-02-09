@@ -97,6 +97,8 @@ string(JSON STB_COMMIT GET ${DEPS_JSON} "git_dependencies" "stb" "commit")
 string(JSON USBHSFS_VERSION GET ${DEPS_JSON} "git_dependencies" "libusbhsfs" "version")
 string(JSON USBHSFS_COMMIT GET ${DEPS_JSON} "git_dependencies" "libusbhsfs" "commit")
 string(JSON NSPMINI_COMMIT GET ${DEPS_JSON} "git_dependencies" "nspmini" "commit")
+string(JSON TINYXML2_VERSION GET ${DEPS_JSON} "git_dependencies" "tinyxml2" "tag")
+string(JSON LITEHTML_VERSION GET ${DEPS_JSON} "git_dependencies" "litehtml" "tag")
 
 # Shorten nspmini commit hash for display (first 7 chars)
 string(SUBSTRING "${NSPMINI_COMMIT}" 0 7 NSPMINI_COMMIT_SHORT)
@@ -111,6 +113,8 @@ message(STATUS "  libusbhsfs: ${USBHSFS_VERSION}")
 message(STATUS "  libnsbmp: ${LIBNSBMP_COMMIT_SHORT}")
 message(STATUS "  stb: ${STB_COMMIT_SHORT}")
 message(STATUS "  nspmini: ${NSPMINI_COMMIT_SHORT}")
+message(STATUS "  tinyxml2: ${TINYXML2_VERSION}")
+message(STATUS "  litehtml: ${LITEHTML_VERSION}")
 
 #---------------------------------------------------------------------------------
 # Fetch Dependencies
@@ -139,7 +143,31 @@ FetchContent_Declare(usbhsfs_release
     DOWNLOAD_EXTRACT_TIMESTAMP TRUE
 )
 
-FetchContent_MakeAvailable(imgui libnsbmp stb usbhsfs_release)
+FetchContent_Declare(tinyxml2
+    GIT_REPOSITORY https://github.com/leethomason/tinyxml2.git
+    GIT_TAG        ${TINYXML2_VERSION}
+    GIT_SHALLOW    TRUE
+)
+
+FetchContent_Declare(litehtml
+    GIT_REPOSITORY https://github.com/litehtml/litehtml.git
+    GIT_TAG        ${LITEHTML_VERSION}
+    GIT_SHALLOW    TRUE
+)
+
+# Configure tinyxml2 and litehtml build options before MakeAvailable
+set(tinyxml2_BUILD_TESTING OFF CACHE BOOL "" FORCE)
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+set(LITEHTML_BUILD_TESTING OFF CACHE BOOL "" FORCE)
+
+FetchContent_MakeAvailable(imgui libnsbmp stb usbhsfs_release tinyxml2 litehtml)
+
+# Enable RTTI for litehtml (uses dynamic_cast internally; project default is -fno-rtti)
+# Suppress all warnings from upstream litehtml source (sign-compare, reorder, parentheses, etc.)
+target_compile_options(litehtml PRIVATE -frtti -w)
+if(TARGET gumbo)
+    target_compile_options(gumbo PRIVATE -frtti -w)
+endif()
 
 # nspmini library for NSP installation
 FetchContent_Declare(nspmini
@@ -288,6 +316,7 @@ set(IMGUI_SOURCES
     ${imgui_SOURCE_DIR}/imgui_tables.cpp
     ${imgui_SOURCE_DIR}/imgui_widgets.cpp
     ${imgui_SOURCE_DIR}/misc/freetype/imgui_freetype.cpp
+    ${imgui_SOURCE_DIR}/misc/cpp/imgui_stdlib.cpp
 )
 
 # Get all source files, excluding the forwarder directory (built separately)
@@ -307,6 +336,10 @@ add_executable(${PROJECT_NAME}.elf
 add_dependencies(${PROJECT_NAME}.elf nspmini_build forwarder_build)
 
 set_source_files_properties(${libnsbmp_SOURCE_DIR}/src/libnsbmp.c PROPERTIES LANGUAGE C)
+
+# Enable RTTI for epub.cpp (includes litehtml headers which use dynamic_cast)
+# Suppress upstream litehtml header warnings (-Wreorder, -Wswitch) that propagate through includes
+set_source_files_properties(${CMAKE_CURRENT_SOURCE_DIR}/source/epub.cpp PROPERTIES COMPILE_FLAGS "-frtti -Wno-reorder -Wno-switch")
 
 target_compile_definitions(${PROJECT_NAME}.elf PRIVATE
     # Version
@@ -344,10 +377,13 @@ target_include_directories(${PROJECT_NAME}.elf PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}/include
     ${imgui_SOURCE_DIR}
     ${imgui_SOURCE_DIR}/misc/freetype
+    ${imgui_SOURCE_DIR}/misc/cpp
     ${libnsbmp_SOURCE_DIR}/include
     ${stb_SOURCE_DIR}
     ${usbhsfs_release_SOURCE_DIR}/include
     ${nspmini_SOURCE_DIR}/include
+    ${tinyxml2_SOURCE_DIR}
+    ${litehtml_SOURCE_DIR}/include
     ${PORTLIBS}/include
     ${LIBNX}/include
 )
@@ -362,6 +398,7 @@ target_link_directories(${PROJECT_NAME}.elf PRIVATE
 target_link_libraries(${PROJECT_NAME}.elf PRIVATE
     ${FREETYPE_LIBS}
     ${CURL_LIBS}
+    tinyxml2 litehtml
     gif turbojpeg jpeg png webp jansson
     glad EGL glapi drm_nouveau
     usbhsfs lwext4 ntfs-3g
