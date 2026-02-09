@@ -40,8 +40,8 @@
     },
     "nspmini": {
       "url": "https://github.com/StarDustCFW/nspmini.git",
-      "branch": "master",
-      "commit": "7564d25",
+      "branch": "main",
+      "commit": "7564d2584f2595a00af2af04b134121215c72bad",
       "description": "Minimal NSP installation library for Nintendo Switch",
       "managed_by": "FetchContent",
       "location": "build/_deps/nspmini-src"
