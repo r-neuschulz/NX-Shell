@@ -32,7 +32,7 @@ jobs:
       docker_image: ${{ steps.read_deps.outputs.docker_image }}
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           sparse-checkout: dependencies.json
           sparse-checkout-cone-mode: false
@@ -73,7 +73,7 @@ jobs:
           fi
 
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
       - name: Determine version and repository
         id: version
@@ -161,7 +161,7 @@ jobs:
           mv "/tmp/${{ steps.version.outputs.build_archive }}" build/
 
       - name: Upload NRO artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: ${{ !env.ACT }}
         with:
           name: NX-Shell
@@ -169,7 +169,7 @@ jobs:
           if-no-files-found: error
 
       - name: Upload source archive artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: ${{ !env.ACT }}
         with:
           name: NX-Shell-source
@@ -177,7 +177,7 @@ jobs:
           if-no-files-found: error
 
       - name: Upload build archive artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         if: ${{ !env.ACT }}
         with:
           name: NX-Shell-build
@@ -193,24 +193,24 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
       - name: Download NRO artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: NX-Shell
           path: dist/
 
       - name: Download source archive artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: NX-Shell-source
           path: dist/
 
       - name: Download build archive artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v7
         with:
           name: NX-Shell-build
           path: dist/
