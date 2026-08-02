@@ -6,8 +6,8 @@
   "git_dependencies": {
     "imgui": {
       "url": "https://github.com/ocornut/imgui.git",
-      "version": "v1.92.5",
-      "tag": "v1.92.5",
+      "version": "v1.92.9",
+      "tag": "v1.92.9",
       "description": "Dear ImGui - immediate mode GUI library",
       "managed_by": "FetchContent",
       "location": "build/_deps/imgui-src"
@@ -24,7 +24,7 @@
     "stb": {
       "url": "https://github.com/nothings/stb.git",
       "branch": "master",
-      "commit": "f1c79c02822848a9bed4315b12c8c8f3761e1296",
+      "commit": "2c980bb59875b0d32144a71867fbdebb2f77cd20",
       "description": "stb single-file public domain libraries (for stb_image.h)",
       "managed_by": "FetchContent",
       "location": "build/_deps/stb-src"
@@ -41,7 +41,7 @@
     "nspmini": {
       "url": "https://github.com/StarDustCFW/nspmini.git",
       "branch": "main",
-      "commit": "7564d2584f2595a00af2af04b134121215c72bad",
+      "commit": "452419ef2936ab5d884741e3788737f427c92a9e",
       "description": "Minimal NSP installation library for Nintendo Switch",
       "managed_by": "FetchContent",
       "location": "build/_deps/nspmini-src"
@@ -57,7 +57,7 @@
     "litehtml": {
       "url": "https://github.com/litehtml/litehtml.git",
       "version": "0.9",
-      "tag": "v0.9",
+      "tag": "v0.10",
       "description": "Fast and lightweight HTML/CSS rendering engine for EPUB content",
       "managed_by": "FetchContent",
       "location": "build/_deps/litehtml-src"
